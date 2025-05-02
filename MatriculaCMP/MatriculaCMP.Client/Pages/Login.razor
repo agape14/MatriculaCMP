@@ -1,0 +1,197 @@
+﻿@page "/"
+@layout LoginLayout
+@using MatriculaCMP.Client.Layout
+@using MatriculaCMP.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<div class="container-fluid p-0">
+    <div class="row no-gutters">
+        <div class="col-lg-4">
+            <div class="authentication-page-content p-4 d-flex align-items-center min-vh-100">
+                <div class="w-100">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-9">
+                            <div>
+                                <div class="text-center">
+                                    <div>
+                                        <a href="index.html" class="logo"><img src="assets/images/logo-dark.png" height="60" alt="logo"></a>
+                                    </div>
+
+                                    <h4 class="font-size-18 mt-4">¡Bienvenido!</h4>
+                                    <p class="text-muted">Inicie sesión para continuar.</p>
+                                </div>
+
+                                <div class="p-2 mt-5">
+                                    @if (!string.IsNullOrEmpty(mensajeError))
+                                    {
+                                        <div class="alert alert-danger mt-3">@mensajeError</div>
+                                    }
+                                    <div class="form-group auth-form-group-custom mb-4">
+                                        <i class="ri-user-2-line auti-custom-input-icon"></i>
+                                        <label for="username">Usuario</label>
+                                        <input type="text" class="form-control" @bind-value=usuario.Correo @ref="correoInput" @onkeypress="SiguienteEnter" />
+                                    </div>
+
+                                    <div class="form-group auth-form-group-custom mb-4">
+                                        <i class="ri-lock-2-line auti-custom-input-icon"></i>
+                                        <label for="userpassword">Contraseña</label>
+                                        <input type="password" class="form-control" @bind-value=usuario.Password @onkeypress="VerificarEnter" @ref="passwordInput" />
+                                    </div>
+
+                                    @* <div class="custom-control custom-checkbox">
+                                        <input type="checkbox" class="form-check-input" id="recordarme" @bind="recordarme">
+                                        <label class="form-check-label" for="recordarme">Recordarme</label>
+                                    </div> *@
+                                  
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input" id="recordarme" @bind="recordarme">
+                                        <label class="form-check-label" for="recordarme">Recordarme</label>
+                                    </div>
+
+                                    <div class="mt-4 text-center">
+                                        <button class="btn btn-success" @onclick="IniciarSesion">
+                                            <i class="bi bi-box-arrow-in-right me-2"></i> Iniciar Sesión
+                                        </button>
+
+                                    </div>
+
+                                    <div class="mt-4 text-center">
+                                        <a href="auth-recoverpw.html" class="text-muted"><i class="mdi mdi-lock mr-1"></i> Olvidó Contraseña?</a>
+                                    </div>
+                                </div>
+
+                                <div class="mt-5 text-center">
+                                    <!--<p>Don't have an account ? <a href="auth-register.html" class="font-weight-medium text-primary"> Register </a> </p>-->
+                                    <p class="text-muted small">
+                                        &copy; @DateTime.Now.Year
+                                        Hecho con <i class="mdi mdi-heart text-danger"></i> por CMP
+                                    </p>
+
+
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="authentication-bg">
+                <div class="bg-overlay"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@code {
+    string? token = null;
+    string mensajeError = string.Empty;
+    private bool enfocado = false; // para que no se enfoque varias veces
+    bool recordarme = false;
+    UsuarioDTO usuario = new UsuarioDTO();
+
+    private ElementReference correoInput;
+    private ElementReference passwordInput;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            if (!enfocado)
+            {
+                await JS.InvokeVoidAsync("focusElement", correoInput);
+                enfocado = true;
+            }
+
+            var correoGuardado = await JS.InvokeAsync<string>("localStorage.getItem", "Correo");
+            var passGuardado = await JS.InvokeAsync<string>("localStorage.getItem", "Password");
+
+            if (!string.IsNullOrWhiteSpace(correoGuardado))
+            {
+                usuario.Correo = correoGuardado;
+            }
+
+            if (!string.IsNullOrWhiteSpace(passGuardado))
+            {
+                usuario.Password = passGuardado;
+                recordarme = true; // Marcar el check si los datos fueron encontrados
+            }
+
+            StateHasChanged(); // Forzar actualización visual
+        }
+    }
+
+    async Task IniciarSesion()
+    {
+        mensajeError = string.Empty;
+
+        try
+        {
+            var resultado = await Http.PostAsJsonAsync("api/Usuario/Login", usuario);
+
+            if (resultado.IsSuccessStatusCode)
+            {
+                token = await resultado.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("localStorage.setItem", "Token", token);
+                await AuthenticationStateProvider.GetAuthenticationStateAsync();
+
+                if (recordarme)
+                {
+                    await JS.InvokeVoidAsync("localStorage.setItem", "Correo", usuario.Correo);
+                    await JS.InvokeVoidAsync("localStorage.setItem", "Password", usuario.Password);
+                }
+                else
+                {
+                    await JS.InvokeVoidAsync("localStorage.removeItem", "Correo");
+                    await JS.InvokeVoidAsync("localStorage.removeItem", "Password");
+                }
+
+                Navigation.NavigateTo("/home", true);
+            }
+            else
+            {
+                mensajeError = await resultado.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("focusElement", correoInput);
+                StateHasChanged();
+                await Task.Delay(5000);
+                mensajeError = null;
+            }
+           
+        }
+        catch
+        {
+            mensajeError = "Error inesperado al intentar iniciar sesión.";
+            await JS.InvokeVoidAsync("focusElement", correoInput);
+            StateHasChanged();
+            await Task.Delay(5000);
+            mensajeError = null;
+        }
+
+        StateHasChanged();
+    }
+
+
+    private async Task VerificarEnter(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await IniciarSesion();
+        }
+    }
+
+    private async Task SiguienteEnter(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await JS.InvokeVoidAsync("focusElement", passwordInput);
+        }
+    }
+
+}

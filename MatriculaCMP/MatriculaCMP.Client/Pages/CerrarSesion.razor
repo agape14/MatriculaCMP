@@ -1,0 +1,19 @@
+﻿@using MatriculaCMP.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<h3>CerrarSesion</h3>
+
+<button class="btn btn-primary" @onclick=Salir>Cerrar Sesion</button>
+
+@code {
+	async Task Salir()
+	{
+		await JS.InvokeVoidAsync("localStorage.removeItem", "Token");
+		await AuthenticationStateProvider.GetAuthenticationStateAsync();
+		Navigation.NavigateTo("/", true);
+	}
+}
+

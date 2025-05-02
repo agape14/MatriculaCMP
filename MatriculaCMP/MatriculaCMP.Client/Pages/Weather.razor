@@ -1,4 +1,7 @@
 ﻿@page "/weather"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles ="Usuario")]
+
 
 <PageTitle>Weather</PageTitle>
 
@@ -34,6 +37,15 @@ else
         </tbody>
     </table>
 }
+
+<Microsoft.AspNetCore.Components.Authorization.AuthorizeView Roles="rol1">
+    <Authorized>
+        <p>Bienvenido @context.User.Identity?.Name!</p>
+    </Authorized>
+    <NotAuthorized>
+        <p>No estas autorizado</p>
+    </NotAuthorized>
+</Microsoft.AspNetCore.Components.Authorization.AuthorizeView>
 
 @code {
     private WeatherForecast[]? forecasts;
