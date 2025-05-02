@@ -21,8 +21,10 @@
                                         <a href="index.html" class="logo"><img src="assets/images/logo-dark.png" height="60" alt="logo"></a>
                                     </div>
 
-                                    <h4 class="font-size-18 mt-4">¡Bienvenido!</h4>
-                                    <p class="text-muted">Inicie sesión para continuar.</p>
+                                    <h4 class="font-size-18 mt-4">Inicio de Sesión</h4>
+                                    <p class="text-muted">
+                                        Ingresa tu usuario y contraseña para acceder a tu cuenta.
+                                    </p>
                                 </div>
 
                                 <div class="p-2 mt-5">
@@ -36,13 +38,32 @@
                                         <input type="text" class="form-control" @bind-value=usuario.Correo @ref="correoInput" @onkeypress="SiguienteEnter" />
                                     </div>
 
+                                    <div class="form-group auth-form-group-custom mb-4 position-relative">
+                                        <i class="ri-lock-2-line auti-custom-input-icon"></i>
+                                        <label for="userpassword">Contraseña</label>
+
+                                        <input type="@passwordFieldType" class="form-control"
+                                               @bind-value="usuario.Password"
+                                               @onkeypress="VerificarEnter"
+                                               @ref="passwordInput" />
+
+                                        <button type="button"
+                                                class="btn position-absolute"
+                                                style="top: 10px; right: 10px; background: transparent; border: none;"
+                                                @onclick="TogglePasswordVisibility">
+                                            <i class="@eyeIcon" style="font-size: 1.2rem;"></i>
+                                        </button>
+                                    </div>
+
+
+                                    @*
                                     <div class="form-group auth-form-group-custom mb-4">
                                         <i class="ri-lock-2-line auti-custom-input-icon"></i>
                                         <label for="userpassword">Contraseña</label>
                                         <input type="password" class="form-control" @bind-value=usuario.Password @onkeypress="VerificarEnter" @ref="passwordInput" />
                                     </div>
 
-                                    @* <div class="custom-control custom-checkbox">
+                                    <div class="custom-control custom-checkbox">
                                         <input type="checkbox" class="form-check-input" id="recordarme" @bind="recordarme">
                                         <label class="form-check-label" for="recordarme">Recordarme</label>
                                     </div> *@
@@ -53,7 +74,7 @@
                                     </div>
 
                                     <div class="mt-4 text-center">
-                                        <button class="btn btn-success" @onclick="IniciarSesion">
+                                        <button class="btn btn-primary" @onclick="IniciarSesion">
                                             <i class="bi bi-box-arrow-in-right me-2"></i> Iniciar Sesión
                                         </button>
 
@@ -99,6 +120,8 @@
 
     private ElementReference correoInput;
     private ElementReference passwordInput;
+    private string passwordFieldType = "password";
+    private string eyeIcon => passwordFieldType == "password" ? "ri-eye-line" : "ri-eye-off-line";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -194,4 +217,8 @@
         }
     }
 
+    private void TogglePasswordVisibility()
+    {
+        passwordFieldType = passwordFieldType == "password" ? "text" : "password";
+    }
 }

@@ -4,9 +4,8 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 
-<h3>CerrarSesion</h3>
 
-<button class="btn btn-primary" @onclick=Salir>Cerrar Sesion</button>
+<button class="btn btn-danger" @onclick=Salir><i class="bi bi-escape me-2"></i> </button>
 
 @code {
 	async Task Salir()

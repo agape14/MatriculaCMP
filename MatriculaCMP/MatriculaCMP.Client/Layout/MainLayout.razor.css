@@ -94,3 +94,13 @@ main {
         right: 0.75rem;
         top: 0.5rem;
     }
+
+
+.darker-border-checkbox.form-check-input {
+    border-color: #929292;
+}
+
+.btn-no-outline:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}

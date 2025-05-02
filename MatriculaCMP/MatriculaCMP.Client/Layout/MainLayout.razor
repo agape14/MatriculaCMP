@@ -1,4 +1,9 @@
-﻿@inherits LayoutComponentBase
+﻿@using MatriculaCMP.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inherits LayoutComponentBase
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
 
 <div class="page">
     <div class="sidebar">
@@ -7,7 +12,9 @@
 
     <main>
         <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+            @* <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a> 
+            <button @onclick='() => Navigation.NavigateTo("/login", true)'>Cerrar Sesión</button>*@
+            <button class="btn btn-danger" @onclick=Salir><i class="bi bi-escape "></i> </button>
         </div>
 
         <article class="content px-4">
@@ -21,3 +28,12 @@
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    async Task Salir()
+    {
+        await JS.InvokeVoidAsync("localStorage.removeItem", "Token");
+        await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        Navigation.NavigateTo("/", true);
+    }
+}

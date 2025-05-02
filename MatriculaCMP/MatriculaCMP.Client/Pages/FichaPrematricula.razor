@@ -1,0 +1,635 @@
+﻿@page "/prematricula"
+<div class="container-fluid">
+	<!-- start page title -->
+	<div class="row">
+		<div class="col-12">
+			<div class="page-title-box d-sm-flex align-items-center justify-content-between">
+				<h4 class="mb-sm-0">Ficha Pre-matricula</h4>
+
+				<div class="page-title-right">
+					<ol class="breadcrumb m-0">
+						<li class="breadcrumb-item"><a href="javascript: void(0);">Inicio</a></li>
+						<li class="breadcrumb-item active">Ficha Pre-matricula</li>
+					</ol>
+				</div>
+
+			</div>
+		</div>
+	</div>
+	<!-- end page title -->
+
+	<div class="row">
+		<div class="col-12">
+			<div class="card">
+				<div class="card-body">
+					<div class="container-contact100">
+						<div class="wrap-contact100">
+							<form id="form1" name="form1" method="post" action="registro.php" target="_self" class="contact100-form validate-form" enctype="multipart/form-data" onsubmit="return enviado()">
+								<span class="contact100-form-title">
+									Ficha de Pre-Matricula <br>
+									Para Colegiación
+								</span>
+
+								<div class="wrap-input100 input100-select bg1">
+									<center><b>******** Para el correcto funcionamiento de este servicio, utilizar el explorador Chrome. ********</b></center>
+								</div>
+
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">Consejo Regional *</span>
+									<div>
+										<select class="js-select2 select2-hidden-accessible" name="cr" tabindex="-1" aria-hidden="true">
+											<option value="1">CONSEJO REGIONAL I  LA LIBERTAD</option>
+											<option value="2">CONSEJO REGIONAL II  IQUITOS</option>
+											<option value="3">CONSEJO REGIONAL III  LIMA</option>
+											<option value="4">CONSEJO REGIONAL IV  JUNIN</option>
+											<option value="9">CONSEJO REGIONAL IX  ICA</option>
+											<option value="5">CONSEJO REGIONAL V  AREQUIPA</option>
+											<option value="6">CONSEJO REGIONAL VI  CUZCO</option>
+											<option value="7">CONSEJO REGIONAL VII  PIURA</option>
+											<option value="8">CONSEJO REGIONAL VIII  CHICLAYO</option>
+											<option value="10">CONSEJO REGIONAL X  HUANUCO</option>
+											<option value="11">CONSEJO REGIONAL XI  HUARAZ</option>
+											<option value="12">CONSEJO REGIONAL XII  TACNA</option>
+											<option value="13">CONSEJO REGIONAL XIII  PUCALLPA</option>
+											<option value="14">CONSEJO REGIONAL XIV  PUNO</option>
+											<option value="19">CONSEJO REGIONAL XIX  CHIMBOTE</option>
+											<option value="15">CONSEJO REGIONAL XV  SAN MARTIN</option>
+											<option value="16">CONSEJO REGIONAL XVI  AYACUCHO</option>
+											<option value="17">CONSEJO REGIONAL XVII  CAJAMARCA</option>
+											<option value="18">CONSEJO REGIONAL XVIII  CALLAO</option>
+											<option value="20">CONSEJO REGIONAL XX  PASCO</option>
+											<option value="21">CONSEJO REGIONAL XXI  MOQUEGUA</option>
+											<option value="22">CONSEJO REGIONAL XXII  APURIMAC</option>
+											<option value="23">CONSEJO REGIONAL XXIII  TUMBES</option>
+											<option value="24">CONSEJO REGIONAL XXIV  HUANCAVELICA</option>
+											<option value="25">CONSEJO REGIONAL XXV  AMAZONAS</option>
+											<option value="26">CONSEJO REGIONAL XXVI  MADRE DE DIOS</option>
+											<option value="27">CONSEJO REGIONAL XXVII  LIMA-PROVINCIAS</option>
+										</select><span class="select2 select2-container select2-container--default" dir="ltr" style="width: 377.6px;"><span class="selection"><span class="select2-selection select2-selection--single" role="combobox" aria-haspopup="true" aria-expanded="false" tabindex="0" aria-labelledby="select2-cr-oz-container"><span class="select2-selection__rendered" id="select2-cr-oz-container" title="CONSEJO REGIONAL I  LA LIBERTAD">CONSEJO REGIONAL I  LA LIBERTAD</span><span class="select2-selection__arrow" role="presentation"><b role="presentation"></b></span></span></span><span class="dropdown-wrapper" aria-hidden="true"></span></span>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+								Datos Personales
+								<div class="wrap-input100 validate-input bg1" data-validate="Por favor ingrese su nombre">
+									<span class="label-input100">Nombres Completos *</span>
+									<input class="input100" type="text" name="nombres" placeholder="Ingrese su nombre" maxlength="50">
+								</div>
+
+								<div class="wrap-input100 validate-input bg0 rs1-wrap-input100" data-validate="Por favor ingrese su apellido paterno">
+									<span class="label-input100">Apellido Paterno</span>
+									<input class="input100" type="text" name="apaterno" placeholder="Ingrese su apellido paterno" maxlength="50">
+								</div>
+
+								<div class="wrap-input100 bg0 rs1-wrap-input100">
+									<span class="label-input100">Apellido Materno</span>
+									<input class="input100" type="text" name="amaterno" placeholder="Ingrese su apellido materno" maxlength="50">
+								</div>
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">Sexo *</span>
+									<div>
+										<select class="js-select2 select2-hidden-accessible" name="sexo" tabindex="-1" aria-hidden="true">
+											<option value="1">Masculino</option>
+											<option value="0">Femenino</option>
+										</select><span class="select2 select2-container select2-container--default" dir="ltr" style="width: 94.4px;"><span class="selection"><span class="select2-selection select2-selection--single" role="combobox" aria-haspopup="true" aria-expanded="false" tabindex="0" aria-labelledby="select2-sexo-ue-container"><span class="select2-selection__rendered" id="select2-sexo-ue-container" title="Masculino">Masculino</span><span class="select2-selection__arrow" role="presentation"><b role="presentation"></b></span></span></span><span class="dropdown-wrapper" aria-hidden="true"></span></span>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">Estado Civil *</span>
+									<div>
+										<select class="js-select2 select2-hidden-accessible" name="ec" tabindex="-1" aria-hidden="true">
+											<option value="70">Casado</option>
+											<option value="73">Conviviente</option>
+											<option value="72">Divorciado</option>
+											<option value="69">Soltero</option>
+											<option value="71">Viudo</option>
+										</select><span class="select2 select2-container select2-container--default" dir="ltr" style="width: 105.6px;"><span class="selection"><span class="select2-selection select2-selection--single" role="combobox" aria-haspopup="true" aria-expanded="false" tabindex="0" aria-labelledby="select2-ec-8g-container"><span class="select2-selection__rendered" id="select2-ec-8g-container" title="Casado">Casado</span><span class="select2-selection__arrow" role="presentation"><b role="presentation"></b></span></span></span><span class="dropdown-wrapper" aria-hidden="true"></span></span>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">Tipo de Documento *</span>
+									<div>
+										<select class="js-select2 select2-hidden-accessible" name="td" tabindex="-1" aria-hidden="true">
+											<option value="64">Carnet Extranjeria</option>
+											<option value="62">DNI</option>
+										</select><span class="select2 select2-container select2-container--default" dir="ltr" style="width: 151.2px;"><span class="selection"><span class="select2-selection select2-selection--single" role="combobox" aria-haspopup="true" aria-expanded="false" tabindex="0" aria-labelledby="select2-td-p9-container"><span class="select2-selection__rendered" id="select2-td-p9-container" title="Carnet Extranjeria">Carnet Extranjeria</span><span class="select2-selection__arrow" role="presentation"><b role="presentation"></b></span></span></span><span class="dropdown-wrapper" aria-hidden="true"></span></span>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+								<div class="wrap-input100 validate-input bg1" data-validate="Por favor ingrese su nro de documento">
+									<span class="label-input100">Nro. documento *</span>
+									<input class="input100" type="text" name="nd" placeholder="Ingrese su nro documento" maxlength="20">
+								</div>
+
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">Grupo Sanguineo *</span>
+									<div>
+										<select class="js-select2 select2-hidden-accessible" name="gs" tabindex="-1" aria-hidden="true">
+											<option value="173">A+</option>
+											<option value="174">A-</option>
+											<option value="171">AB+</option>
+											<option value="172">AB-</option>
+											<option value="175">B+</option>
+											<option value="176">B-</option>
+											<option value="177">O+</option>
+											<option value="178">O-</option>
+										</select><span class="select2 select2-container select2-container--default" dir="ltr" style="width: 52.8px;"><span class="selection"><span class="select2-selection select2-selection--single" role="combobox" aria-haspopup="true" aria-expanded="false" tabindex="0" aria-labelledby="select2-gs-pi-container"><span class="select2-selection__rendered" id="select2-gs-pi-container" title="A+">A+</span><span class="select2-selection__arrow" role="presentation"><b role="presentation"></b></span></span></span><span class="dropdown-wrapper" aria-hidden="true"></span></span>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+								Datos de nacimiento
+
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">País *</span>
+									<div>
+										<select id="pais" class="js-select2 select2-hidden-accessible" name="pais" tabindex="-1" aria-hidden="true">
+											<option value="1">Afganistán</option>
+											<option value="3">Albania</option>
+											<option value="4">Alemania</option>
+											<option value="5">Andorra</option>
+											<option value="6">Angola</option>
+											<option value="7">Anguilla</option>
+											<option value="8">Antártida</option>
+											<option value="9">Antigua y Barbuda</option>
+											<option value="10">Antillas Holandesas</option>
+											<option value="11">Arabia Saudí</option>
+											<option value="12">Argelia</option>
+											<option value="13">Argentina</option>
+											<option value="14">Armenia</option>
+											<option value="15">Aruba</option>
+											<option value="131">ARY Macedonia</option>
+											<option value="16">Australia</option>
+											<option value="17">Austria</option>
+											<option value="18">Azerbaiyan</option>
+											<option value="19">Bahamas</option>
+											<option value="20">Bahréin</option>
+											<option value="21">Bangladesh</option>
+											<option value="22">Barbados</option>
+											<option value="24">Belgica</option>
+											<option value="25">Belice</option>
+											<option value="26">Benin</option>
+											<option value="27">Bermudas</option>
+											<option value="28">Bhutan</option>
+											<option value="23">Bielorrusia</option>
+											<option value="29">Bolivia</option>
+											<option value="30">Bosnia y Herzegovina</option>
+											<option value="31">Botsuana</option>
+											<option value="33">Brasil</option>
+											<option value="34">Brunéi</option>
+											<option value="35">Bulgaria</option>
+											<option value="36">Burkina Faso</option>
+											<option value="37">Burundi</option>
+											<option value="38">Cabo Verde</option>
+											<option value="40">Camboya</option>
+											<option value="41">Camerún</option>
+											<option value="42">Canada</option>
+											<option value="44">Chad</option>
+											<option value="46">Chile</option>
+											<option value="47">China</option>
+											<option value="48">Chipre</option>
+											<option value="50">Ciudad del Vaticano</option>
+											<option value="52">Colombia</option>
+											<option value="53">Comoras</option>
+											<option value="55">Congo</option>
+											<option value="57">Corea del Norte</option>
+											<option value="58">Corea del Sur</option>
+											<option value="59">Costa de Marfil</option>
+											<option value="60">Costa Rica</option>
+											<option value="61">Croacia</option>
+											<option value="62">Cuba</option>
+											<option value="63">Dinamarca</option>
+											<option value="64">Dominica</option>
+											<option value="66">Ecuador</option>
+											<option value="67">Egipto</option>
+											<option value="68">El Salvador</option>
+											<option value="69">Emiratos Árabes Unidos</option>
+											<option value="70">Eritrea</option>
+											<option value="71">Eslovaquia</option>
+											<option value="72">Eslovenia</option>
+											<option value="73">España</option>
+											<option value="75">Estados Unidos</option>
+											<option value="76">Estonia</option>
+											<option value="77">Etiopía</option>
+											<option value="79">Filipinas</option>
+											<option value="80">Finlandia</option>
+											<option value="81">Fiyi</option>
+											<option value="82">Francia</option>
+											<option value="83">Gabón</option>
+											<option value="84">Gambia</option>
+											<option value="85">Georgia</option>
+											<option value="87">Ghana</option>
+											<option value="88">Gibraltar</option>
+											<option value="89">Granada</option>
+											<option value="90">Grecia</option>
+											<option value="91">Groenlandia</option>
+											<option value="92">Guadalupe</option>
+											<option value="93">Guam</option>
+											<option value="94">Guatemala</option>
+											<option value="95">Guayana Francesa</option>
+											<option value="96">Guinea</option>
+											<option value="97">Guinea Ecuatorial</option>
+											<option value="98">Guinea-Bissau</option>
+											<option value="99">Guyana</option>
+											<option value="100">Haití</option>
+											<option value="241">Holanda</option>
+											<option value="102">Honduras</option>
+											<option value="103">Hong Kong</option>
+											<option value="104">Hungria</option>
+											<option value="105">India</option>
+											<option value="106">Indonesia</option>
+											<option value="107">Iran</option>
+											<option value="108">Iraq</option>
+											<option value="109">Irlanda</option>
+											<option value="32">Isla Bouvet</option>
+											<option value="49">Isla de Navidad</option>
+											<option value="161">Isla Norfolk</option>
+											<option value="110">Islandia</option>
+											<option value="39">Islas Caimán</option>
+											<option value="51">Islas Cocos</option>
+											<option value="56">Islas Cook</option>
+											<option value="78">Islas Feroe</option>
+											<option value="86">Islas Georgias del Sur y Sandwich del Sur</option>
+											<option value="2">Islas Gland</option>
+											<option value="101">Islas Heard y McDonald</option>
+											<option value="138">Islas Malvinas</option>
+											<option value="139">Islas Marianas del Norte</option>
+											<option value="141">Islas Marshall</option>
+											<option value="174">Islas Pitcairn</option>
+											<option value="186">Islas Salomón</option>
+											<option value="223">Islas Turcas y Caicos</option>
+											<option value="74">Islas Ultramarinas de Estados Unidos</option>
+											<option value="234">Islas Vírgenes Británicas</option>
+											<option value="235">Islas Vírgenes de los Estados Unidos</option>
+											<option value="111">Israel</option>
+											<option value="112">Italia</option>
+											<option value="113">Jamaica</option>
+											<option value="114">Japon</option>
+											<option value="115">Jordania</option>
+											<option value="116">Kazajstán</option>
+											<option value="117">Kenia</option>
+											<option value="118">Kirguistán</option>
+											<option value="119">Kiribati</option>
+											<option value="120">Kuwait</option>
+											<option value="121">Laos</option>
+											<option value="122">Lesotho</option>
+											<option value="123">Letonia</option>
+											<option value="124">Líbano</option>
+											<option value="125">Liberia</option>
+											<option value="126">Libia</option>
+											<option value="127">Liechtenstein</option>
+											<option value="128">Lituania</option>
+											<option value="129">Luxemburgo</option>
+											<option value="130">Macao</option>
+											<option value="132">Madagascar</option>
+											<option value="133">Malasia</option>
+											<option value="134">Malawi</option>
+											<option value="135">Maldivas</option>
+											<option value="136">Malí</option>
+											<option value="137">Malta</option>
+											<option value="140">Marruecos</option>
+											<option value="142">Martinica</option>
+											<option value="143">Mauricio</option>
+											<option value="144">Mauritania</option>
+											<option value="145">Mayotte</option>
+											<option value="146">México</option>
+											<option value="147">Micronesia</option>
+											<option value="148">Moldavia</option>
+											<option value="149">Mónaco</option>
+											<option value="150">Mongolia</option>
+											<option value="151">Montserrat</option>
+											<option value="152">Mozambique</option>
+											<option value="153">Myanmar</option>
+											<option value="154">Namibia</option>
+											<option value="155">Nauru</option>
+											<option value="156">Nepal</option>
+											<option value="157">Nicaragua</option>
+											<option value="158">Níger</option>
+											<option value="159">Nigeria</option>
+											<option value="160">Niue</option>
+											<option value="162">Noruega</option>
+											<option value="163">Nueva Caledonia</option>
+											<option value="164">Nueva Zelanda</option>
+											<option value="165">Omán</option>
+											<option value="166">Países Bajos</option>
+											<option value="167">Pakistan</option>
+											<option value="168">Palau</option>
+											<option value="169">Palestina</option>
+											<option value="170">Panama</option>
+											<option value="171">Papúa Nueva Guinea</option>
+											<option value="172">Paraguay</option>
+											<option value="173">Perú</option>
+											<option value="175">Polinesia Francesa</option>
+											<option value="176">Polonia</option>
+											<option value="177">Portugal</option>
+											<option value="178">Puerto Rico</option>
+											<option value="179">Qatar</option>
+											<option value="180">Reino Unido</option>
+											<option value="43">República Centroafricana</option>
+											<option value="45">Republica Checa</option>
+											<option value="54">República Democrática del Congo</option>
+											<option value="65">Republica Dominicana</option>
+											<option value="181">Reunión</option>
+											<option value="182">Ruanda</option>
+											<option value="183">Rumania</option>
+											<option value="184">Rusia</option>
+											<option value="185">Sahara Occidental</option>
+											<option value="187">Samoa</option>
+											<option value="188">Samoa Americana</option>
+											<option value="189">San Cristóbal y Nevis</option>
+											<option value="190">San Marino</option>
+											<option value="191">San Pedro y Miquelón</option>
+											<option value="192">San Vicente y las Granadinas</option>
+											<option value="193">Santa Helena</option>
+											<option value="194">Santa Lucía</option>
+											<option value="195">Santo Tomé y Príncipe</option>
+											<option value="196">Senegal</option>
+											<option value="197">Serbia y Montenegro</option>
+											<option value="198">Seychelles</option>
+											<option value="199">Sierra Leona</option>
+											<option value="200">Singapur</option>
+											<option value="201">Siria</option>
+											<option value="202">Somalia</option>
+											<option value="203">Sri Lanka</option>
+											<option value="204">Suazilandia</option>
+											<option value="205">Sudáfrica</option>
+											<option value="206">Sudán</option>
+											<option value="207">Suecia</option>
+											<option value="208">Suiza</option>
+											<option value="209">Surinam</option>
+											<option value="210">Svalbard y Jan Mayen</option>
+											<option value="211">Tailandia</option>
+											<option value="212">Taiwan</option>
+											<option value="213">Tanzania</option>
+											<option value="214">Tayikistán</option>
+											<option value="215">Territorio Británico del Océano Índico</option>
+											<option value="216">Territorios Australes Franceses</option>
+											<option value="217">Timor Oriental</option>
+											<option value="218">Togo</option>
+											<option value="219">Tokelau</option>
+											<option value="220">Tonga</option>
+											<option value="221">Trinidad y Tobago</option>
+											<option value="222">Túnez</option>
+											<option value="224">Turkmenistán</option>
+											<option value="225">Turquia</option>
+											<option value="226">Tuvalu</option>
+											<option value="227">Ucrania</option>
+											<option value="228">Uganda</option>
+											<option value="229">Uruguay</option>
+											<option value="230">Uzbekistan</option>
+											<option value="231">Vanuatu</option>
+											<option value="232">Venezuela</option>
+											<option value="233">Vietnam</option>
+											<option value="236">Wallis y Futuna</option>
+											<option value="237">Yemen</option>
+											<option value="238">Yibuti</option>
+											<option value="239">Zambia</option>
+											<option value="240">Zimbabue</option>
+										</select><span class="select2 select2-container select2-container--default" dir="ltr" style="width: 320.8px;"><span class="selection"><span class="select2-selection select2-selection--single" role="combobox" aria-haspopup="true" aria-expanded="false" tabindex="0" aria-labelledby="select2-pais-container"><span class="select2-selection__rendered" id="select2-pais-container" title="Afganistán">Afganistán</span><span class="select2-selection__arrow" role="presentation"><b role="presentation"></b></span></span></span><span class="dropdown-wrapper" aria-hidden="true"></span></span>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">Departamento *</span>
+									<div>
+										<select id="departamento" class="form-control" name="departamento">
+										</select>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">Provincia *</span>
+									<div>
+										<select id="provincia" class="form-control" name="provincia">
+										</select>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">Distrito *</span>
+									<div>
+										<select id="distrito" class="form-control" name="distrito">
+										</select>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+								<div class="wrap-input100 validate-input bg1" data-validate="Por favor ingrese su fecha nacimiento">
+									<span class="label-input100">Fecha de Nacimiento *</span>
+									<input class="input100" type="date" name="fnac" placeholder="Ingrese su fecha de nacimiento">
+								</div>
+
+
+								Datos de domicilio
+
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">Zona *</span>
+									<div>
+										<select class="js-select2 select2-hidden-accessible" name="zona" tabindex="-1" aria-hidden="true">
+											<option value="8">ASENTAMIENTO HUMANO</option>
+											<option value="9">ASOCIACION</option>
+											<option value="10">CONDOMINIO</option>
+											<option value="11">CONJUNTO  HABITACIONAL</option>
+											<option value="580">COOPERATIVA</option>
+											<option value="587">OTRO</option>
+											<option value="579">PUEBLO JOVEN</option>
+											<option value="12">RESIDENCIAL</option>
+											<option value="14">UNIDAD VECINAL</option>
+											<option value="13">URBANIZACION</option>
+										</select><span class="select2 select2-container select2-container--default" dir="ltr" style="width: 231.2px;"><span class="selection"><span class="select2-selection select2-selection--single" role="combobox" aria-haspopup="true" aria-expanded="false" tabindex="0" aria-labelledby="select2-zona-yn-container"><span class="select2-selection__rendered" id="select2-zona-yn-container" title="ASENTAMIENTO HUMANO">ASENTAMIENTO HUMANO</span><span class="select2-selection__arrow" role="presentation"><b role="presentation"></b></span></span></span><span class="dropdown-wrapper" aria-hidden="true"></span></span>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+								<div class="wrap-input100 validate-input bg1" data-validate="Por favor ingrese su Zona">
+									<span class="label-input100">Zona *</span>
+									<input class="input100" type="text" name="domicilio1" placeholder="Ingrese su Zona" maxlength="100">
+								</div>
+
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">Vía *</span>
+									<div>
+										<select class="js-select2 select2-hidden-accessible" name="via" tabindex="-1" aria-hidden="true">
+											<option value="1">AVENIDA</option>
+											<option value="2">BARRIO</option>
+											<option value="3">CALLE</option>
+											<option value="4">JIRON</option>
+											<option value="578">MALECON</option>
+											<option value="6">PASAJE</option>
+										</select><span class="select2 select2-container select2-container--default" dir="ltr" style="width: 100.8px;"><span class="selection"><span class="select2-selection select2-selection--single" role="combobox" aria-haspopup="true" aria-expanded="false" tabindex="0" aria-labelledby="select2-via-np-container"><span class="select2-selection__rendered" id="select2-via-np-container" title="AVENIDA">AVENIDA</span><span class="select2-selection__arrow" role="presentation"><b role="presentation"></b></span></span></span><span class="dropdown-wrapper" aria-hidden="true"></span></span>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+								<div class="wrap-input100 validate-input bg1" data-validate="Por favor ingrese su Vía">
+									<span class="label-input100">Vía *</span>
+									<input class="input100" type="text" name="domicilio2" placeholder="Ingrese su Vía" maxlength="100">
+								</div>
+
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">Departamento *</span>
+									<div>
+										<select id="departamento_id" class="form-control" name="departamento_id" required="">
+											<option value="01">AMAZONAS</option>
+											<option value="02">ANCASH</option>
+											<option value="03">APURIMAC</option>
+											<option value="04">AREQUIPA</option>
+											<option value="05">AYACUCHO</option>
+											<option value="06">CAJAMARCA</option>
+											<option value="24">CALLAO</option>
+											<option value="07">CUSCO</option>
+											<option value="08">HUANCAVELICA</option>
+											<option value="09">HUANUCO</option>
+											<option value="10">ICA</option>
+											<option value="11">JUNIN</option>
+											<option value="12">LA LIBERTAD</option>
+											<option value="13">LAMBAYEQUE</option>
+											<option value="14">LIMA</option>
+											<option value="15">LORETO</option>
+											<option value="16">MADRE DE DIOS</option>
+											<option value="17">MOQUEGUA</option>
+											<option value="18">PASCO</option>
+											<option value="19">PIURA</option>
+											<option value="20">PUNO</option>
+											<option value="00">SAN JUAN DE CUTERVO</option>
+											<option value="21">SAN MARTIN</option>
+											<option value="22">TACNA</option>
+											<option value="23">TUMBES</option>
+											<option value="25">UCAYALI</option>
+											<br>
+											<b>Warning</b>:  Use of undefined constant peticion_dp - assumed 'peticion_dp' (this will throw an Error in a future version of PHP) in
+											<b>C:\xampp\htdocs\prematricula\ingreso.php</b> on line
+											<b>304</b>
+											<br>
+											<br>
+											<b>Warning</b>:  sqlsrv_next_result() expects parameter 1 to be resource, string given in
+											<b>C:\xampp\htdocs\prematricula\ingreso.php</b> on line
+											<b>304</b>
+											<br>
+										</select>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">Provincia *</span>
+									<div>
+										<select id="provincia_id" class="form-control" name="provincia_id" required="">
+										</select>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">Distrito *</span>
+									<div>
+										<select id="distrito_id" class="form-control" name="distrito_id" required="">
+										</select>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+								<div class="wrap-input100 bg0 rs1-wrap-input100">
+									<span class="label-input100">Teléfono fijo</span>
+									<input class="input100" type="text" name="telefono" placeholder="Ingrese su telefono fijo" maxlength="10">
+								</div>
+
+								<div class="wrap-input100 bg0 rs1-wrap-input100">
+									<span class="label-input100">Telefono celular</span>
+									<input class="input100" type="text" name="celular" placeholder="Ingrese su telefono celular" maxlength="10">
+								</div>
+
+								<div class="wrap-input100 validate-input bg1" data-validate="Por favor ingrese su correo (e@a.x)">
+									<span class="label-input100">Correo *</span>
+									<input class="input100" type="text" name="email" placeholder="Ingrese su correo" maxlength="100">
+								</div>
+
+								Datos de Universidad
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">Origen de Universidad *</span>
+									<div>
+										<select id="uniori" class="js-select2 select2-hidden-accessible" name="uniori" tabindex="-1" aria-hidden="true">
+											<option value="9">Seleccione Nacionalidad</option>
+											<option value="1">Nacional</option>
+											<option value="0">Extranjera</option>
+										</select><span class="select2 select2-container select2-container--default" dir="ltr" style="width: 197.6px;"><span class="selection"><span class="select2-selection select2-selection--single" role="combobox" aria-haspopup="true" aria-expanded="false" tabindex="0" aria-labelledby="select2-uniori-container"><span class="select2-selection__rendered" id="select2-uniori-container" title="Seleccione Nacionalidad">Seleccione Nacionalidad</span><span class="select2-selection__arrow" role="presentation"><b role="presentation"></b></span></span></span><span class="dropdown-wrapper" aria-hidden="true"></span></span>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">País de universidad *</span>
+									<div>
+										<select id="pais_uni" class="js-select2 select2-hidden-accessible" name="pais_uni" required="" tabindex="-1" aria-hidden="true">
+										</select><span class="select2 select2-container select2-container--default" dir="ltr" style="width: 21.6px;"><span class="selection"><span class="select2-selection select2-selection--single" role="combobox" aria-haspopup="true" aria-expanded="false" tabindex="0" aria-labelledby="select2-pais_uni-container"><span class="select2-selection__rendered" id="select2-pais_uni-container"></span><span class="select2-selection__arrow" role="presentation"><b role="presentation"></b></span></span></span><span class="dropdown-wrapper" aria-hidden="true"></span></span>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+								<div class="wrap-input100 input100-select bg1">
+									<span class="label-input100">Nombre de Universidad*</span>
+									<div>
+										<select id="nombre_uni" class="js-select2 select2-hidden-accessible" name="nombre_uni" required="" tabindex="-1" aria-hidden="true">
+										</select><span class="select2 select2-container select2-container--default" dir="ltr" style="width: 21.6px;"><span class="selection"><span class="select2-selection select2-selection--single" role="combobox" aria-haspopup="true" aria-expanded="false" tabindex="0" aria-labelledby="select2-nombre_uni-container"><span class="select2-selection__rendered" id="select2-nombre_uni-container"></span><span class="select2-selection__arrow" role="presentation"><b role="presentation"></b></span></span></span><span class="dropdown-wrapper" aria-hidden="true"></span></span>
+										<div class="dropDownSelect2"></div>
+									</div>
+								</div>
+
+								<div class="wrap-input100 validate-input bg0 rs1-wrap-input100" data-validate="Por favor ingrese su fecha de emisión del título">
+									<span class="label-input100">Fecha de emisón del Título</span>
+									<input class="input100" type="date" name="fegreso" placeholder="fecha de emisión del título">
+								</div>
+
+								<div class="wrap-input100 validate-input bg1" data-validate="Por favor seleccione archivo">
+									<span class="label-input100">Adjuntar foto tamaño pasaporte a color en fondo blanco (caballeros: terno y corbata; damas: con blusa de vestir) *</span><br>
+									<label class="label-input200">Debe de ser un solo archivo en formato JPG y deberá pesar hasta 25MB.</label><br>
+									<input type="file" name="archivo" id="solicitud">
+								</div>
+
+								<div class="wrap-input100 input100-select bg1">
+									<input type="checkbox" name="politicas"> Acepto las <a href="descarga.php?file=Politicas_de_privacidad.pdf">Políticas de Privacidad</a> de este sitio
+								</div>
+
+								<div class="container-contact100-form-btn">
+									<button class="contact100-form-btn">
+										<span>
+											Enviar
+											<i class="fa fa-long-arrow-right m-l-7" aria-hidden="true"></i>
+										</span>
+									</button>
+								</div>
+
+
+
+
+							</form>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+</div>
+
+@code {
+
+}
