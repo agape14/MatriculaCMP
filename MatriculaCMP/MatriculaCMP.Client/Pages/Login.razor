@@ -35,7 +35,7 @@
                                     <div class="form-group auth-form-group-custom mb-4">
                                         <i class="ri-user-2-line auti-custom-input-icon"></i>
                                         <label for="username">Usuario</label>
-                                        <input type="text" class="form-control" @bind-value=usuario.Correo @ref="correoInput" @onkeypress="SiguienteEnter" />
+                                        <input type="text" class="form-control" @bind-value=usuario.Correo @ref="correoInput" @onkeypress="SiguienteEnter" placeholder="Ingrese usuario" />
                                     </div>
 
                                     <div class="form-group auth-form-group-custom mb-4 position-relative">
@@ -81,15 +81,15 @@
                                     </div>
 
                                     <div class="mt-4 text-center">
-                                        <a href="auth-recoverpw.html" class="text-muted"><i class="mdi mdi-lock mr-1"></i> Olvidó Contraseña?</a>
+                                        <a href="/recuperar-contrasena" class="text-muted"><i class="mdi mdi-lock mr-1"></i> ¿Olvidó su contraseña?</a>
                                     </div>
                                 </div>
 
                                 <div class="mt-5 text-center">
-                                    <!--<p>Don't have an account ? <a href="auth-register.html" class="font-weight-medium text-primary"> Register </a> </p>-->
+                                    <p>¿No tienes una cuenta? <a href="/registrar-usuario" class="font-weight-medium text-primary">Regístrate</a></p>
                                     <p class="text-muted small">
                                         &copy; @DateTime.Now.Year
-                                        Hecho con <i class="mdi mdi-heart text-danger"></i> por CMP
+                                        Hecho con <i class="mdi mdi-heart text-primary"></i> por <strong>CMP</strong>
                                     </p>
 
 

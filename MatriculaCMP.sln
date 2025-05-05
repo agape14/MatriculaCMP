@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.35013.160
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MatriculaCMP", "MatriculaCMP\MatriculaCMP\MatriculaCMP.csproj", "{7661514C-A03E-44DD-9367-F1E002C8253B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MatriculaCMP", "MatriculaCMP\MatriculaCMP\MatriculaCMP.csproj", "{7661514C-A03E-44DD-9367-F1E002C8253B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MatriculaCMP.Client", "MatriculaCMP\MatriculaCMP.Client\MatriculaCMP.Client.csproj", "{F6C55EE8-DF8C-43FF-89E9-10D8CEDB26A7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MatriculaCMP.Client", "MatriculaCMP\MatriculaCMP.Client\MatriculaCMP.Client.csproj", "{F6C55EE8-DF8C-43FF-89E9-10D8CEDB26A7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MatriculaCMP.Shared", "MatriculaCMP.Shared\MatriculaCMP.Shared.csproj", "{43D2302B-DDDF-40D1-A339-8737E680C1FE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MatriculaCMP.Shared", "MatriculaCMP.Shared\MatriculaCMP.Shared.csproj", "{43D2302B-DDDF-40D1-A339-8737E680C1FE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

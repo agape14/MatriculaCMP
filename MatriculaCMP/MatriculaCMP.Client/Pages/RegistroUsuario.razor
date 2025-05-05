@@ -1,0 +1,106 @@
+﻿@page "/registrar-usuario"
+@layout LoginLayout
+@using MatriculaCMP.Client.Layout
+@using MatriculaCMP.Shared
+@inject HttpClient Http
+
+<div class="container-fluid p-0">
+    <div class="row g-0">
+        <div class="col-lg-4">
+            <div class="authentication-page-content p-4 d-flex align-items-center min-vh-100">
+                <div class="w-100">
+                    <div class="row justify-content-center">
+                        <div class="col-lg-9">
+                            <div>
+                                <div class="text-center">
+                                    <div>
+                                        <a href="index.html" class="authentication-logo">
+                                            <img src="assets/images/logo-dark.png" alt="" height="60" class="auth-logo logo-dark mx-auto">
+                                            <img src="assets/images/logo-light.png" alt="" height="60" class="auth-logo logo-light mx-auto">
+                                        </a>
+                                    </div>
+
+                                    <h4 class="font-size-18 mt-4">Registrar Usuario</h4>
+                                    <p class="text-muted">Ingrese sus datos para crear su cuenta.</p>
+                                </div>
+
+                                <div class="p-2 mt-5">
+                                    <form class="" action="index.html">
+
+                                        <div class="auth-form-group-custom mb-4">
+                                            <i class="ri-mail-line auti-custom-input-icon"></i>
+                                            <label for="useremail">Correo Electrónico</label>
+                                            <input type="email" class="form-control" id="useremail" placeholder="Ingrese Correo Electrónico" @bind="usuario.Correo">
+                                        </div>
+
+                                        <div class="auth-form-group-custom mb-4">
+                                            <i class="ri-user-2-line auti-custom-input-icon"></i>
+                                            <label for="username">Usuario</label>
+                                            <input type="text" class="form-control" id="username" placeholder="Ingrese usuario">
+                                        </div>
+
+                                        <div class="auth-form-group-custom mb-4">
+                                            <i class="ri-lock-2-line auti-custom-input-icon"></i>
+                                            <label for="userpassword">Contraseña</label>
+                                            <input type="password" class="form-control" id="userpassword" placeholder="Ingrese contraseña">
+                                        </div>
+
+
+                                        <div class="text-center">
+                                            <button class="btn btn-primary w-md waves-effect waves-light" @onclick="RegistrarUsuario" >Registrar</button>
+                                        </div>
+
+                                       @*  <div class="mt-4 text-center">
+                                            <p class="mb-0">By registering you agree to the Nazox <a href="#" class="text-primary">Terms of Use</a></p>
+                                        </div> *@
+                                    </form>
+                                </div>
+
+                                <div class="mt-5 text-center">
+                                    <p>¿Ya tienes una cuenta? <a href="/" class="fw-medium text-primary"> Iniciar Sesión</a> </p>
+                                    <p class="text-muted small">
+                                        &copy; @DateTime.Now.Year
+                                        Hecho con <i class="mdi mdi-heart text-primary"></i> por <strong>CMP</strong>
+                                    </p>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="authentication-bg position-relative">
+                <div class="bg-overlay"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <div class="alert alert-info mt-3">@mensaje</div>
+}
+
+@code {
+    UsuarioDTO usuario = new();
+    string mensaje = string.Empty;
+
+    async Task RegistrarUsuario()
+    {
+        // Lógica de envío al backend
+        var response = await Http.PostAsJsonAsync("api/Usuario/Registrar", usuario);
+
+        if (response.IsSuccessStatusCode)
+        {
+            mensaje = "Usuario registrado correctamente.";
+            // Redirigir si es necesario
+            // NavigationManager.NavigateTo("/login");
+        }
+        else
+        {
+            mensaje = "Error al registrar usuario.";
+        }
+    }
+}
