@@ -18,11 +18,22 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Pages\ConsejoRegional\" />
     <Folder Include="Pages\Decanato\" />
     <Folder Include="Pages\Admin\" />
     <Folder Include="Pages\OficinaMatricula\" />
     <Folder Include="Pages\SecretariaGeneral\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <UpToDateCheckInput Remove="Pages\ConsejoRegional\ListaSolicitudes.razor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <_ContentIncludedByDefault Remove="Pages\ConsejoRegional\ListaSolicitudes.razor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Pages\ConsejoRegional\ListaSolicitudes.razor" />
   </ItemGroup>
 
 </Project>
