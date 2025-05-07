@@ -3,10 +3,11 @@ using MatriculaCMP.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using Microsoft.EntityFrameworkCore;
-using NombreProyecto.Server.Data;
+using MatriculaCMP.Server.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using MatriculaCMP.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +19,7 @@ builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStat
 builder.Services.AddControllers();//agregado
 builder.Services.AddHttpClient();//Agregado
 builder.Services.AddCascadingAuthenticationState();//Agregado
+builder.Services.AddScoped<MenuService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHttpContextAccessor();

@@ -16,5 +16,8 @@ namespace MatriculaCMP.Shared
 		public string Rol { get; set; } = "Usuario";
 		//Aqui se colocan todos los demas datos que tenga el usuario como nombres, direcciones, fechas, edad, estados etc
 		public string NombreUsuario { get; set; } = string.Empty;
-	}
+
+        public int PerfilId { get; set; }
+        public Perfil Perfil { get; set; }
+    }
 }

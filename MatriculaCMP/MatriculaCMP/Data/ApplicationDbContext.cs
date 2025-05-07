@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
-namespace NombreProyecto.Server.Data
+namespace MatriculaCMP.Server.Data
 {
 	public class ApplicationDbContext : DbContext
 	{
@@ -16,6 +16,9 @@ namespace NombreProyecto.Server.Data
 
 
 		public DbSet<Usuario> Usuarios { get; set; }
+		public DbSet<Menu> Menu { get; set; }
+		public DbSet<Perfil> Perfil { get; set; }
+		public DbSet<PerfilMenu> PerfilMenu { get; set; }
 		// public DbSet<NombreClase> NombreTablaEnBaseDeDatos { get; set; }
 	}
 }

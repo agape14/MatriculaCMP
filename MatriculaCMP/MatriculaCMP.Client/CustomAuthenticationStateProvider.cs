@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 using System.Security.Claims;
 using System.Text.Json;
 
-namespace NombreProyecto.Client
+namespace MatriculaCMP.Client
 {
     public class CustomAuthenticationStateProvider : AuthenticationStateProvider
     {

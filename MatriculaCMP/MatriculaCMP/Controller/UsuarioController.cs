@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using NombreProyecto.Server.Data;
+using MatriculaCMP.Server.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -129,8 +129,10 @@ namespace MatriculaCMP.Controller
 			List<Claim> claims = new List<Claim>
  			{
 				 new Claim(ClaimTypes.Name, user.Correo),
-				 new Claim(ClaimTypes.Role,user.Rol)
- 			};
+				 new Claim(ClaimTypes.Role,user.Rol),
+                 new Claim(ClaimTypes.Name, user.NombreUsuario),
+				new Claim("PerfilId", user.PerfilId.ToString()),
+             };
 
 			//var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
 			//	"PROYECTO CONTROL USUARUIS EN BLAZOR WEB WASM_ DAGO PARA BLAZOR  PARA APPS"));
