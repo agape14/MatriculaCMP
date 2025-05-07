@@ -27,44 +27,56 @@
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Inicio
             </NavLink>
         </div>
-@* 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div> *@
-        
-        <div class="nav-item px-3">
+                
+        @* <div class="nav-item px-3">
             <NavLink class="nav-link" href="prematricula">
                 <i class="ri-add-box-fill fs-3 me-2"></i> Pre Matrícula
             </NavLink>
+        </div> *@
+        <!-- Solicitante -->
+        <div class="nav-item px-3 text-info"><strong>Solicitante</strong></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/solicitudes/prematricula"><i class=" ri-article-fill  fs-3  me-2"></i> Reg. Pre-matricula</NavLink></div>
+      @*   <div class="nav-item px-3"><NavLink class="nav-link" href="/solicitudes/subsanar"><i class="ri-file-forbid-fill fs-3  me-2"></i> Subsanar Obs.</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/solicitudes/formatos"><i class="ri-book-open-fill fs-3  me-2"></i> Generar Formatos</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/solicitudes/firma"><i class="ri-file-shield-2-fill fs-3  me-2"></i> Firma Digital</NavLink></div> *@
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/solicitudes/seguimiento"><i class="ri-folder-received-fill fs-3  me-2"></i> Seguimiento Trámite</NavLink></div>
 
-        </div>
-        @* @if (menus != null)
-        {
-            foreach (var menu in menus)
-            {
-                <li>
-                    <NavLink class="nav-link" href="@menu.Ruta">
-                        <i class="@menu.Icono"></i> @menu.Titulo
-                    </NavLink>
-                </li>
-            }
-        }
-        else
-        {
-            <li>
-                <NavLink class="nav-link" href="#">
-                    <i class="ri-add-box-fill fs-3 me-2"></i> No tiene menues
-                </NavLink>
-            </li>
-        } *@
+        <!-- Consejo Regional -->
+        <div class="nav-item px-3 text-info"><strong>Consejo Regional</strong></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/consejoregional/lista"><i class="ri-folder-5-line  fs-3  me-2"></i> Ver Solicitudes</NavLink></div>
+        @* <div class="nav-item px-3"><NavLink class="nav-link" href="/consejoregional/validar">Validar Requisitos</NavLink></div> 
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/consejoregional/observar">Observar Solicitudes</NavLink></div> *@
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/consejoregional/formatos"><i class="ri-file-text-line fs-3  me-2"></i> Generar Formatos</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/consejoregional/firma-solicitudes"><i class="ri-file-shield-line fs-3  me-2"></i> Firma Solicitudes</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/consejoregional/firma-diplomas"><i class="ri-folder-shield-2-line fs-3  me-2"></i>Firma Diplomas</NavLink></div>
+
+        <!-- Secretaría General -->
+        <div class="nav-item px-3 text-info"><strong>Secretaría General</strong></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/secretariageneral/lista">Lista de Solicitudes</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/secretariageneral/aprobar">Aprobar Solicitudes</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/secretariageneral/formatos">Generar Formatos</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/secretariageneral/firma">Firma Aprobaciones</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/secretariageneral/diplomas">Generar Diplomas</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/secretariageneral/firma-diplomas">Firma Diplomas</NavLink></div>
+
+        <!-- Oficina Matrícula -->
+        <div class="nav-item px-3 text-info"><strong>Oficina Matrícula</strong></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/oficinamatricula/lista">Lista Autorizadas</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/oficinamatricula/asignar">Asignar N° Colegiatura</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/oficinamatricula/formatos">Generar Formatos</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/oficinamatricula/firma">Firma Asignaciones</NavLink></div>
+
+        <!-- Decanato -->
+        <div class="nav-item px-3 text-info"><strong>Decanato</strong></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/decanato/lista">Lista de Diplomas</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/decanato/firma">Firma Diplomas</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/decanato/envio">Envío Diplomas Virtuales</NavLink></div>
+
+        <!-- Administración -->
+        <div class="nav-item px-3 text-info"><strong>Administrador</strong></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/admin/usuarios">Crear Usuarios</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/admin/perfil">Perfil</NavLink></div>
+        <div class="nav-item px-3"><NavLink class="nav-link" href="/admin/perfiles-menu">Menú Perfiles</NavLink></div>
     </nav>
 </div>
 @* @code {

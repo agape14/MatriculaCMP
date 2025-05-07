@@ -1,0 +1,233 @@
+﻿@page "/solicitudes/seguimiento"
+@using MatriculaCMP.Shared
+@inject IJSRuntime JS
+
+<div class="container-fluid">
+	<!-- start page title -->
+	<div class="row">
+		<div class="col-12">
+			<div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <h4 class="mb-sm-0">Seguimiento Tramite</h4>
+
+				<div class="page-title-right">
+					<ol class="breadcrumb m-0">
+						<li class="breadcrumb-item"><a href="javascript: void(0);">Inicio</a></li>
+                        <li class="breadcrumb-item active">Seguimiento Tramite</li>
+					</ol>
+				</div>
+
+			</div>
+		</div>
+	</div>
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-body  pt-0">
+                    <ul class="nav nav-tabs nav-tabs-custom mb-4">
+                        <li class="nav-item">
+                            <a class="nav-link fw-bold p-3 active" href="#">Todos los Trámites</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link p-3 fw-bold" href="#">Observados</a>
+                        </li>   
+                    </ul>
+                    <div class="alert alert-primary mb-2 mt-2" role="alert">
+                        <div class="button-items">
+                            @* <button type="button" class="btn btn-primary waves-effect waves-light">
+                                Primary <i class="ri-arrow-right-line align-middle ms-2"></i>
+                            </button> *@
+                            <button class="btn btn-primary waves-effect waves-light" @onclick="FirmarDigitalmente" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Firmar Documento Digitalmente">
+                                <i class="ri-fingerprint-fill align-middle me-2"></i> Firmar Digitalmente
+                            </button>
+                            <button type="button" class="btn btn-warning waves-effect waves-light" disabled>
+                                <i class="ri-error-warning-line align-middle me-2"></i> Sub sanar
+                            </button>
+                            @* <button type="button" class="btn btn-danger waves-effect waves-light">
+                                <i class="ri-close-line align-middle me-2"></i> Danger
+                            </button> *@
+                        </div>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        
+
+                       <table id="tblListadoSolicitante" class="table table-centered datatable dt-responsive nowrap dataTable no-footer dtr-inline ml-2 w-100">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>
+                                        <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
+                                    </th>
+                                    <th>Nro.</th>
+                                    <th>Nombres Completos</th>
+                                    <th>Fecha Nac.</th>
+                                    <th>Lugar Nac.</th>
+                                    <th>Estado</th>
+                                    <th>Gen. Formatos</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var alumno in alumnos)
+                                {
+                                    <tr @onclick="() => alumno.Seleccionado = !alumno.Seleccionado" style="cursor: pointer;">
+                                        <td>
+                                            <input type="checkbox" class="form-check-input" @bind="alumno.Seleccionado" @onclick:stopPropagation="true" />
+                                        </td>
+
+                                        <td><a href="javascript:void(0);" class="text-reset fw-bold">@alumno.Numero</a></td>
+                                        <td>@alumno.NombreCompleto</td>
+                                        <td>@alumno.FechaNacimiento</td>
+                                        <td>@alumno.LugarNacimiento</td>
+                                        <td>
+                                            @if (alumno.Estado == "Registrado")
+                                            {
+                                                <div class="badge bg-success text-white font-size-12">Registrado</div>
+                                            }
+                                            else if (alumno.Estado == "Por Subsanar")
+                                            {
+                                                <div class="badge bg-warning text-white font-size-12">Por Subsanar</div>
+                                            }
+                                            else if (alumno.Estado == "Rechazado")
+                                            {
+                                                <div class="badge bg-danger text-white font-size-12">Rechazado</div>
+                                            }
+                                        </td>
+                                        <td>
+                                            <button class="btn btn-light btn-rounded" @onclick="DescargarFormato">
+                                                Descargar <i class="mdi mdi-download ms-2"></i>
+                                            </button>
+                                        </td>
+                                        <td>
+                                            <a href="/solicitudes/prematricula" class="me-3 text-warning" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Sub sanar Pre Matricula">
+                                                <i class="ri-error-warning-line font-size-18"></i>
+                                            </a>
+                                            <a href="javascript:void(0);" class="text-danger" @onclick="() => ConfirmarEliminacion(alumno.Id)" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Eliminar registro">
+                                                <i class="mdi mdi-trash-can font-size-18"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Modal Loading -->
+                    <div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content text-center p-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Cargando...</span>
+                                </div>
+                                <p class="mt-3">Descargando Formato...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+@code {
+    private bool seleccionarTodos = false;
+
+    private List<ListadoPrematricula> alumnos = new()
+    {
+        new ListadoPrematricula {Id=1, Numero = "#NZ1563", NombreCompleto = "Frank Dean", FechaNacimiento = "28 Mar, 2020", LugarNacimiento = "Lima", Estado = "Registrado" },
+        new ListadoPrematricula {Id=2, Numero = "#NZ1564", NombreCompleto = "Eddy Torres", FechaNacimiento = "28 Mar, 2020", LugarNacimiento = "Junin", Estado = "Registrado" },
+        new ListadoPrematricula {Id=3, Numero = "#NZ1567", NombreCompleto = "Jeffrey Waltz", FechaNacimiento = "31 Mar, 2020", LugarNacimiento = "Cajamarca", Estado = "Por Subsanar" },
+        new ListadoPrematricula {Id=4, Numero = "#NZ1568", NombreCompleto = "Jefferson Allen", FechaNacimiento = "01 Apr, 2020", LugarNacimiento = "Tacna", Estado = "Rechazado" },
+        new ListadoPrematricula {Id=5, Numero = "#NZ1569", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=6, Numero = "#NZ1569", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=7, Numero = "#NZ1569", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=8, Numero = "#NZ1569", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=9, Numero = "#NZ1569", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=10, Numero = "#NZ1564", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=11, Numero = "#NZ1563", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=12, Numero = "#NZ1569", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=13, Numero = "#45742029", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        // agrega más registros si deseas
+    };
+
+    private async Task ConfirmarEliminacion(int id)
+    {
+        var confirmado = await JS.InvokeAsync<bool>("confirmarSweet", "¿Estás seguro?", "Esta acción no se puede deshacer");
+
+        if (confirmado)
+        {
+            // Eliminar lógica aquí
+            Console.WriteLine($"Eliminado: {id}");
+        }
+    }
+
+    private async Task DescargarFormato()
+    {
+        await JS.InvokeVoidAsync("mostrarModal", "#loadingModal");
+
+        // Simular una descarga
+        await Task.Delay(2000);
+
+        await JS.InvokeVoidAsync("ocultarModal", "#loadingModal");
+
+        // Aquí puedes agregar la lógica real de descarga
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("inicializarDataTable", "#tblListadoSolicitante");
+        }
+    }
+
+    private void SeleccionarTodasFilas(ChangeEventArgs e)
+    {
+        seleccionarTodos = (bool)e.Value;
+        foreach (var alumno in alumnos)
+        {
+            alumno.Seleccionado = seleccionarTodos;
+        }
+    }
+
+    private async Task FirmarDigitalmente()
+    {
+        var seleccionados = alumnos.Where(a => a.Seleccionado).ToList();
+
+        if (!seleccionados.Any())
+        {
+            await JS.InvokeVoidAsync("Swal.fire", new
+            {
+                icon = "warning",
+                title = "Seleccione al menos un registro para firmar",
+                showConfirmButton = true
+            });
+            return;
+        }
+
+        if (seleccionados.Count == 1)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", new
+            {
+                icon = "success",
+                title = $"Firma individual para: {seleccionados.First().NombreCompleto}",
+                showConfirmButton = true
+            });
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("Swal.fire", new
+            {
+                icon = "info",
+                title = $"Firma masiva para {seleccionados.Count} alumnos",
+                showConfirmButton = true
+            });
+        }
+
+        // Aquí iría tu lógica real de firma
+    }
+
+}
+

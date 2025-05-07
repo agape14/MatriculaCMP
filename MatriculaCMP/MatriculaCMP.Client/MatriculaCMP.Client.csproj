@@ -17,4 +17,12 @@
     <ProjectReference Include="..\..\MatriculaCMP.Shared\MatriculaCMP.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Pages\ConsejoRegional\" />
+    <Folder Include="Pages\Decanato\" />
+    <Folder Include="Pages\Admin\" />
+    <Folder Include="Pages\OficinaMatricula\" />
+    <Folder Include="Pages\SecretariaGeneral\" />
+  </ItemGroup>
+
 </Project>
