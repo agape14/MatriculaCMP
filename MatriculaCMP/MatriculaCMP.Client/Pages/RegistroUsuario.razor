@@ -14,7 +14,7 @@
                             <div>
                                 <div class="text-center">
                                     <div>
-                                        <a href="index.html" class="authentication-logo">
+                                        <a href="javascript:void(0);" class="authentication-logo">
                                             <img src="assets/images/logo-dark.png" alt="" height="60" class="auth-logo logo-dark mx-auto">
                                             <img src="assets/images/logo-light.png" alt="" height="60" class="auth-logo logo-light mx-auto">
                                         </a>
@@ -25,8 +25,24 @@
                                 </div>
 
                                 <div class="p-2 mt-5">
-                                    <form class="" action="index.html">
+                                    <form class="" action="javascript:void(0);">
+                                        <div class="auth-form-group-custom mb-4">
+                                            <i class="ri-user-line auti-custom-input-icon"></i>
+                                            <label for="nombres">Nombres Completos</label>
+                                            <InputText id="nombres" class="form-control" placeholder="Ingrese nombres completos" @bind-Value="usuario.Usuario" />
+                                        </div>
 
+                                        <div class="auth-form-group-custom mb-4">
+                                            <i class="ri-user-line auti-custom-input-icon"></i>
+                                            <label for="apellidoPaterno">Apellido Paterno</label>
+                                            <InputText id="apellidoPaterno" class="form-control" placeholder="Ingrese apellido paterno" @bind-Value="usuario.ApellidoPaterno" />
+                                        </div>
+
+                                        <div class="auth-form-group-custom mb-4">
+                                            <i class="ri-user-line auti-custom-input-icon"></i>
+                                            <label for="apellidoMaterno">Apellido Materno</label>
+                                            <InputText id="apellidoMaterno" class="form-control" placeholder="Ingrese apellido materno" @bind-Value="usuario.ApellidoMaterno" />
+                                        </div>
                                         <div class="auth-form-group-custom mb-4">
                                             <i class="ri-mail-line auti-custom-input-icon"></i>
                                             <label for="useremail">Correo Electrónico</label>
@@ -84,7 +100,7 @@
 }
 
 @code {
-    UsuarioDTO usuario = new();
+    PersonaRegistro usuario = new();
     string mensaje = string.Empty;
 
     async Task RegistrarUsuario()

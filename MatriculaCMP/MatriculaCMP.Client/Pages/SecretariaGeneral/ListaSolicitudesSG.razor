@@ -1,4 +1,4 @@
-﻿@page "/consejoregional/lista"
+﻿@page "/secretariageneral/lista"
 @using MatriculaCMP.Shared
 @inject IJSRuntime JS
 
@@ -8,7 +8,7 @@
     <div class="row">
         <div class="col-12">
             <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                <h4 class="mb-sm-0">Consejo Regional - Listado Solicitudes</h4>
+                <h4 class="mb-sm-0">Secretaria General - Listado Solicitudes</h4>
 
                 <div class="page-title-right">
                     <ol class="breadcrumb m-0">
@@ -45,9 +45,15 @@
                                 <button class="btn btn-danger" @onclick="FirmarDigitalmente">
                                     <i class=" ri-close-circle-line align-middle me-2"></i> Observar Solicitudes
                                 </button>
-                                @* <button type="button" class="btn btn-light">
-                                    <i class="ri-file-text-line align-middle me-2"></i> Generar Formatos
-                                </button> *@
+                                <button type="button" class="btn btn-light">
+                                    <i class="ri-file-text-line align-middle me-2"></i> Firmar Aprobaciones
+                                </button>
+                                <button type="button" class="btn btn-warning">
+                                    <i class="ri-file-text-line align-middle me-2"></i> Generar Diplomas
+                                </button>
+                                <button type="button" class="btn btn-info">
+                                    <i class="ri-fingerprint-fill align-middle me-2"></i> Firmar Diplomas
+                                </button>
                             </div>
                         </div>
 
@@ -116,9 +122,15 @@
                                 <button class="btn btn-danger" @onclick="FirmarDigitalmente">
                                     <i class=" ri-close-circle-line align-middle me-2"></i> Observar Solicitudes
                                 </button>
-                                @* <button type="button" class="btn btn-light">
-                            <i class="ri-file-text-line align-middle me-2"></i> Generar Formatos
-                            </button> *@
+                                <button type="button" class="btn btn-light">
+                                    <i class="ri-file-text-line align-middle me-2"></i> Firmar Aprobaciones
+                                </button>
+                                <button type="button" class="btn btn-warning">
+                                    <i class="ri-file-text-line align-middle me-2"></i> Generar Diplomas
+                                </button>
+                                <button type="button" class="btn btn-info">
+                                    <i class="ri-fingerprint-fill align-middle me-2"></i> Firmar Diplomas
+                                </button>
                             </div>
                         </div>
 
@@ -204,27 +216,14 @@
 
     private List<ListadoPrematricula> alumnos = new()
     {
-        new ListadoPrematricula {Id=1,  Numero = "89451501", NombreCompleto = "Frank Dean",         FechaNacimiento = "28/03/2020", LugarNacimiento = "Lima", Estado = "Registrado" },
-        new ListadoPrematricula {Id=2,  Numero = "89451502", NombreCompleto = "Eddy Torres",        FechaNacimiento = "28/03/2020", LugarNacimiento = "Junin", Estado = "Registrado" },
-        new ListadoPrematricula {Id=3,  Numero = "89451503", NombreCompleto = "Jeffrey Waltz",      FechaNacimiento = "31/03/2020", LugarNacimiento = "Cajamarca", Estado = "Por Subsanar" },
-        new ListadoPrematricula {Id=4,  Numero = "89451504", NombreCompleto = "Jefferson Allen",    FechaNacimiento = "01/03/2020", LugarNacimiento = "Tacna", Estado = "Rechazado" },
-        new ListadoPrematricula {Id=5,  Numero = "89451505", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=6,  Numero = "89451506", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=7,  Numero = "89451507", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
         new ListadoPrematricula {Id=8,  Numero = "89451508", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
-        new ListadoPrematricula {Id=9,  Numero = "89451509", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
         new ListadoPrematricula {Id=10, Numero = "89451510", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
-        new ListadoPrematricula {Id=11, Numero = "89451511", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
         new ListadoPrematricula {Id=12, Numero = "89451512", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
-        new ListadoPrematricula {Id=13, Numero = "89451513", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
         // agrega más registros si deseas
     };
     private List<ListadoPrematricula> alumnos2 = new()
     {
-        new ListadoPrematricula {Id=1,  Numero = "000189451514", NombreCompleto = "Miguel Grau",        FechaNacimiento = "21/08/2000", LugarNacimiento = "Lima", Estado = "Registrado" },
         new ListadoPrematricula {Id=2,  Numero = "000189451515", NombreCompleto = "Estefany Tito",      FechaNacimiento = "22/04/2010", LugarNacimiento = "Junin", Estado = "Aprobado" },
-        new ListadoPrematricula {Id=3,  Numero = "000189451516", NombreCompleto = "Jorge Walter",       FechaNacimiento = "30/07/2004", LugarNacimiento = "Cajamarca", Estado = "Por Subsanar" },
-        new ListadoPrematricula {Id=4,  Numero = "000189451517", NombreCompleto = "Jennifer Aniston",   FechaNacimiento = "01/01/1999", LugarNacimiento = "Tacna", Estado = "Rechazado" },
         new ListadoPrematricula {Id=5,  Numero = "000189451518", NombreCompleto = "Gina Nuñez",         FechaNacimiento = "04/11/1998", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
     };
 

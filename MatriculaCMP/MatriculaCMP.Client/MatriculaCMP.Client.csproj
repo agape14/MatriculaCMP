@@ -9,6 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Remove="Pages\ListaSolicitudesSG.razor" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="8.0.15" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.15" />
   </ItemGroup>
@@ -20,8 +24,6 @@
   <ItemGroup>
     <Folder Include="Pages\Decanato\" />
     <Folder Include="Pages\Admin\" />
-    <Folder Include="Pages\OficinaMatricula\" />
-    <Folder Include="Pages\SecretariaGeneral\" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,10 +32,16 @@
 
   <ItemGroup>
     <_ContentIncludedByDefault Remove="Pages\ConsejoRegional\ListaSolicitudes.razor" />
+    <_ContentIncludedByDefault Remove="Pages\ListaSolicitudesSG.razor" />
   </ItemGroup>
 
   <ItemGroup>
     <None Include="Pages\ConsejoRegional\ListaSolicitudes.razor" />
+    <None Include="Pages\SecretariaGeneral\ListaSolicitudesSG.razor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <UpToDateCheckInput Remove="Pages\ListaSolicitudesSG.razor" />
   </ItemGroup>
 
 </Project>

@@ -28,9 +28,9 @@
                         <li class="nav-item">
                             <a class="nav-link fw-bold p-3 active" href="#">Todos los Trámites</a>
                         </li>
-                        <li class="nav-item">
+                        @* <li class="nav-item">
                             <a class="nav-link p-3 fw-bold" href="#">Observados</a>
-                        </li>   
+                        </li>    *@
                     </ul>
                     <div class="alert alert-primary mb-2 mt-2" role="alert">
                         <div class="button-items">
@@ -58,7 +58,7 @@
                                     <th>
                                         <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
                                     </th>
-                                    <th>Nro.</th>
+                                    <th>Nro. Doc.</th>
                                     <th>Nombres Completos</th>
                                     <th>Fecha Nac.</th>
                                     <th>Lugar Nac.</th>
@@ -136,19 +136,19 @@
 
     private List<ListadoPrematricula> alumnos = new()
     {
-        new ListadoPrematricula {Id=1, Numero = "#NZ1563", NombreCompleto = "Frank Dean", FechaNacimiento = "28 Mar, 2020", LugarNacimiento = "Lima", Estado = "Registrado" },
-        new ListadoPrematricula {Id=2, Numero = "#NZ1564", NombreCompleto = "Eddy Torres", FechaNacimiento = "28 Mar, 2020", LugarNacimiento = "Junin", Estado = "Registrado" },
-        new ListadoPrematricula {Id=3, Numero = "#NZ1567", NombreCompleto = "Jeffrey Waltz", FechaNacimiento = "31 Mar, 2020", LugarNacimiento = "Cajamarca", Estado = "Por Subsanar" },
-        new ListadoPrematricula {Id=4, Numero = "#NZ1568", NombreCompleto = "Jefferson Allen", FechaNacimiento = "01 Apr, 2020", LugarNacimiento = "Tacna", Estado = "Rechazado" },
-        new ListadoPrematricula {Id=5, Numero = "#NZ1569", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=6, Numero = "#NZ1569", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=7, Numero = "#NZ1569", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=8, Numero = "#NZ1569", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=9, Numero = "#NZ1569", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=10, Numero = "#NZ1564", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=11, Numero = "#NZ1563", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=12, Numero = "#NZ1569", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=13, Numero = "#45742029", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09 Oct, 2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=1, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=2, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=3, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Por Subsanar" },
+        new ListadoPrematricula {Id=4, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Rechazado" },
+        new ListadoPrematricula {Id=5, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=6, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=7, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=8, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=9, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=10, Numero = "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=11, Numero = "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=12, Numero = "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=13, Numero = "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
         // agrega más registros si deseas
     };
 
