@@ -39,8 +39,17 @@
                     {
                         <div class="alert alert-primary mb-2 mt-2" role="alert">
                             <div class="button-items">
-                                <button type="button" class="btn btn-primary">
+                               @*  <button type="button" class="btn btn-primary">
                                     <i class="ri-fingerprint-fill align-middle me-2"></i> Firmar Asignaciones
+                                </button> *@
+                                <button class="btn btn-success" >
+                                    <i class="ri-checkbox-circle-line align-middle me-2"></i> Aprobar
+                                </button>
+                                <button class="btn btn-danger" >
+                                    <i class=" ri-close-circle-line align-middle me-2"></i> Observar
+                                </button>
+                                <button type="button" class="btn btn-warning">
+                                    <i class="ri-file-text-line align-middle me-2"></i> Generar Diplomas
                                 </button>
                             </div>
                         </div>
@@ -56,6 +65,7 @@
                                         <th>Nombres Completos</th>
                                         <th>Fecha Nac.</th>
                                         <th>Lugar Nac.</th>
+                                        <th>Nro. <br />Colegiatura</th>
                                         <th>Estado</th>
                                         <th>Formatos</th>
                                         <th>Acción</th>
@@ -72,6 +82,7 @@
                                             <td>@alumno.NombreCompleto</td>
                                             <td>@alumno.FechaNacimiento</td>
                                             <td>@alumno.LugarNacimiento</td>
+                                            <td>-----</td>
                                             <td>
                                                 @if (alumno.Estado == "Registrado")
                                                 {
@@ -96,12 +107,16 @@
                                                 </button>
                                             </td>
                                             <td>
+                                                <a href="javascript:void(0);" class="me-3 text-success" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Ver">
+                                                    <i class="ri-checkbox-circle-line font-size-18"></i>
+                                                </a>
                                                 <a href="javascript:void(0);" class="me-3 text-warning" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Asignar Colegiatura">
                                                     <i class="ri-medal-fill font-size-18"></i>
                                                 </a>
-                                                <a href="javascript:void(0);" class="text-primary" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Firmar Asignaciones">
-                                                    <i class="ri-fingerprint-fill font-size-18"></i>
+                                                <a href="javascript:void(0);" class="me-3 text-danger" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Asignar Colegiatura">
+                                                    <i class=" ri-close-circle-line  font-size-18"></i>
                                                 </a>
+                                               
                                             </td>
                                         </tr>
                                     }
@@ -130,6 +145,7 @@
                                         <th>Nombres Completos</th>
                                         <th>Fecha Nac.</th>
                                         <th>Lugar Nac.</th>
+                                        <th>Nro. <br />Colegiatura</th>
                                         <th>Estado</th>
                                         <th>Formatos</th>
                                         <th>Acción</th>
@@ -146,6 +162,7 @@
                                             <td>@alumno.NombreCompleto</td>
                                             <td>@alumno.FechaNacimiento</td>
                                             <td>@alumno.LugarNacimiento</td>
+                                            <td>-----</td>
                                             <td>
                                                 @if (alumno.Estado == "Registrado")
                                                 {
