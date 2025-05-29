@@ -19,6 +19,9 @@ namespace MatriculaCMP.Server.Data
 		public DbSet<Menu> Menu { get; set; }
 		public DbSet<Perfil> Perfil { get; set; }
 		public DbSet<PerfilMenu> PerfilMenu { get; set; }
-		// public DbSet<NombreClase> NombreTablaEnBaseDeDatos { get; set; }
-	}
+        // public DbSet<NombreClase> NombreTablaEnBaseDeDatos { get; set; }
+
+        public DbSet<Pais> Paises { get; set; }
+        public DbSet<Universidad> Universidades { get; set; }
+    }
 }

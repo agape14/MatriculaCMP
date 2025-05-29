@@ -1,4 +1,11 @@
 ﻿@page "/solicitudes/prematricula"
+@using MatriculaCMP.Client.Services
+@using MatriculaCMP.Shared
+
+@inject IJSRuntime JS
+
+@inject PaisUniversidadesService PaisUniversidadesService
+
 <div class="container-fluid">
 	<!-- start page title -->
 	<div class="row">
@@ -558,33 +565,100 @@
 											<div class="col-md-6">
 												<div class="form-group">
 													<label for="uniori">Origen de Universidad *</label>
-													<select id="uniori" class="form-control select2" name="uniori" tabindex="-1" aria-hidden="true">
-														<option value="9">Seleccione Nacionalidad</option>
-														<option value="1">Nacional</option>
+													<select id="uniori" class="form-control select2" name="uniori" @onchange="OnTipoSeleccionado">
+														<option value="1" selected>Nacional</option>
 														<option value="0">Extranjera</option>
 													</select>
 												</div>
 											</div>
+
 											<div class="col-md-6">
 												<div class="form-group">
 													<label for="pais_uni">País de universidad *</label>
-													<select id="pais_uni" class="form-control select2" name="pais_uni" required="" tabindex="-1" aria-hidden="true">
+													<select id="pais_uni" class="form-control select2" name="pais_uni"
+															@onchange="OnPaisSeleccionado" disabled="@paisBloqueado">
+														<option value="">Seleccione país</option>
+														@foreach (var pais in paisesFiltrados)
+														{
+															<option value="@pais.Id" selected="@(pais.Id == paisId)">
+																@pais.Nombre
+															</option>
+														}
 													</select>
 												</div>
 											</div>
+
 											<div class="col-md-6">
 												<div class="form-group">
 													<label for="nombre_uni">Nombre de Universidad*</label>
-													<select id="nombre_uni" class="form-control select2" name="nombre_uni" required="" tabindex="-1" aria-hidden="true">
+													<select id="nombre_uni" class="form-control select2" name="nombre_uni" required>
+														<option value="">Seleccione Universidad</option>
+														@foreach (var uni in universidades)
+														{
+															<option value="@uni.Id">@uni.Nombre</option>
+														}
 													</select>
 												</div>
 											</div>
+
 											<div class="col-md-6">
 												<div class="form-group">
 													<label for="fegreso">Fecha de emisón del Título</label>
 													<input class="form-control" type="date" name="fegreso" placeholder="fecha de emisión del título">
 												</div>
 											</div>
+											@if (tipoSeleccionado == "0")
+											{
+												<div class="col-md-6">
+													<div class="form-group">
+														<label for="tipo_validacion">Tipo de validación *</label>
+														<select id="tipo_validacion" class="form-control select2" @bind="tipoValidacionExtranjera">
+															<option value="">Seleccione opción</option>
+															<option value="reconocimiento">Reconocimiento de Sunedu</option>
+															<option value="revalidacion">Revalidación</option>
+														</select>
+													</div>
+												</div>
+
+												@if (tipoValidacionExtranjera == "reconocimiento")
+												{
+													<div class="col-md-12">
+														<div class="form-group">
+															<label>Resolución de Reconocimiento *</label>
+															<input type="text" class="form-control" placeholder="Número de resolución">
+														</div>
+														<div class="form-group">
+															<label>Archivo Resolución PDF *</label>
+															<input type="file" class="form-control" accept=".pdf">
+														</div>
+													</div>
+												}
+												else if (tipoValidacionExtranjera == "revalidacion")
+												{
+													<div class="col-md-12">
+														<div class="form-group">
+															<label>Resolución de Revalidación *</label>
+															<input type="text" class="form-control" placeholder="Número de resolución">
+														</div>
+														<div class="form-group">
+															<label>Archivo Resolución PDF *</label>
+															<input type="file" class="form-control" accept=".pdf">
+														</div>
+														<div class="form-group">
+															<label>Universidad Peruana *</label>
+															<select class="form-control select2" id="universidad_peruana" name="universidad_peruana">
+																<option value="">Seleccione universidad</option>
+																@foreach (var uniper in universidadesperuanas)
+																{
+																	<option value="@uniper.Id">@uniper.Nombre</option>
+																}
+															</select>
+														</div>
+
+													</div>
+												}
+											}
+
 											<div class="col-md-12">
 												<div class="form-group">
 													<h4 class="card-title">Adjuntar Foto</h4>
@@ -633,5 +707,110 @@
 </div>
 
 @code {
+	string tipoSeleccionado = "1"; // Nacional por defecto
+	int paisId;
+	bool paisBloqueado = true;
+	string tipoValidacionExtranjera = "";
 
+	List<Pais> paises = new();
+	List<Pais> paisesFiltrados = new();
+	List<Universidad> universidades = new();
+	List<Universidad> universidadesperuanas = new();
+
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		if (firstRender)
+		{
+			await JS.InvokeVoidAsync("select2interop.init", "#pais_uni");
+			await JS.InvokeVoidAsync("select2interop.init", "#nombre_uni");
+			await JS.InvokeVoidAsync("select2interop.init", "#universidad_peruana");
+		}
+	}
+
+
+	protected override async Task OnInitializedAsync()
+	{
+		paises = await PaisUniversidadesService.ObtenerPaisesAsync();
+		var peru = paises.FirstOrDefault(p => p.Nombre.ToLower().Contains("perú"));
+		if (peru != null)
+		{
+			paisId = peru.Id;
+		}
+
+		paisesFiltrados = paises; // Inicialmente todos, pero se ajusta más abajo
+		await CargarUniversidades();
+		await CargarUniversidadesPeruanas();
+	}
+
+	async Task OnTipoSeleccionado(ChangeEventArgs e)
+	{
+		tipoSeleccionado = e.Value?.ToString() ?? "1";
+
+		if (tipoSeleccionado == "1") // Nacional
+		{
+			paisBloqueado = true;
+
+			var peru = paises.FirstOrDefault(p => p.Nombre.ToLower().Contains("perú"));
+			if (peru != null)
+			{
+				paisId = peru.Id;
+			}
+
+			paisesFiltrados = paises.Where(p => p.Nombre.ToLower().Contains("perú")).ToList();
+		}
+		else // Extranjera
+		{
+			paisBloqueado = false;
+
+			paisesFiltrados = paises
+				.Where(p => !p.Nombre.ToLower().Contains("perú"))
+				.ToList();
+
+			paisId = 0; // resetear
+		}
+
+		await CargarUniversidades();
+		// 🔄 Forzar re-render
+		StateHasChanged();
+
+		// 🕒 Esperar a que se actualice el DOM
+		await Task.Delay(1);
+
+		// ✅ Destruir y reiniciar select2
+		await JS.InvokeVoidAsync("select2interop.refresh", "#pais_uni");
+		await JS.InvokeVoidAsync("select2interop.refresh", "#nombre_uni");
+		
+	}
+
+	async Task OnPaisSeleccionado(ChangeEventArgs e)
+	{
+		if (int.TryParse(e.Value?.ToString(), out int id))
+		{
+			paisId = id;
+			universidades = await PaisUniversidadesService.ObtenerUniversidadesAsync(paisId);
+		}
+	}
+
+	async Task CargarUniversidades()
+	{
+		if (paisId > 0)
+		{
+			universidades = await PaisUniversidadesService.ObtenerUniversidadesAsync(paisId);
+		}
+		else
+		{
+			universidades = new();
+		}
+		await JS.InvokeVoidAsync("select2interop.refresh", "#pais_uni");
+		await JS.InvokeVoidAsync("select2interop.refresh", "#nombre_uni");
+	}
+
+	async Task CargarUniversidadesPeruanas()
+	{
+		
+		var peruselect = paises.FirstOrDefault(p => p.Nombre.ToLower().Contains("perú"));
+		
+		universidadesperuanas = await PaisUniversidadesService.ObtenerUniversidadesAsync(peruselect.Id);
+	}
 }
+

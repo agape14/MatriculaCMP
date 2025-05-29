@@ -10,5 +10,6 @@ builder.Services.AddScoped<MenuHttpService>();
 
 builder.Services.AddAuthorizationCore();//Agregado
 builder.Services.AddCascadingAuthenticationState();//Agregado
+builder.Services.AddScoped<PaisUniversidadesService>();
 
 await builder.Build().RunAsync();

@@ -1,4 +1,4 @@
-using MatriculaCMP.Client.Pages;
+﻿using MatriculaCMP.Client.Pages;
 using MatriculaCMP.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
@@ -26,13 +26,23 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHttpContextAccessor();
 
 
+//builder.Services.AddDbContext<ApplicationDbContext>(options =>
+//{
+//	options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+//});
+
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-	options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
-}
+	options.UseSqlServer(
+		builder.Configuration.GetConnectionString("DefaultConnection"),
+		sqlServerOptions =>
+		{
+			sqlServerOptions.CommandTimeout(600); // ⏱️ tiempo en segundos (ej. 180 = 3 minutos)
+		});
+});
 
-);
-
+builder.Services.AddMvc();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 	.AddJwtBearer(options =>
 	{
@@ -48,6 +58,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddMemoryCache();
+//builder.Services.AddSingleton<UniversidadScraper>();
+builder.Services.AddScoped<PaisesService>();
+builder.Services.AddScoped<UniversidadesService>();
+builder.Services.AddScoped<UniversidadScraper>();
 
 var app = builder.Build();
 
