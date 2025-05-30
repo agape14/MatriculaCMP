@@ -62,7 +62,7 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<PaisesService>();
 builder.Services.AddScoped<UniversidadesService>();
 builder.Services.AddScoped<UniversidadScraper>();
-
+builder.Services.AddScoped<MatriculaService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
