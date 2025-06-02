@@ -33,7 +33,7 @@ namespace MatriculaCMP.Shared
 		public int DepartamentoDomicilioId { get; set; }
 		public int ProvinciaDomicilioId { get; set; }
 		public int DistritoDomicilioId { get; set; }
-		public string FotoPath { get; set; }
+		public string? FotoPath { get; set; }
 		public DateTime FechaRegistro { get; set; } = DateTime.Now;
 	}
 }

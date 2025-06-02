@@ -15,7 +15,7 @@ namespace MatriculaCMP.Shared
 		public int UniversidadId { get; set; }
 		public DateTime FechaEmisionTitulo { get; set; }
 		public string TipoValidacion { get; set; } // "reconocimiento", "revalidacion"
-		public string NumeroResolucion { get; set; }
+		public string? NumeroResolucion { get; set; }
 		public string ResolucionPath { get; set; }
 		public int? UniversidadPeruanaId { get; set; } // Solo para revalidación
 	}

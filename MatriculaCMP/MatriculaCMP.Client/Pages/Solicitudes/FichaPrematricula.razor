@@ -35,9 +35,7 @@
 					<div class="container-contact100">
 						<div class="wrap-contact100">
 							<EditForm Model="@formData" OnValidSubmit="@HandleSubmit">
-								<DataAnnotationsValidator />
-								<ValidationSummary />
-
+								
 								<div class="alert alert-info mb-4" role="alert">
 									<center><b>******** Para el correcto funcionamiento de este servicio, utilizar el explorador Chrome. ********</b></center>
 								</div>
@@ -207,7 +205,7 @@
 														<option value="">Seleccione país</option>
 														@foreach (var pais in paises)
 														{
-															<option value="@pais.Id" selected="@(pais.Id == paisId)">
+															<option value="@pais.Id" >
 																@pais.Nombre
 															</option>
 														}
@@ -222,7 +220,7 @@
 													</select> *@
 													<InputSelect @bind-Value="formData.DepartamentoNacimiento" class="form-control" id="departamento">
 														<option value="">Seleccione Departamento Nacimiento</option>
-														<option value="1" selected>LIMA</option>
+														<option value="1">LIMA</option>
 													</InputSelect>
 													<ValidationMessage For="@(() => formData.DepartamentoNacimiento)" />
 												</div>
@@ -234,7 +232,7 @@
 													</select> *@
 													<InputSelect @bind-Value="formData.ProvinciaNacimiento" class="form-control" id="provincia">
 														<option value="">Seleccione Provincia Nacimiento</option>
-														<option value="1" selected>LIMA</option>
+														<option value="1">LIMA</option>
 													</InputSelect>
 													<ValidationMessage For="@(() => formData.ProvinciaNacimiento)" />
 												</div>
@@ -246,7 +244,7 @@
 													</select> *@
 													<InputSelect @bind-Value="formData.DistritoNacimiento" class="form-control" id="distrito">
 														<option value="">Seleccione DistritoNacimiento</option>
-														<option value="1" selected>LIMA</option>
+														<option value="1">LIMA</option>
 													</InputSelect>
 													<ValidationMessage For="@(() => formData.DistritoNacimiento)" />
 												</div>
@@ -326,66 +324,64 @@
 											<div class="col-md-4">
 												<div class="form-group">
 													<label for="departamento_id">Departamento  *</label>
-													<select id="departamento_id" class="form-control select2" name="departamento_id" required="">
-														<option value="01">AMAZONAS</option>
-														<option value="02">ANCASH</option>
-														<option value="03">APURIMAC</option>
-														<option value="04">AREQUIPA</option>
-														<option value="05">AYACUCHO</option>
-														<option value="06">CAJAMARCA</option>
-														<option value="24">CALLAO</option>
-														<option value="07">CUSCO</option>
-														<option value="08">HUANCAVELICA</option>
-														<option value="09">HUANUCO</option>
-														<option value="10">ICA</option>
-														<option value="11">JUNIN</option>
-														<option value="12">LA LIBERTAD</option>
-														<option value="13">LAMBAYEQUE</option>
-														<option value="14">LIMA</option>
-														<option value="15">LORETO</option>
-														<option value="16">MADRE DE DIOS</option>
-														<option value="17">MOQUEGUA</option>
-														<option value="18">PASCO</option>
-														<option value="19">PIURA</option>
-														<option value="20">PUNO</option>
-														<option value="00">SAN JUAN DE CUTERVO</option>
-														<option value="21">SAN MARTIN</option>
-														<option value="22">TACNA</option>
-														<option value="23">TUMBES</option>
-														<option value="25">UCAYALI</option>
-													</select>
+													<InputSelect @bind-Value="formData.DepartamentoDomicilio" class="form-control" id="departamento_id">
+														<option value="">Seleccione Departamento Domicilio</option>
+														<option value="14" selected>LIMA</option>
+													</InputSelect>
+													<ValidationMessage For="@(() => formData.DepartamentoDomicilio)" />
+													
 												</div>
 											</div>
 											<div class="col-md-4">
 												<div class="form-group">
 													<label for="provincia_id">Provincia *</label>
-													<select id="provincia_id" class="form-control" name="provincia_id" required="">
-													</select>
+													@* <select id="provincia_id" class="form-control" name="provincia_id" required="">
+													</select> *@
+
+													<InputSelect @bind-Value="formData.ProvinciaDomicilio" class="form-control" id="provincia_id">
+														<option value="">Seleccione Provincia Domicilio</option>
+														<option value="1" selected>LIMA</option>
+													</InputSelect>
+													<ValidationMessage For="@(() => formData.ProvinciaDomicilio)" />
 												</div>
 											</div>
 											<div class="col-md-4">
 												<div class="form-group">
 													<label for="distrito_id">Distrito *</label>
-													<select id="distrito_id" class="form-control" name="distrito_id" required="">
-													</select>
+													@* <select id="distrito_id" class="form-control" name="distrito_id" required="">
+													</select> *@
+
+													<InputSelect @bind-Value="formData.DistritoDomicilio" class="form-control" id="distrito_id">
+														<option value="">Seleccione Provincia Domicilio</option>
+														<option value="1" selected>LIMA</option>
+													</InputSelect>
+													<ValidationMessage For="@(() => formData.DistritoDomicilio)" />
 												</div>
 											</div>
 											<div class="col-md-4">
 												<div class="form-group">
-													<label for="distrito_id">Teléfono fijo</label>
-													<input class="form-control" type="text" name="telefono" placeholder="Ingrese su telefono fijo" maxlength="10">
+													<label for="telefono">Teléfono fijo</label>
+													@* <input class="form-control" type="text" name="telefono" placeholder="Ingrese su telefono fijo" maxlength="10">
+ *@
+													<InputText @bind-Value="formData.Telefono" class="form-control" id="telefono" />
+													<ValidationMessage For="@(() => formData.Telefono)" />
 												</div>
 											</div>
 											<div class="col-md-4">
 												<div class="form-group">
-													<label for="distrito_id">Teléfono celular</label>
-													<input class="form-control" type="text" name="celular" placeholder="Ingrese su telefono celular" maxlength="10">
+													<label for="celular">Teléfono celular</label>
+													@* <input class="form-control"  type="text" name="celular" placeholder="Ingrese su telefono celular" maxlength="10">
+ *@
+													<InputText @bind-Value="formData.Celular" class="form-control" id="celular" />
+													<ValidationMessage For="@(() => formData.Celular)" />
 												</div>
 											</div>
 											<div class="col-md-4">
 												<div class="form-group">
-													<label for="distrito_id">Correo *</label>
-													<input class="form-control" type="email" name="email" placeholder="Ingrese su correo" maxlength="100">
+													<label for="email">Correo *</label>
+													@* <input class="form-control" type="email" name="email" placeholder="Ingrese su correo" maxlength="100"> *@
+													<InputText @bind-Value="formData.Email" class="form-control" id="email" />
+													<ValidationMessage For="@(() => formData.Email)" />
 												</div>
 											</div>
 										</div>
@@ -425,13 +421,18 @@
 											<div class="col-md-6">
 												<div class="form-group">
 													<label for="nombre_uni">Nombre de Universidad*</label>
-													<select id="nombre_uni" class="form-control select2" name="nombre_uni" required>
+													@* <select id="nombre_uni" class="form-control select2" name="nombre_uni" required>														
+													</select> *@
+
+
+													<InputSelect @bind-Value="formData.Universidad" class="form-control" id="nombre_uni">
 														<option value="">Seleccione Universidad</option>
 														@foreach (var uni in universidades)
 														{
 															<option value="@uni.Id">@uni.Nombre</option>
 														}
-													</select>
+													</InputSelect>
+													<ValidationMessage For="@(() => formData.Universidad)" />
 												</div>
 											</div>
 
@@ -500,8 +501,15 @@
 													<h4 class="card-title">Adjuntar Foto</h4>
 													<div class="custom-file">
 														@* <input type="file" class="custom-file-input" id="customFile"> *@
-														<InputFile OnChange="@OnFotoSelected" class="custom-file-input"  accept=".jpg,.jpeg" />
-														<label class="custom-file-label" for="customFile">Seleccione foto</label>
+														<div class="custom-file">
+															<InputFile OnChange="@OnFotoSelected" class="custom-file-input" accept=".jpg,.jpeg" />
+															<label class="custom-file-label" for="customFile">Seleccione foto</label>
+															@if (mostrarErrorFoto)
+															{
+																<div class="text-danger">La foto del médico es requerida.</div>
+															}
+															<ValidationMessage For="@(() => formData.FotoMedico)" />
+														</div>
 													</div>
 													<div class="alert alert-warning mb-4 mt-2" role="alert">
 														<ul>
@@ -518,8 +526,10 @@
 											<div class="col-md-12">
 												<div class="form-group">
 													<div class="custom-control custom-switch mb-2" dir="ltr">
-														<input type="checkbox" class="custom-control-input" id="customSwitch1" checked="">
+														@* <input type="checkbox" class="custom-control-input" id="customSwitch1" checked=""> *@
+														<InputCheckbox @bind-Value="formData.AceptaPoliticas" class="custom-control-input" id="customSwitch1" />
 														<label class="custom-control-label" for="customSwitch1">Acepto las <a href="/Politicas_de_privacidad">Políticas de Privacidad</a> de este sitio</label>
+														<ValidationMessage For="@(() => formData.AceptaPoliticas)" />
 													</div>
 												</div>
 											</div>
@@ -531,6 +541,13 @@
 									Enviar Solicitud
 									<i class="ri-arrow-right-line align-middle ml-2"></i>
 								</button> *@
+								<DataAnnotationsValidator />
+								<ValidationSummary />
+								<!-- Mostrar mensajes de error -->
+								@if (!string.IsNullOrEmpty(mensajeError))
+								{
+									<div class="alert alert-danger">@mensajeError</div>
+								}
 								<button type="submit" disabled="@enviando" class="btn btn-primary btn-lg btn-block waves-effect waves-light mb-1">
 									@if (enviando)
 									{
@@ -543,11 +560,7 @@
 										<i class="ri-arrow-right-line align-middle ml-2"></i>
 									}
 								</button>
-								<!-- Mostrar mensajes de error -->
-								@if (!string.IsNullOrEmpty(mensajeError))
-								{
-									<div class="alert alert-danger">@mensajeError</div>
-								}
+								
 
 							</EditForm>
 						</div>
@@ -576,7 +589,7 @@
 	private IBrowserFile resolucionFile;
 	private string mensajeError;
 	private bool enviando = false;
-
+	private bool mostrarErrorFoto = false;
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
 		if (firstRender)
@@ -587,6 +600,12 @@
 		}
 	}
 
+	private void OnFotoSelected(InputFileChangeEventArgs e)
+	{
+		fotoFile = e.File;
+		formData.FotoMedico = fotoFile;
+		mostrarErrorFoto = false;
+	}
 
 	protected override async Task OnInitializedAsync()
 	{
@@ -598,6 +617,26 @@
 		}
 
 		paisesFiltrados = paises; // Inicialmente todos, pero se ajusta más abajo
+		formData.ConsejoRegional = "3";
+		formData.Nombres = "Agapito";
+		formData.ApellidoPaterno="De la cruz";
+		formData.ApellidoMaterno = "Carlos";
+		formData.PaisNacimiento = "356";
+		formData.NumeroDocumento = "45742029";
+
+		formData.DepartamentoNacimiento = "1";
+		formData.ProvinciaNacimiento = "1";
+		formData.DistritoNacimiento = "1";
+
+		formData.DescripcionZona = "Zona";
+		formData.DescripcionVia = "Via";
+		formData.DepartamentoDomicilio = "14";
+		formData.Telefono = "4526544";
+		formData.Celular = "981525451";
+		formData.Email = "adelacruzcarlos@gmail.com";
+		formData.ProvinciaDomicilio="1";
+		formData.DistritoDomicilio="1";
+		formData.AceptaPoliticas = true;
 		await CargarUniversidades();
 		await CargarUniversidadesPeruanas();
 	}
@@ -721,7 +760,8 @@
 		// Validar archivos
 		if (fotoFile == null)
 		{
-			mensajeError = "Debe seleccionar una foto";
+			//mensajeError = "Debe seleccionar una foto";
+			mostrarErrorFoto = true;
 			enviando = false;
 			return;
 		}
@@ -733,16 +773,48 @@
 				ConsejoRegionalId = int.Parse(formData.ConsejoRegional),
 				Nombres = formData.Nombres,
 				ApellidoPaterno = formData.ApellidoPaterno,
-				// ... resto de propiedades
+				ApellidoMaterno = formData.ApellidoMaterno,
+				EstadoCivilId = int.Parse(formData.EstadoCivil),
+				TipoDocumentoId = int.Parse(formData.TipoDocumento),
+				NumeroDocumento = formData.NumeroDocumento,
+				GrupoSanguineoId = int.Parse(formData.GrupoSanguineo),
+				PaisNacimientoId = int.Parse(formData.PaisNacimiento),
+				DepartamentoNacimientoId = int.Parse(formData.DepartamentoNacimiento),
+				ProvinciaNacimientoId = int.Parse(formData.ProvinciaNacimiento),
+				DistritoNacimientoId = int.Parse(formData.DistritoNacimiento),
+				FechaNacimiento = formData.FechaNacimiento,
+				ZonaDomicilioId = int.Parse(formData.ZonaDomicilio),
+				DescripcionZona = formData.DescripcionZona,
+				ViaDomicilioId = int.Parse(formData.ViaDomicilio),
+				DescripcionVia = formData.DescripcionVia,
+				DepartamentoDomicilioId = int.Parse(formData.DepartamentoDomicilio),
+				ProvinciaDomicilioId = int.Parse(formData.ProvinciaDomicilio),
+				DistritoDomicilioId = int.Parse(formData.DistritoDomicilio),
+				Telefono = formData.Telefono,
+				Celular = formData.Celular,
+				Email = formData.Email
 			};
+
+		if (!int.TryParse(formData.Universidad, out var universidadId))
+		{
+			mensajeError = "Debe seleccionar una universidad válida.";
+			enviando = false;
+			return;
+		}
+
+		int.TryParse(formData.PaisUniversidad, out var paisUniversidadId);
+		int.TryParse(formData.UniversidadPeruana, out var universidadPeruanaId); // opcional
 
 		var educacion = new Educacion
 			{
-				EsExtranjera = formData.UniversidadOrigen == "0",
-				UniversidadId = int.Parse(formData.Universidad),
+				UniversidadId = universidadId,
 				FechaEmisionTitulo = formData.FechaEmisionTitulo,
-				// ... resto de propiedades
+				PaisUniversidadId = paisUniversidadId,
+				TipoValidacion = formData.TipoValidacion,
+				NumeroResolucion = formData.NumeroResolucion,
+				UniversidadPeruanaId = universidadPeruanaId
 			};
+
 
 		// Llamar al servicio
 		var (success, message) = await MatriculaService.GuardarMatriculaAsync(
@@ -761,11 +833,6 @@
 		}
 
 		enviando = false;
-	}
-
-	private void OnFotoSelected(InputFileChangeEventArgs e)
-	{
-		fotoFile = e.File;
 	}
 
 	private void OnResolucionSelected(InputFileChangeEventArgs e)
@@ -883,6 +950,9 @@
 		// Términos y condiciones
 		[Range(typeof(bool), "true", "true", ErrorMessage = "Debe aceptar las políticas de privacidad")]
 		public bool AceptaPoliticas { get; set; }
+
+		[Required(ErrorMessage = "La foto del médico es requerida.")]
+		public IBrowserFile FotoMedico { get; set; }
 	}
 }
 
