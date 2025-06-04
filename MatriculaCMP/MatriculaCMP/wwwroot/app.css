@@ -47,3 +47,13 @@ h1:focus {
     }
 
 
+.custom-file-input ~ .custom-file-label::after {
+    content: "Examinar";
+}
+
+.img-thumbnail {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 5px;
+    background-color: #f8f9fa;
+}

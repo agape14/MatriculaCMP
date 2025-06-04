@@ -11,54 +11,79 @@ namespace MatriculaCMP.Client.Services
 	public class MatriculaHttpService: IMatriculaService
 	{
 		private readonly HttpClient _http;
+		private readonly ILogger<MatriculaHttpService> _logger;
 
-		public MatriculaHttpService(HttpClient http)
+		public MatriculaHttpService(HttpClient http, ILogger<MatriculaHttpService> logger)
 		{
 			_http = http;
+			_logger = logger;
 		}
 
 		public async Task<(bool Success, string Message)> GuardarMatriculaAsync(
-		Persona persona,
-		Educacion educacion,
-		IBrowserFile foto,
-		IBrowserFile? resolucionFile = null)
+			Persona persona,
+			Educacion educacion,
+			IBrowserFile foto,
+			IBrowserFile? resolucionFile = null)
 		{
 			try
 			{
+				_logger.LogInformation("Iniciando envío de matrícula para {Nombre}", persona.Nombres);
+
 				var content = new MultipartFormDataContent();
 
-				// Serializar los objetos a JSON (sin media type)
-				var personaJson = JsonSerializer.Serialize(persona);
-				var educacionJson = JsonSerializer.Serialize(educacion);
+				// Configuración de serialización
+				var options = new JsonSerializerOptions
+				{
+					PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+					DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+				};
 
-				// Añadir al formulario sin application/json
-				content.Add(new StringContent(personaJson, Encoding.UTF8), "Persona");
-				content.Add(new StringContent(educacionJson, Encoding.UTF8), "Educacion");
+				// Serializar objetos
+				content.Add(new StringContent(
+					JsonSerializer.Serialize(persona, options),
+					Encoding.UTF8,
+					"application/json"),
+					"Persona");
 
-				// Foto (campo obligatorio)
-				content.Add(new StreamContent(foto.OpenReadStream(foto.Size)), "Foto", foto.Name);
+				content.Add(new StringContent(
+					JsonSerializer.Serialize(educacion, options),
+					Encoding.UTF8,
+					"application/json"),
+					"Educacion");
 
-				// Resolución (si aplica)
+				// Procesar foto
+				var fotoStream = foto.OpenReadStream(maxAllowedSize: 4 * 1024 * 1024); // 4MB
+				content.Add(new StreamContent(fotoStream), "Foto", foto.Name);
+
+				// Procesar resolución si existe
 				if (resolucionFile != null)
 				{
-					content.Add(new StreamContent(resolucionFile.OpenReadStream(resolucionFile.Size)), "ResolucionFile", resolucionFile.Name);
+					var resolucionStream = resolucionFile.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024); // 10MB
+					content.Add(new StreamContent(resolucionStream), "ResolucionFile", resolucionFile.Name);
 				}
 
 				var response = await _http.PostAsync("api/matricula/guardar", content);
 
-				if (response.IsSuccessStatusCode)
+				if (!response.IsSuccessStatusCode)
 				{
-					var result = await response.Content.ReadFromJsonAsync<dynamic>();
-					return (true, result?.message?.ToString() ?? "Registro exitoso");
+					var errorContent = await response.Content.ReadAsStringAsync();
+					_logger.LogError("Error al guardar matrícula: {StatusCode} - {Error}", response.StatusCode, errorContent);
+					return (false, $"Error del servidor: {errorContent}");
 				}
 
-				var error = await response.Content.ReadAsStringAsync();
-				return (false, error);
+				var result = await response.Content.ReadFromJsonAsync<ApiResponse>();
+				return (true, result?.Message ?? "Matrícula registrada exitosamente");
 			}
 			catch (Exception ex)
 			{
-				return (false, $"Error: {ex.Message}");
+				_logger.LogError(ex, "Error al enviar matrícula");
+				return (false, $"Error de comunicación: {ex.Message}");
 			}
+		}
+
+		private class ApiResponse
+		{
+			public string? Message { get; set; }
 		}
 
 

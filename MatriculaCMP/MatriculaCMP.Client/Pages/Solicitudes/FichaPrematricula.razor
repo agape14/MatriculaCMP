@@ -503,28 +503,39 @@
 													<h4 class="card-title">Adjuntar Foto</h4>
 													<div class="custom-file">
 														@* <input type="file" class="custom-file-input" id="customFile"> *@
-														<div class="custom-file">
-															<InputFile OnChange="@OnFotoSelected" class="custom-file-input" accept=".jpg,.jpeg" />
-															<label class="custom-file-label" for="customFile">Seleccione foto</label>
-															<div class="mt-2">
-																@if (estaValidando)
-																{
-																	<div class="spinner-border text-primary" role="status">
-																		<span class="visually-hidden">Cargando...</span>
-																	</div>
-																	<span class="ms-2">@mensajeValidacion</span>
-																}
-																else if (mostrarErrorFoto)
-																{
-																	<div class="text-danger">@mensajeValidacion</div>
-																}
-																else if (!string.IsNullOrEmpty(mensajeValidacion))
-																{
-																	<div class="text-success">@mensajeValidacion</div>
-																}
+														  <InputFile OnChange="@OnFotoSelected" class="custom-file-input" accept=".jpg,.jpeg,.png" id="customFile" />
+														<label class="custom-file-label" for="customFile">
+															@(fotoFile != null ? fotoFile.Name : "Seleccione foto")
+														</label>
+    
+														<!-- Vista previa de la imagen -->
+														@if (fotoFile != null && imagePreviewUrl != null)
+														{
+															<div class="mt-3">
+																<img src="@imagePreviewUrl" class="img-thumbnail" style="max-width: 200px; max-height: 200px;" 
+																		alt="Vista previa de la imagen seleccionada" />
 															</div>
-															<ValidationMessage For="@(() => formData.FotoMedico)" />
+														}
+    
+														<!-- Mensajes de estado -->
+														<div class="mt-2">
+															@if (estaValidando)
+															{
+																<div class="spinner-border text-primary" role="status">
+																	<span class="visually-hidden">Cargando...</span>
+																</div>
+																<span class="ms-2">@mensajeValidacion</span>
+															}
+															else if (mostrarErrorFoto)
+															{
+																<div class="text-danger">@mensajeValidacion</div>
+															}
+															else if (!string.IsNullOrEmpty(mensajeValidacion))
+															{
+																<div class="text-success">@mensajeValidacion</div>
+															}
 														</div>
+														<ValidationMessage For="@(() => formData.FotoMedico)" />
 													</div>
 													<div class="alert alert-warning mb-4 mt-2" role="alert">
 														<ul>
@@ -601,6 +612,7 @@
 	//Guardar Formulario
 	private FormData formData = new FormData();
 	private IBrowserFile fotoFile;
+	private string? imagePreviewUrl;
 	private IBrowserFile resolucionFile;
 	private string mensajeError;
 	private bool enviando = false;
@@ -608,21 +620,23 @@
 	private bool estaValidando = false;
 	private string mensajeValidacion = string.Empty;
 
-	protected override async Task OnAfterRenderAsync(bool firstRender)
-	{
-		if (firstRender)
-		{
-			await JS.InvokeVoidAsync("select2interop.init", "#pais_uni");
-			await JS.InvokeVoidAsync("select2interop.init", "#nombre_uni");
-			await JS.InvokeVoidAsync("select2interop.init", "#universidad_peruana");
-		}
-	}
+	// protected override async Task OnAfterRenderAsync(bool firstRender)
+	// {
+	// 	if (firstRender)
+	// 	{
+	// 		await JS.InvokeVoidAsync("select2interop.init", "#pais_uni");
+	// 		await JS.InvokeVoidAsync("select2interop.init", "#nombre_uni");
+	// 		await JS.InvokeVoidAsync("select2interop.init", "#universidad_peruana");
+	// 	}
+	// }
 
 	private async Task OnFotoSelected(InputFileChangeEventArgs e)
 	{
 		try
 		{
-			// Iniciar estado de carga
+			// Resetear estados y vista previa
+			imagePreviewUrl = null;
+			fotoFile = null;
 			estaValidando = true;
 			mensajeValidacion = "Validando imagen...";
 			mostrarErrorFoto = false;
@@ -655,6 +669,14 @@
 				mensajeValidacion = "La imagen no debe exceder 4MB";
 				return;
 			}
+
+			// Generar vista previa antes de enviar a la API
+			var format = "image/jpeg"; // o "image/png" según necesites
+			var resizedImage = await fotoFile.RequestImageFileAsync(format, 300, 300);
+			var buffer = new byte[resizedImage.Size];
+			await resizedImage.OpenReadStream().ReadAsync(buffer);
+			imagePreviewUrl = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
+			StateHasChanged(); // Actualizar para mostrar vista previa
 
 			using var content = new MultipartFormDataContent();
 			using var stream = fotoFile.OpenReadStream(maxAllowedSize: 4 * 1024 * 1024); // 4MB
@@ -691,12 +713,15 @@
 				mostrarErrorFoto = true;
 				mensajeValidacion = result.mensaje ?? "La imagen no cumple los requisitos";
 				formData.FotoMedico = null;
+				// Opcional: limpiar vista previa si no es válida
+				// imagePreviewUrl = null;
 			}
 		}
 		catch (Exception ex)
 		{
 			mostrarErrorFoto = true;
 			mensajeValidacion = "Error al procesar la imagen";
+			imagePreviewUrl = null; // Limpiar vista previa en caso de error
 			Console.WriteLine($"Error: {ex.Message}");
 		}
 		finally
@@ -783,8 +808,8 @@
 		await Task.Delay(1);
 
 		// ✅ Destruir y reiniciar select2
-		await JS.InvokeVoidAsync("select2interop.refresh", "#pais_uni");
-		await JS.InvokeVoidAsync("select2interop.refresh", "#nombre_uni");
+		// await JS.InvokeVoidAsync("select2interop.refresh", "#pais_uni");
+		// await JS.InvokeVoidAsync("select2interop.refresh", "#nombre_uni");
 		
 	}
 
@@ -807,8 +832,8 @@
 		{
 			universidades = new();
 		}
-		await JS.InvokeVoidAsync("select2interop.refresh", "#pais_uni");
-		await JS.InvokeVoidAsync("select2interop.refresh", "#nombre_uni");
+		// await JS.InvokeVoidAsync("select2interop.refresh", "#pais_uni");
+		// await JS.InvokeVoidAsync("select2interop.refresh", "#nombre_uni");
 	}
 
 	async Task CargarUniversidadesPeruanas()
@@ -863,83 +888,91 @@
 	{
 		enviando = true;
 		mensajeError = null;
+		mostrarErrorFoto = false;
+		StateHasChanged();
 
-		// Validar archivos
-		if (fotoFile == null)
+		try
 		{
-			//mensajeError = "Debe seleccionar una foto";
-			mostrarErrorFoto = true;
-			enviando = false;
-			return;
-		}
-
-		// Mapear a modelos
-		var persona = new Persona
+			// Validación básica de archivos
+			if (fotoFile == null)
 			{
-				// Mapeo de propiedades desde formData
-				ConsejoRegionalId = int.Parse(formData.ConsejoRegional),
-				Nombres = formData.Nombres,
-				ApellidoPaterno = formData.ApellidoPaterno,
-				ApellidoMaterno = formData.ApellidoMaterno,
-				EstadoCivilId = int.Parse(formData.EstadoCivil),
-				TipoDocumentoId = int.Parse(formData.TipoDocumento),
-				NumeroDocumento = formData.NumeroDocumento,
-				GrupoSanguineoId = int.Parse(formData.GrupoSanguineo),
-				PaisNacimientoId = int.Parse(formData.PaisNacimiento),
-				DepartamentoNacimientoId = int.Parse(formData.DepartamentoNacimiento),
-				ProvinciaNacimientoId = int.Parse(formData.ProvinciaNacimiento),
-				DistritoNacimientoId = int.Parse(formData.DistritoNacimiento),
-				FechaNacimiento = formData.FechaNacimiento,
-				ZonaDomicilioId = int.Parse(formData.ZonaDomicilio),
-				DescripcionZona = formData.DescripcionZona,
-				ViaDomicilioId = int.Parse(formData.ViaDomicilio),
-				DescripcionVia = formData.DescripcionVia,
-				DepartamentoDomicilioId = int.Parse(formData.DepartamentoDomicilio),
-				ProvinciaDomicilioId = int.Parse(formData.ProvinciaDomicilio),
-				DistritoDomicilioId = int.Parse(formData.DistritoDomicilio),
-				Telefono = formData.Telefono,
-				Celular = formData.Celular,
-				Email = formData.Email
-			};
+				mostrarErrorFoto = true;
+				mensajeError = "Debe seleccionar una foto válida";
+				return;
+			}
 
-		if (!int.TryParse(formData.Universidad, out var universidadId))
-		{
-			mensajeError = "Debe seleccionar una universidad válida.";
-			enviando = false;
-			return;
-		}
+			// Validación de campos obligatorios
+			// var validationErrors = ValidateForm();
+			// if (validationErrors.Any())
+			// {
+			// 	mensajeError = string.Join("<br>", validationErrors);
+			// 	return;
+			// }
 
-		int.TryParse(formData.PaisUniversidad, out var paisUniversidadId);
-		int.TryParse(formData.UniversidadPeruana, out var universidadPeruanaId); // opcional
+			// Mapeo a modelos
+			var persona = new Persona
+				{
+					ConsejoRegionalId = int.Parse(formData.ConsejoRegional),
+					Nombres = formData.Nombres?.Trim(),
+					ApellidoPaterno = formData.ApellidoPaterno?.Trim(),
+					ApellidoMaterno = formData.ApellidoMaterno?.Trim(),
+					EstadoCivilId = int.Parse(formData.EstadoCivil),
+					TipoDocumentoId = int.Parse(formData.TipoDocumento),
+					NumeroDocumento = formData.NumeroDocumento?.Trim(),
+					GrupoSanguineoId = int.Parse(formData.GrupoSanguineo),
+					PaisNacimientoId = int.Parse(formData.PaisNacimiento),
+					DepartamentoNacimientoId = int.Parse(formData.DepartamentoNacimiento),
+					ProvinciaNacimientoId = int.Parse(formData.ProvinciaNacimiento),
+					DistritoNacimientoId = int.Parse(formData.DistritoNacimiento),
+					FechaNacimiento = formData.FechaNacimiento,
+					ZonaDomicilioId = int.Parse(formData.ZonaDomicilio),
+					DescripcionZona = formData.DescripcionZona?.Trim(),
+					ViaDomicilioId = int.Parse(formData.ViaDomicilio),
+					DescripcionVia = formData.DescripcionVia?.Trim(),
+					DepartamentoDomicilioId = int.Parse(formData.DepartamentoDomicilio),
+					ProvinciaDomicilioId = int.Parse(formData.ProvinciaDomicilio),
+					DistritoDomicilioId = int.Parse(formData.DistritoDomicilio),
+					Telefono = formData.Telefono?.Trim(),
+					Celular = formData.Celular?.Trim(),
+					Email = formData.Email?.Trim().ToLower(),
+				};
 
-		var educacion = new Educacion
+			var educacion = new Educacion
+				{
+					UniversidadId = int.Parse(formData.Universidad),
+					FechaEmisionTitulo = formData.FechaEmisionTitulo,
+					PaisUniversidadId = int.TryParse(formData.PaisUniversidad, out var paisId) ? paisId : 0,
+					TipoValidacion = formData.TipoValidacion,
+					NumeroResolucion = formData.NumeroResolucion?.Trim(),
+					UniversidadPeruanaId = int.TryParse(formData.UniversidadPeruana, out var uniId) ? uniId : null
+				};
+
+			// Llamar al servicio
+			var (success, message) = await MatriculaService.GuardarMatriculaAsync(
+				persona,
+				educacion,
+				fotoFile,
+				formData.UniversidadOrigen == "0" ? resolucionFile : null);
+
+			if (success)
 			{
-				UniversidadId = universidadId,
-				FechaEmisionTitulo = formData.FechaEmisionTitulo,
-				PaisUniversidadId = paisUniversidadId,
-				TipoValidacion = formData.TipoValidacion,
-				NumeroResolucion = formData.NumeroResolucion,
-				UniversidadPeruanaId = universidadPeruanaId
-			};
-
-
-		// Llamar al servicio
-		var (success, message) = await MatriculaService.GuardarMatriculaAsync(
-			persona,
-			educacion,
-			fotoFile,
-			formData.UniversidadOrigen == "0" ? resolucionFile : null);
-
-		if (success)
-		{
-			Navigation.NavigateTo("/solicitudes/confirmacion");
+				Navigation.NavigateTo("/solicitudes/seguimiento");
+			}
+			else
+			{
+				mensajeError = message;
+			}
 		}
-		else
+		catch (Exception ex)
 		{
-			mensajeError = message;
+			mensajeError = $"Error inesperado: {ex.Message}";
+			Console.WriteLine($"Error en HandleSubmit: {ex}");
 		}
-
-		enviando = false;
+		finally
+		{
+			enviando = false;
+			StateHasChanged();
+		}
 	}
 
 	private void OnResolucionSelected(InputFileChangeEventArgs e)

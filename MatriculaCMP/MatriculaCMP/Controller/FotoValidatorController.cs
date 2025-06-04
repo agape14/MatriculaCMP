@@ -4,171 +4,290 @@ using System.Text.Json;
 
 namespace MatriculaCMP.Controller
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class FotoValidatorController : ControllerBase
-    {
-        private readonly HttpClient _httpClient;
-        private readonly ILogger<FotoValidatorController> _logger;
-        private const string OllamaBaseUrl = "http://localhost:11434/api/generate";
-        private const string ModelName = "llava:7b";
+	[ApiController]
+	[Route("api/[controller]")]
+	public class FotoValidatorController : ControllerBase
+	{
+		private readonly HttpClient _httpClient;
+		private readonly ILogger<FotoValidatorController> _logger;
+		private const string OllamaBaseUrl = "http://localhost:11434/api/generate";
+		private const string ModelName = "llava:7b";
+		private const int MaxFileSize = 4_000_000; // 4MB
 
-        public FotoValidatorController(
-            IHttpClientFactory httpClientFactory,
-            ILogger<FotoValidatorController> logger)
-        {
-            _httpClient = httpClientFactory.CreateClient();
-            _logger = logger;
-        }
+		public FotoValidatorController(
+			IHttpClientFactory httpClientFactory,
+			ILogger<FotoValidatorController> logger)
+		{
+			_httpClient = httpClientFactory.CreateClient();
+			_logger = logger;
+			_httpClient.Timeout = TimeSpan.FromSeconds(30); // Timeout de 30 segundos
+		}
 
-        [HttpPost("validar")]
-        [RequestSizeLimit(5_000_000)] // Limita el tamaño de la imagen a ~5MB
-        public async Task<IActionResult> ValidarFoto([FromForm] IFormFile file)
-        {
-            try
-            {
-                if (file == null || file.Length == 0)
-                {
-                    _logger.LogWarning("Intento de validación con archivo vacío");
-                    return BadRequest("Debe proporcionar un archivo de imagen válido");
-                }
+		[HttpPost("validar")]
+		[RequestSizeLimit(5_000_000)]
+		public async Task<IActionResult> ValidarFoto([FromForm] IFormFile file)
+		{
+			try
+			{
+				// Validación inicial del archivo
+				var fileValidation = ValidateFile(file);
+				if (fileValidation != null) return fileValidation;
 
-                // Validar tipo de archivo
-                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
-                var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
-                if (!allowedExtensions.Contains(fileExtension))
-                {
-                    _logger.LogWarning($"Tipo de archivo no permitido: {fileExtension}");
-                    return BadRequest($"Solo se permiten imágenes en formato {string.Join(", ", allowedExtensions)}");
-                }
+				using var ms = new MemoryStream();
+				await file.CopyToAsync(ms);
+				var imageBytes = ms.ToArray();
 
-                using var ms = new MemoryStream();
-                await file.CopyToAsync(ms);
-                var imageBytes = ms.ToArray();
+				if (imageBytes.Length > MaxFileSize)
+				{
+					_logger.LogWarning($"Imagen demasiado grande: {imageBytes.Length} bytes");
+					return BadRequest("La imagen no debe exceder los 4MB");
+				}
 
-                // Validar tamaño de imagen (máximo 4MB)
-                if (imageBytes.Length > 4_000_000)
-                {
-                    _logger.LogWarning($"Imagen demasiado grande: {imageBytes.Length} bytes");
-                    return BadRequest("La imagen no debe exceder los 4MB");
-                }
+				var base64Image = Convert.ToBase64String(imageBytes);
 
-                var base64Image = Convert.ToBase64String(imageBytes);
+				// 1. Análisis de género
+				var generoPrompt = "Responde en español. Analiza la imagen y responde. " +
+								 "¿La imagen muestra claramente a un hombre(varon) o una mujer(dama)?";
 
-                // 1. Determinar el género con mayor precisión
-                var generoPrompt = "Analiza la imagen y responde únicamente con 'hombre', 'mujer' o 'indeterminado'. " +
-                                 "¿La imagen muestra claramente a un hombre o una mujer?";
+				var generoAnalysis = await AnalyzeImage(base64Image, generoPrompt);
+				var genero = ParseGeneroResponse(generoAnalysis.Response);
 
-                var generoResponse = await EnviarPreguntaALlava(base64Image, generoPrompt);
-                var genero = ParseGeneroResponse(generoResponse);
+				if (genero == "indeterminado")
+				{
+					_logger.LogInformation("No se pudo determinar el género: {Response}", generoAnalysis.Response);
+					return Ok(new ValidationResult
+					{
+						Valido = false,
+						Mensaje = "No se pudo determinar el género",
+						Detalles = new
+						{
+							Genero = genero,
+							RespuestaIA = generoAnalysis.Response,
+							RawResponse = generoAnalysis.RawResponse
+						}
+					});
+				}
 
-                if (genero == "indeterminado")
-                {
-                    _logger.LogInformation("No se pudo determinar el género en la imagen");
-                    return Ok(new
-                    {
-                        valido = false,
-                        mensaje = "No se pudo determinar claramente el género en la imagen"
-                    });
-                }
+				// 2. Validación de requisitos
+				var validationPrompt = genero == "hombre"
+					? BuildMaleValidationPrompt()
+					: BuildFemaleValidationPrompt();
 
-                // 2. Validar la vestimenta y fondo según el género
-                string validacionPrompt = genero == "hombre"
-                    ? "Responde únicamente 'sí' o 'no'. ¿La imagen muestra a un hombre con las siguientes características: " +
-                      "1. Fondo blanco, 2. Vistiendo terno formal y corbata?"
-                    : "Responde únicamente 'sí' o 'no'. ¿La imagen muestra a una mujer con las siguientes características: " +
-                      "1. Fondo blanco, 2. Vistiendo blusa formal o traje de oficina?";
+				var validationAnalysis = await AnalyzeImage(base64Image, validationPrompt);
+				var esValido = ValidateResponse(validationAnalysis.Response);
 
-                var validacionResponse = await EnviarPreguntaALlava(base64Image, validacionPrompt);
-                var esValido = validacionResponse?.ToLowerInvariant().Contains("sí") ?? false;
+				_logger.LogInformation("Validación completada - Género: {Genero}, Válido: {Valido}, Respuesta: {Response}",
+					genero, esValido, validationAnalysis.Response);
 
-                _logger.LogInformation($"Validación completada - Género: {genero}, Válido: {esValido}");
+				return Ok(new ValidationResult
+				{
+					Valido = esValido,
+					Genero = genero,
+					Mensaje = esValido
+						? "Imagen válida cumple con todos los requisitos"
+						: "La imagen no cumple con los requisitos",
+					Detalles = new
+					{
+						RespuestaIA = validationAnalysis.Response,
+						RawResponse = validationAnalysis.RawResponse,
+						PromptUsado = validationPrompt
+					}
+				});
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error al validar la imagen");
+				return StatusCode(500, new
+				{
+					Error = "Ocurrió un error interno",
+					Detalles = ex.Message
+				});
+			}
+		}
 
-                return Ok(new
-                {
-                    genero,
-                    valido = esValido,
-                    mensaje = esValido
-                        ? "Imagen válida cumple con todos los requisitos"
-                        : "La imagen no cumple con los requisitos de fondo, vestimenta o visibilidad del rostro"
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al validar la imagen");
-                return StatusCode(500, "Ocurrió un error interno al procesar la imagen");
-            }
-        }
+		[HttpGet("status")]
+		public async Task<IActionResult> Status()
+		{
+			try
+			{
+				var response = await _httpClient.GetAsync(OllamaBaseUrl.Replace("/generate", "/tags"));
+				return response.IsSuccessStatusCode
+					? Ok(new { Status = "OK", Ollama = "Conectado" })
+					: StatusCode(503, new { Status = "Error", Ollama = "No responde" });
+			}
+			catch (Exception ex)
+			{
+				_logger.LogError(ex, "Error al verificar estado de Ollama");
+				return StatusCode(503, new
+				{
+					Status = "Error",
+					Ollama = "No se pudo conectar",
+					Error = ex.Message
+				});
+			}
+		}
 
-        [HttpGet("status")]
-        public async Task<IActionResult> Status()
-        {
-            try
-            {
-                var response = await _httpClient.GetAsync(OllamaBaseUrl.Replace("/generate", "/tags"));
-                return response.IsSuccessStatusCode
-                    ? Ok("API FotoValidator disponible y conectada a Ollama")
-                    : StatusCode(503, "API FotoValidator disponible pero Ollama no responde");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al verificar estado de Ollama");
-                return StatusCode(503, "API FotoValidator disponible pero no se pudo conectar a Ollama");
-            }
-        }
+		#region Métodos Privados
 
-        private async Task<string?> EnviarPreguntaALlava(string base64Image, string prompt)
-        {
-            try
-            {
-                var request = new
-                {
-                    model = ModelName,
-                    prompt,
-                    images = new[] { base64Image },
-                    stream = false,
-                    options = new { temperature = 0.2 } // Reduce la creatividad para respuestas más precisas
-                };
+		private IActionResult? ValidateFile(IFormFile file)
+		{
+			if (file == null || file.Length == 0)
+			{
+				_logger.LogWarning("Intento de validación con archivo vacío");
+				return BadRequest("Debe proporcionar un archivo de imagen válido");
+			}
 
-                var requestContent = new StringContent(
-                    JsonSerializer.Serialize(request),
-                    Encoding.UTF8,
-                    "application/json"
-                );
+			var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+			var fileExtension = Path.GetExtension(file.FileName).ToLowerInvariant();
 
-                var response = await _httpClient.PostAsync(OllamaBaseUrl, requestContent);
+			if (!allowedExtensions.Contains(fileExtension))
+			{
+				_logger.LogWarning("Tipo de archivo no permitido: {Extension}", fileExtension);
+				return BadRequest($"Solo se permiten imágenes en formato {string.Join(", ", allowedExtensions)}");
+			}
 
-                if (!response.IsSuccessStatusCode)
-                {
-                    _logger.LogError($"Error en la API Ollama: {response.StatusCode}");
-                    return null;
-                }
+			return null;
+		}
 
-                var result = await response.Content.ReadAsStringAsync();
+		private async Task<AnalysisResult> AnalyzeImage(string base64Image, string prompt)
+		{
+			var request = new
+			{
+				model = ModelName,
+				prompt,
+				images = new[] { base64Image },
+				stream = false,
+				options = new { temperature = 0.2 }
+			};
 
-                using var doc = JsonDocument.Parse(result);
-                return doc.RootElement.TryGetProperty("response", out var res)
-                    ? res.GetString()?.Trim()
-                    : null;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error al comunicarse con Ollama");
-                return null;
-            }
-        }
+			var requestContent = new StringContent(
+				JsonSerializer.Serialize(request),
+				Encoding.UTF8,
+				"application/json"
+			);
 
-        private string ParseGeneroResponse(string? response)
-        {
-            if (string.IsNullOrWhiteSpace(response))
-                return "indeterminado";
+			var response = await _httpClient.PostAsync(OllamaBaseUrl, requestContent);
+			var rawResponse = await response.Content.ReadAsStringAsync();
 
-            var cleanResponse = response.ToLowerInvariant().Trim();
+			if (!response.IsSuccessStatusCode)
+			{
+				_logger.LogError("Error en la API Ollama: {StatusCode} - {Response}",
+					response.StatusCode, rawResponse);
+				return new AnalysisResult
+				{
+					Response = null,
+					RawResponse = rawResponse
+				};
+			}
 
-            if (cleanResponse.Contains("hombre")) return "hombre";
-            if (cleanResponse.Contains("mujer")) return "mujer";
+			using var doc = JsonDocument.Parse(rawResponse);
+			var responseText = doc.RootElement.TryGetProperty("response", out var res)
+				? res.GetString()?.Trim()
+				: null;
 
-            return "indeterminado";
-        }
-    }
+			return new AnalysisResult
+			{
+				Response = responseText,
+				RawResponse = rawResponse
+			};
+		}
+
+		private string ParseGeneroResponse(string? response)
+		{
+			if (string.IsNullOrWhiteSpace(response))
+				return "indeterminado";
+
+			var cleanResponse = response.ToLowerInvariant().Trim();
+
+			if (cleanResponse.Contains("hombre")) return "hombre";
+			if (cleanResponse.Contains("mujer")) return "mujer";
+
+			return "indeterminado";
+		}
+
+		private bool ValidateResponse(string? response)
+		{
+			if (string.IsNullOrWhiteSpace(response))
+				return false;
+
+			var cleanResponse = response.ToLowerInvariant().Trim();
+			return cleanResponse.StartsWith("sí") || cleanResponse.StartsWith("si");
+		}
+
+		private string BuildMaleValidationPrompt()
+		{
+			return @"Analiza la imagen y responde únicamente 'sí' o 'no' considerando estos requisitos:
+			1. Fondo blanco liso
+			2. Persona vistiendo terno formal con corbata
+			3. Rostro claramente visible
+			4. Postura frontal
+			5. Sin accesorios inapropiados
+
+			¿Cumple con todos estos requisitos?";
+		}
+
+		private string BuildFemaleValidationPrompt()
+		{
+			return @"Analiza la imagen y responde únicamente 'sí' o 'no' considerando estos requisitos:
+			1. Fondo blanco liso
+			2. Persona vistiendo blusa formal o traje de oficina
+			3. Rostro claramente visible
+			4. Postura frontal
+			5. Sin accesorios inapropiados
+
+			¿Cumple con todos estos requisitos?";
+		}
+
+		#endregion
+
+		#region Clases de Soporte
+
+		private class AnalysisResult
+		{
+			public string? Response { get; set; }
+			public string? RawResponse { get; set; }
+		}
+
+		public class ValidationResult
+		{
+			public bool Valido { get; set; }
+			public string? Genero { get; set; }
+			public string? Mensaje { get; set; }
+			public object? Detalles { get; set; }
+		}
+
+		[HttpGet("model-info")]
+		public async Task<IActionResult> GetModelInfo()
+		{
+			try
+			{
+				var response = await _httpClient.GetAsync(OllamaBaseUrl.Replace("/generate", "/tags"));
+				if (!response.IsSuccessStatusCode)
+				{
+					return StatusCode(503, new
+					{
+						Status = "Ollama no responde",
+						Error = response.StatusCode
+					});
+				}
+
+				var models = await response.Content.ReadFromJsonAsync<object>();
+				return Ok(new
+				{
+					Status = "OK",
+					ModeloSolicitado = ModelName,
+					ModelosDisponibles = models
+				});
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(503, new
+				{
+					Status = "Error",
+					Error = ex.Message
+				});
+			}
+		}
+		#endregion
+	}
 }

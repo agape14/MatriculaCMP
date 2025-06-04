@@ -12,7 +12,7 @@ namespace MatriculaCMP.Shared
 		public int ConsejoRegionalId { get; set; }
 		public string Nombres { get; set; }
 		public string ApellidoPaterno { get; set; }
-		public string ApellidoMaterno { get; set; }
+		public string? ApellidoMaterno { get; set; }
 		public bool Sexo { get; set; } // true: Masculino, false: Femenino
 		public int EstadoCivilId { get; set; }
 		public int TipoDocumentoId { get; set; }
