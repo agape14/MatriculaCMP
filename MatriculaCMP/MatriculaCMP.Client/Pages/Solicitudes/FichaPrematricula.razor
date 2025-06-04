@@ -3,11 +3,13 @@
 @using MatriculaCMP.Shared
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Components.Web
+@using System.Text.Json
 
 @inject IJSRuntime JS
 @inject PaisUniversidadesService PaisUniversidadesService
 @inject IMatriculaService MatriculaService
 @inject NavigationManager Navigation
+@inject HttpClient Http
 
 <div class="container-fluid">
 	<!-- start page title -->
@@ -504,10 +506,23 @@
 														<div class="custom-file">
 															<InputFile OnChange="@OnFotoSelected" class="custom-file-input" accept=".jpg,.jpeg" />
 															<label class="custom-file-label" for="customFile">Seleccione foto</label>
-															@if (mostrarErrorFoto)
-															{
-																<div class="text-danger">La foto del médico es requerida.</div>
-															}
+															<div class="mt-2">
+																@if (estaValidando)
+																{
+																	<div class="spinner-border text-primary" role="status">
+																		<span class="visually-hidden">Cargando...</span>
+																	</div>
+																	<span class="ms-2">@mensajeValidacion</span>
+																}
+																else if (mostrarErrorFoto)
+																{
+																	<div class="text-danger">@mensajeValidacion</div>
+																}
+																else if (!string.IsNullOrEmpty(mensajeValidacion))
+																{
+																	<div class="text-success">@mensajeValidacion</div>
+																}
+															</div>
 															<ValidationMessage For="@(() => formData.FotoMedico)" />
 														</div>
 													</div>
@@ -590,6 +605,9 @@
 	private string mensajeError;
 	private bool enviando = false;
 	private bool mostrarErrorFoto = false;
+	private bool estaValidando = false;
+	private string mensajeValidacion = string.Empty;
+
 	protected override async Task OnAfterRenderAsync(bool firstRender)
 	{
 		if (firstRender)
@@ -600,11 +618,100 @@
 		}
 	}
 
-	private void OnFotoSelected(InputFileChangeEventArgs e)
+	private async Task OnFotoSelected(InputFileChangeEventArgs e)
 	{
-		fotoFile = e.File;
-		formData.FotoMedico = fotoFile;
-		mostrarErrorFoto = false;
+		try
+		{
+			// Iniciar estado de carga
+			estaValidando = true;
+			mensajeValidacion = "Validando imagen...";
+			mostrarErrorFoto = false;
+			StateHasChanged(); // Forzar actualización de la UI
+
+			fotoFile = e.File;
+
+			// Validación básica del archivo antes de enviar
+			if (fotoFile == null || fotoFile.Size == 0)
+			{
+				mostrarErrorFoto = true;
+				mensajeValidacion = "El archivo está vacío";
+				return;
+			}
+
+			// Validar tipo de archivo
+			var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+			var fileExtension = Path.GetExtension(fotoFile.Name).ToLowerInvariant();
+			if (!allowedExtensions.Contains(fileExtension))
+			{
+				mostrarErrorFoto = true;
+				mensajeValidacion = "Formato no soportado. Use JPG, JPEG o PNG";
+				return;
+			}
+
+			// Validar tamaño (ejemplo: máximo 4MB)
+			if (fotoFile.Size > 4 * 1024 * 1024)
+			{
+				mostrarErrorFoto = true;
+				mensajeValidacion = "La imagen no debe exceder 4MB";
+				return;
+			}
+
+			using var content = new MultipartFormDataContent();
+			using var stream = fotoFile.OpenReadStream(maxAllowedSize: 4 * 1024 * 1024); // 4MB
+			content.Add(new StreamContent(stream), "file", fotoFile.Name);
+
+			var response = await Http.PostAsync("api/FotoValidator/validar", content);
+
+			if (!response.IsSuccessStatusCode)
+			{
+				mostrarErrorFoto = true;
+				mensajeValidacion = "Error al validar la imagen";
+				return;
+			}
+
+			var resultJson = await response.Content.ReadAsStringAsync();
+			var result = JsonSerializer.Deserialize<FotoValidationResult>(resultJson);
+
+			if (result == null)
+			{
+				mostrarErrorFoto = true;
+				mensajeValidacion = "Respuesta inválida del servidor";
+				return;
+			}
+
+			// Evaluar respuesta completa del JSON
+			if (result.valido)
+			{
+				mostrarErrorFoto = false;
+				mensajeValidacion = "✓ Imagen válida";
+				formData.FotoMedico = fotoFile;
+			}
+			else
+			{
+				mostrarErrorFoto = true;
+				mensajeValidacion = result.mensaje ?? "La imagen no cumple los requisitos";
+				formData.FotoMedico = null;
+			}
+		}
+		catch (Exception ex)
+		{
+			mostrarErrorFoto = true;
+			mensajeValidacion = "Error al procesar la imagen";
+			Console.WriteLine($"Error: {ex.Message}");
+		}
+		finally
+		{
+			estaValidando = false;
+			StateHasChanged(); // Actualizar UI al finalizar
+		}
+	}
+
+	// Clase para deserializar la respuesta JSON
+	public class FotoValidationResult
+	{
+		public string? genero { get; set; }
+		public bool valido { get; set; }
+		public string? mensaje { get; set; }
 	}
 
 	protected override async Task OnInitializedAsync()

@@ -55,6 +55,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 			ValidateAudience = false
 		};
 	});//agregado
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy
+            .AllowAnyOrigin() // o .WithOrigins("https://localhost:port") si prefieres restringir
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddMemoryCache();
@@ -64,7 +74,7 @@ builder.Services.AddScoped<UniversidadesService>();
 builder.Services.AddScoped<UniversidadScraper>();
 builder.Services.AddScoped<MatriculaService>();
 var app = builder.Build();
-
+app.UseCors("AllowAll"); // 🔴 Muy importante: debe estar antes de UseAuthorization
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
