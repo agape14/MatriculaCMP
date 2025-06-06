@@ -570,7 +570,7 @@
 	private EditContext editContext;
 	private MatriculaRequest MatriculaRequestModel = new MatriculaRequest();
 
-	
+
 
 
 	private IBrowserFile fotoFile;
@@ -581,7 +581,7 @@
 	private bool mostrarErrorFoto = false;
 	private bool estaValidando = false;
 	private string mensajeValidacion = string.Empty;
-	 private bool mostrarEjemplos = false;
+	private bool mostrarEjemplos = false;
 
 	// Modelos con datos del formulario
 	// protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -690,6 +690,7 @@
 		}
 		finally
 		{
+			enviando = false;
 			estaValidando = false;
 			StateHasChanged(); // Actualizar UI al finalizar
 		}
@@ -713,37 +714,32 @@
 		}
 
 		paisesFiltrados = paises; // Inicialmente todos, pero se ajusta más abajo
-		
+
 
 		editContext = new EditContext(MatriculaRequestModel);
 
 		// Initialize with default values if needed
-		// PersonaModel = new Persona
-		// {
-		// 	ConsejoRegionalId = "3",
-		// 	Nombres = "Agapito",
-		// 	ApellidoPaterno = "De la cruz",
-		// 	ApellidoMaterno = "Carlos",
-		// 	PaisNacimientoId = "356",
-		// 	NumeroDocumento = "45742029",
-		// 	DepartamentoNacimientoId = "1",
-		// 	ProvinciaNacimientoId = "1",
-		// 	DistritoNacimientoId = "1",
-		// 	DescripcionZona = "Zona",
-		// 	DescripcionVia = "Via",
-		// 	DepartamentoDomicilioId = "14",
-		// 	Telefono = "4526544",
-		// 	Celular = "981525451",
-		// 	Email = "adelacruzcarlos@gmail.com",
-		// 	ProvinciaDomicilioId = "1",
-		// 	DistritoDomicilioId = "1",
-		// 	AceptaPoliticas = true
-		// };
 
-		// EducacionModel = new Educacion
-		// {
-		// 	UniversidadOrigen="1"
-		// };
+		formData.ConsejoRegional = "3";
+		formData.Nombres = "Agapito";
+		formData.ApellidoPaterno = "De la cruz";
+		formData.ApellidoMaterno = "Carlos";
+		formData.PaisNacimiento = "356";
+		formData.NumeroDocumento = "45742029";
+		formData.DepartamentoNacimiento = "1";
+		formData.ProvinciaNacimiento = "1";
+		formData.DistritoNacimiento = "1";
+		formData.DescripcionZona = "Zona";
+		formData.DescripcionVia = "Via";
+		formData.DepartamentoDomicilio = "14";
+		formData.Telefono = "4526544";
+		formData.Celular = "981525451";
+		formData.Email = "adelacruzcarlos@gmail.com";
+		formData.ProvinciaDomicilio = "1";
+		formData.DistritoDomicilio = "1";
+		formData.AceptaPoliticas = true;
+		formData.UniversidadOrigen = "1";
+
 		await CargarUniversidades();
 		await CargarUniversidadesPeruanas();
 	}
@@ -904,10 +900,13 @@
 					Telefono = formData.Telefono?.Trim(),
 					Celular = formData.Celular?.Trim(),
 					Email = formData.Email?.Trim().ToLower(),
+					AceptaPoliticas = formData.AceptaPoliticas,
+					FotoMedico=formData.FotoMedico
 				};
 
 			var educacion = new Educacion
 				{
+					UniversidadOrigen=formData.UniversidadOrigen,
 					UniversidadId = int.Parse(formData.Universidad),
 					FechaEmisionTitulo = formData.FechaEmisionTitulo,
 					PaisUniversidadId = int.TryParse(formData.PaisUniversidad, out var paisId) ? paisId : 0,

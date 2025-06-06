@@ -13,7 +13,7 @@ namespace MatriculaCMP.Shared
 		public int PersonaId { get; set; }
 
 
-		[RequiredIf(nameof(UniversidadOrigen), "0", ErrorMessage = "El origen de universidad es requerido")]
+		[Required(ErrorMessage = "El origen de universidad es requerido")]
 		public string UniversidadOrigen { get; set; } = "1"; // Valor por defecto Nacional
 
 		public bool EsExtranjera { get; set; }
@@ -25,8 +25,8 @@ namespace MatriculaCMP.Shared
 		[Required(ErrorMessage = "La fecha de emisión del título es requerida")]
 		public DateTime FechaEmisionTitulo { get; set; }
 
-		[RequiredIf(nameof(TipoValidacion), "reconocimiento", ErrorMessage = "Resolución es requerida")]
-		public string TipoValidacion { get; set; } // "reconocimiento", "revalidacion"
+		//[RequiredIf(nameof(TipoValidacion), "reconocimiento", ErrorMessage = "Resolución es requerida")]
+		public string? TipoValidacion { get; set; } // "reconocimiento", "revalidacion"
 
 		public string? NumeroResolucion { get; set; }
 		public string? ResolucionPath { get; set; }

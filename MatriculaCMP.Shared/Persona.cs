@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace MatriculaCMP.Shared
@@ -29,7 +30,7 @@ namespace MatriculaCMP.Shared
 		public string? ApellidoMaterno { get; set; }
 
 		
-		[RequiredIf(nameof(Sexo), "0", ErrorMessage = "El sexo es requerido")]
+		[Required(ErrorMessage = "El sexo es requerido")]
 		public bool Sexo { get; set; } // true: Masculino, false: Femenino
 
 		[Required(ErrorMessage = "El estado civil es requerido")]
@@ -106,11 +107,12 @@ namespace MatriculaCMP.Shared
 		public string DistritoDomicilioId { get; set; }
 		public string? FotoPath { get; set; }
 
+		[JsonIgnore]
 		[NotMapped] // <- Esto evita que Entity Framework intente mapearlo
 		[Required(ErrorMessage = "La foto del médico es requerida.")]
 		public IBrowserFile FotoMedico { get; set; }
 
-		// Términos y condiciones
+		// Términos y condiciones		
 		[NotMapped] // <- Esto evita que Entity Framework intente mapearlo
 		[Range(typeof(bool), "true", "true", ErrorMessage = "Debe aceptar las políticas de privacidad")]
 		public bool AceptaPoliticas { get; set; }

@@ -48,10 +48,11 @@ namespace MatriculaCMP.Controller
 					return BadRequest(new { message = "No se pudo deserializar los datos de 'Persona' o 'Educacion'." });
 				}
 
+				// Eliminado el guardado de archivos aquí
 				var (success, message) = await _matriculaService.GuardarMatriculaAsync(
 					persona,
 					educacion,
-					Foto,
+					Foto, // Pasamos el IFormFile directamente
 					ResolucionFile);
 
 				return success ? Ok(new { message }) : BadRequest(new { message });
