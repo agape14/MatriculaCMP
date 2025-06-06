@@ -55,11 +55,11 @@ namespace MatriculaCMP.Controller
 					Foto, // Pasamos el IFormFile directamente
 					ResolucionFile);
 
-				return success ? Ok(new { message }) : BadRequest(new { message });
+				return success ? Ok(new { success = true, message = message }) : BadRequest(new { success = false, message = message });
 			}
 			catch (Exception ex)
 			{
-				return StatusCode(500, new { message = $"Error interno del servidor: {ex.Message}" });
+				return StatusCode(500, new { success = false, message = $"Error interno del servidor: {ex.Message}" });
 			}
 		}
 	}

@@ -530,7 +530,7 @@
 								{
 									<div class="alert alert-danger">@mensajeError</div>
 								}
-								<button type="submit" disabled="@enviando" class="btn btn-primary btn-lg btn-block waves-effect waves-light mb-1">
+								<button type="submit" disabled="@(!formularioEsValido || enviando)" class="btn btn-primary btn-lg btn-block waves-effect waves-light mb-1">
 									@if (enviando)
 									{
 										<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -582,6 +582,7 @@
 	private bool estaValidando = false;
 	private string mensajeValidacion = string.Empty;
 	private bool mostrarEjemplos = false;
+	private bool formularioEsValido = false;
 
 	// Modelos con datos del formulario
 	// protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -715,11 +716,7 @@
 
 		paisesFiltrados = paises; // Inicialmente todos, pero se ajusta más abajo
 
-
-		editContext = new EditContext(MatriculaRequestModel);
-
 		// Initialize with default values if needed
-
 		formData.ConsejoRegional = "3";
 		formData.Nombres = "Agapito";
 		formData.ApellidoPaterno = "De la cruz";
@@ -740,8 +737,18 @@
 		formData.AceptaPoliticas = true;
 		formData.UniversidadOrigen = "1";
 
+		editContext = new EditContext(formData);
+		editContext.OnFieldChanged += async (_, __) => await VerificarFormularioValido();
+		await VerificarFormularioValido();
+
 		await CargarUniversidades();
 		await CargarUniversidadesPeruanas();
+	}
+
+	private async Task VerificarFormularioValido()
+	{
+		formularioEsValido = editContext.Validate();
+		await InvokeAsync(StateHasChanged);
 	}
 
 	async Task OnTipoSeleccionado(ChangeEventArgs e)
@@ -944,19 +951,57 @@
 			if (response.IsSuccessStatusCode)
 			{
 				var result = await response.Content.ReadFromJsonAsync<ResponseModel>();
+
 				if (result?.Success == true)
 				{
-					Navigation.NavigateTo("/solicitudes/seguimiento");
+					await JS.InvokeVoidAsync("Swal.fire", new
+					{
+						title = "Éxito",
+						text = result?.Message,
+						icon = "success"
+					});
+
+					LimpiarFormulario();
 				}
 				else
 				{
-					mensajeError = result?.Message ?? "Error desconocido";
+					await JS.InvokeVoidAsync("Swal.fire", new
+					{
+						title = "Error",
+						text = result?.Message ?? "Ocurrió un error al guardar los datos",
+						icon = "error"
+					});
 				}
 			}
 			else
 			{
-				var error = await response.Content.ReadAsStringAsync();
-				mensajeError = $"Error: {response.StatusCode} - {error}";
+				var errorContent = await response.Content.ReadAsStringAsync();
+				var errorMessage = $"Error: {response.StatusCode}";
+
+				try
+				{
+					// Intentar deserializar el error como un objeto { message }
+					var errorObj = JsonSerializer.Deserialize<ResponseModel>(errorContent);
+					if (!string.IsNullOrEmpty(errorObj?.Message))
+					{
+						errorMessage = errorObj.Message;
+					}
+				}
+				catch
+				{
+					// Si no se puede deserializar, usar el contenido como texto plano
+					if (!string.IsNullOrEmpty(errorContent))
+					{
+						errorMessage += $" - {errorContent}";
+					}
+				}
+
+				await JS.InvokeVoidAsync("Swal.fire", new
+				{
+					title = "Error",
+					text = errorMessage,
+					icon = "error"
+				});
 			}
 		}
 		catch (Exception ex)
@@ -969,6 +1014,22 @@
 			enviando = false;
 			StateHasChanged();
 		}
+	}
+
+	private void LimpiarFormulario()
+	{
+		formData = new FormData();
+		editContext = new EditContext(formData);
+		editContext.OnFieldChanged += async (_, __) => await VerificarFormularioValido();
+
+		fotoFile = null;
+		resolucionFile = null;
+		imagePreviewUrl = null;
+		mensajeError = string.Empty;
+		mensajeValidacion = string.Empty;
+		mostrarErrorFoto = false;
+
+		StateHasChanged();
 	}
 
 	public class ResponseModel

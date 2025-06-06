@@ -109,7 +109,7 @@ namespace MatriculaCMP.Shared
 
 		[JsonIgnore]
 		[NotMapped] // <- Esto evita que Entity Framework intente mapearlo
-		[Required(ErrorMessage = "La foto del médico es requerida.")]
+		[Required(ErrorMessage = "La foto del médico es requerida y que este validada.")]
 		public IBrowserFile FotoMedico { get; set; }
 
 		// Términos y condiciones		

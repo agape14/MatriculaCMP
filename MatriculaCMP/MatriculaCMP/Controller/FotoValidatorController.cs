@@ -14,17 +14,19 @@ namespace MatriculaCMP.Controller
 	{
 		private readonly HttpClient _httpClient;
 		private readonly ILogger<FotoValidatorController> _logger;
-		private const string OllamaBaseUrl = "http://localhost:11434/api/generate";
+        private readonly IConfiguration _config;
 		private const string ModelName = "llava:7b";
 		private const int MaxFileSize = 4_000_000; // 4MB
 		public FotoValidatorController(
 			IHttpClientFactory httpClientFactory,
-			ILogger<FotoValidatorController> logger)
+			ILogger<FotoValidatorController> logger, IConfiguration config)
 		{
 			_httpClient = httpClientFactory.CreateClient();
 			_logger = logger;
-			_httpClient.Timeout = TimeSpan.FromSeconds(30); // Timeout de 30 segundos
-		}
+			_httpClient.Timeout = TimeSpan.FromSeconds(50); // Timeout de 30 segundos
+            _config = config;
+            
+        }
 		[HttpPost("validar")]
 		[RequestSizeLimit(5_000_000)]
 		public async Task<IActionResult> ValidarFoto([FromForm] IFormFile file)
@@ -104,7 +106,8 @@ namespace MatriculaCMP.Controller
 		{
 			try
 			{
-				var response = await _httpClient.GetAsync(OllamaBaseUrl.Replace("/generate", "/tags"));
+                var OllamaBaseUrl = _config["ValidaimageIA:LinkIA"];
+                var response = await _httpClient.GetAsync(OllamaBaseUrl.Replace("/generate", "/tags"));
 				return response.IsSuccessStatusCode
 					? Ok(new { Status = "OK", Ollama = "Conectado" })
 					: StatusCode(503, new { Status = "Error", Ollama = "No responde" });
@@ -139,7 +142,8 @@ namespace MatriculaCMP.Controller
 		}
 		private async Task<AnalysisResult> AnalyzeImage(string base64Image, string prompt)
 		{
-			var request = new
+            var OllamaBaseUrl = _config["ValidaimageIA:LinkIA"];
+            var request = new
 			{
 				model = ModelName,
 				prompt,
@@ -254,7 +258,8 @@ namespace MatriculaCMP.Controller
 		[HttpGet("model-info")]
 		public async Task<IActionResult> GetModelInfo()
 		{
-			try
+            var OllamaBaseUrl = _config["ValidaimageIA:LinkIA"];
+            try
 			{
 				var response = await _httpClient.GetAsync(OllamaBaseUrl.Replace("/generate", "/tags"));
 				if (!response.IsSuccessStatusCode)
@@ -331,7 +336,8 @@ namespace MatriculaCMP.Controller
 		[HttpPost("reset-model")]
 		public async Task<IActionResult> ResetModel()
 		{
-			var resetRequest = new
+            var OllamaBaseUrl = _config["ValidaimageIA:LinkIA"];
+            var resetRequest = new
 			{
 				model = ModelName,
 				prompt = "/reset",
