@@ -24,8 +24,11 @@ window.ocultarModal = (id) => {
 
 window.inicializarDataTable = (tableId) => {
     setTimeout(() => {
-        if (!$.fn.DataTable.isDataTable(tableId)) {
-            $(tableId).DataTable({
+        if (typeof $ !== 'undefined' && $.fn.DataTable) {
+            if ($.fn.DataTable.isDataTable(tableId)) {
+                $(tableId).DataTable().destroy(); // Destruye la instancia anterior
+            }
+            $(tableId).DataTable({ // Crea una nueva instancia
                 responsive: true,
                 language: {
                     url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"

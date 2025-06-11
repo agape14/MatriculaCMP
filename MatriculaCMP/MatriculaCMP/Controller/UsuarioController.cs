@@ -1,10 +1,11 @@
-﻿using MatriculaCMP.Shared;
+﻿using MatriculaCMP.Data;
+using MatriculaCMP.Server.Data;
+using MatriculaCMP.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using MatriculaCMP.Server.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -17,11 +18,14 @@ namespace MatriculaCMP.Controller
 	public class UsuarioController : ControllerBase
 	{
 		private readonly ApplicationDbContext _context;
-		public UsuarioController(ApplicationDbContext context)
+		private readonly SgdDbContext _sgdContext;
+		public UsuarioController(ApplicationDbContext context, SgdDbContext sgdContext)
 		{
 
 			_context = context;
-		}
+            _sgdContext = sgdContext;
+
+        }
 
 		[HttpGet("ConexionServidor"), Authorize]
 		public async Task<ActionResult<string>> GetEjemplo()
@@ -153,5 +157,91 @@ namespace MatriculaCMP.Controller
 		}
 
 
-	}
+        //[HttpPost("LoginSgd")]
+        //public async Task<IActionResult> LoginDesdeSgd([FromBody] UsuarioLoginEncryptedDTO dto, [FromServices] SgdDbContext sgdContext)
+        //{
+        //    string clave = "clave-secreta";
+
+        //    try
+        //    {
+        //        string tipoDocumentoDesencriptado = Decrypt(dto.TipoDocumentoEncrypted, clave);
+        //        string numeroDocumentoDesencriptado = Decrypt(dto.NumeroDocumentoEncrypted, clave);
+
+        //        int tipoDoc = int.Parse(tipoDocumentoDesencriptado);
+        //        string numDoc = numeroDocumentoDesencriptado;
+
+        //        var persona = await sgdContext.Persona
+        //            .FirstOrDefaultAsync(p => p.IdCatalogoTipoDocumentoPersonal == tipoDoc && p.NumeroDocumento == numDoc);
+
+        //        if (persona == null)
+        //        {
+        //            return NotFound("No se encontró el usuario. Comuníquese con el administrador.");
+        //        }
+
+        //        return Ok(new
+        //        {
+        //            mensaje = "Login exitoso",
+        //            nombre = persona.NombreCompleto
+        //        });
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        return StatusCode(500, "Error interno: " + ex.Message);
+        //    }
+        //}
+
+
+        // En tu controlador de Usuario
+        [HttpPost("LoginSgd")]
+        public IActionResult LoginSgd([FromBody] UsuarioLoginEncryptedDTO request)
+        {
+            try
+            {
+                // Desencriptar Base64
+                string tipoDoc = DecryptBase64(request.TipoDocumentoEncrypted);
+                string numDoc = DecryptBase64(request.NumeroDocumentoEncrypted);
+
+                // Aquí tu lógica de autenticación con los datos desencriptados
+                // Ejemplo: var usuario = _db.Usuarios.FirstOrDefault(u => u.TipoDoc == tipoDoc && u.NumDoc == numDoc);
+
+                var persona = _sgdContext.Persona
+                    .FirstOrDefault(p => p.IdCatalogoTipoDocumentoPersonal.ToString() == tipoDoc &&
+                            p.NumeroDocumento == numDoc);
+
+                if (persona == null)
+                {
+                    return NotFound("No se encontró el usuario. Comuníquese con el administrador.");
+                }
+
+                return Ok(new { mensaje = "Login correcto", nombre = persona.NombreCompleto });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error al procesar la solicitud: {ex.Message}");
+            }
+        }
+
+        private static string DecryptBase64(string base64String)
+        {
+            byte[] data = Convert.FromBase64String(base64String);
+            return Encoding.UTF8.GetString(data);
+        }
+
+
+        [HttpPost("ProbarDecrypt")]
+        public IActionResult ProbarDecrypt([FromBody] string base64)
+        {
+            try
+            {
+                var resultado = DecryptBase64(base64);
+                return Ok(resultado);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Error: {ex.Message}");
+            }
+        }
+
+
+    }
 }

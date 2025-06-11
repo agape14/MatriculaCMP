@@ -22,7 +22,6 @@
 
   <ItemGroup>
     <Folder Include="Resources\ReferenceImages\" />
-    <Folder Include="wwwroot\js\" />
   </ItemGroup>
 
 </Project>

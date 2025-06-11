@@ -1,5 +1,6 @@
 ﻿@page "/solicitudes/seguimiento"
 @using MatriculaCMP.Shared
+@inject HttpClient Http
 @inject IJSRuntime JS
 
 <div class="container-fluid">
@@ -55,46 +56,54 @@
                        <table id="tblListadoSolicitante" class="table table-centered datatable dt-responsive nowrap dataTable no-footer dtr-inline ml-2 w-100">
                             <thead class="thead-light">
                                 <tr>
-                                    <th>
+                                    @* <th>
                                         <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
-                                    </th>
-                                    <th>Nro. Doc.</th>
+                                    </th> *@
+                                    <th>Nombres Completos</th>
+                                    <th>Documento</th>
+                                    <th>Celular</th>
+                                    <th>Estado</th>
+                                    <th>Universidad</th>
+                                    <th>Tipo Validación</th>
+                                    <th>Fecha Título</th>
+                                    @* <th>Nro. Doc.</th>
                                     <th>Nombres Completos</th>
                                     <th>Fecha Nac.</th>
                                     <th>Lugar Nac.</th>
                                     <th>Estado</th>
                                     <th>Gen. Formatos</th>
+                                    @onclick="() => persona.Seleccionado = !persona.Seleccionado" style="cursor: pointer;"*@
                                     <th>Acción</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var alumno in alumnos)
+                                @foreach (var persona in personas)
                                 {
-                                    <tr @onclick="() => alumno.Seleccionado = !alumno.Seleccionado" style="cursor: pointer;">
-                                        <td>
+                                    <tr>
+                                       @*  <td>
                                             <input type="checkbox" class="form-check-input" @bind="alumno.Seleccionado" @onclick:stopPropagation="true" />
-                                        </td>
-
-                                        <td><a href="javascript:void(0);" class="text-reset fw-bold">@alumno.Numero</a></td>
-                                        <td>@alumno.NombreCompleto</td>
-                                        <td>@alumno.FechaNacimiento</td>
-                                        <td>@alumno.LugarNacimiento</td>
+                                        </td> *@
+                                        <td>@persona.NombresCompletos</td>
+                                        <td>@persona.Documento</td>
+                                        <td>@persona.Celular</td>
                                         <td>
-                                            @if (alumno.Estado == "Registrado")
+                                            @if (persona.Estado == "Registrado")
                                             {
                                                 <div class="badge bg-success text-white font-size-12">Registrado</div>
                                             }
-                                            else if (alumno.Estado == "Por Subsanar")
+                                            else if (persona.Estado == "Por Subsanar")
                                             {
                                                 <div class="badge bg-warning text-white font-size-12">Por Subsanar</div>
                                             }
-                                            else if (alumno.Estado == "Rechazado")
+                                            else if (persona.Estado == "Rechazado")
                                             {
                                                 <div class="badge bg-danger text-white font-size-12">Rechazado</div>
                                             }
                                         </td>
+                                        <td>@persona.Universidad</td>
+                                        <td>@persona.Educaciones</td>
                                         <td>
-                                            <button class="btn btn-light btn-rounded" @onclick="DescargarFormato">
+                                            @persona.FechaTitulo <button class="btn btn-light btn-rounded" @onclick="DescargarFormato">
                                                 Descargar <i class="mdi mdi-download ms-2"></i>
                                             </button>
                                         </td>
@@ -102,7 +111,7 @@
                                             <a href="/solicitudes/prematricula" class="me-3 text-warning" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Sub sanar Pre Matricula">
                                                 <i class="ri-error-warning-line font-size-18"></i>
                                             </a>
-                                            <a href="javascript:void(0);" class="text-danger" @onclick="() => ConfirmarEliminacion(alumno.Id)" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Eliminar registro">
+                                            <a href="javascript:void(0);" class="text-danger" @onclick="() => ConfirmarEliminacion(persona.PersonaId)" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Eliminar registro">
                                                 <i class="mdi mdi-trash-can font-size-18"></i>
                                             </a>
                                         </td>
@@ -133,25 +142,39 @@
 
 @code {
     private bool seleccionarTodos = false;
+    private List<PersonaConEducacionDto> personas = new();
 
-    private List<ListadoPrematricula> alumnos = new()
+    // private List<ListadoPrematricula> alumnos = new()
+    // {
+    //     new ListadoPrematricula {Id=1, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+    //     new ListadoPrematricula {Id=2, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+    //     new ListadoPrematricula {Id=3, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Por Subsanar" },
+    //     new ListadoPrematricula {Id=4, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Rechazado" },
+    //     new ListadoPrematricula {Id=5, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+    //     new ListadoPrematricula {Id=6, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+    //     new ListadoPrematricula {Id=7, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+    //     new ListadoPrematricula {Id=8, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+    //     new ListadoPrematricula {Id=9, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+    //     new ListadoPrematricula {Id=10, Numero = "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+    //     new ListadoPrematricula {Id=11, Numero = "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+    //     new ListadoPrematricula {Id=12, Numero = "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+    //     new ListadoPrematricula {Id=13, Numero = "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+    //     // agrega más registros si deseas
+    // };
+
+    protected override async Task OnInitializedAsync()
     {
-        new ListadoPrematricula {Id=1, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=2, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=3, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Por Subsanar" },
-        new ListadoPrematricula {Id=4, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Rechazado" },
-        new ListadoPrematricula {Id=5, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=6, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=7, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=8, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=9, Numero =  "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=10, Numero = "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=11, Numero = "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=12, Numero = "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        new ListadoPrematricula {Id=13, Numero = "10457854", NombreCompleto = "Gerardo Mendez", FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
-        // agrega más registros si deseas
-    };
+        personas = await Http.GetFromJsonAsync<List<PersonaConEducacionDto>>("api/personaseducacion/con-educacion");
+        await InvokeAsync(StateHasChanged); // Forzar un re-renderizado
+    }
 
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && personas != null) // Verificar que los datos están cargados
+        {
+            await JS.InvokeVoidAsync("inicializarDataTable", "#tblListadoSolicitante");
+        }
+    }
     private async Task ConfirmarEliminacion(int id)
     {
         var confirmado = await JS.InvokeAsync<bool>("confirmarSweet", "¿Estás seguro?", "Esta acción no se puede deshacer");
@@ -175,26 +198,19 @@
         // Aquí puedes agregar la lógica real de descarga
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await JS.InvokeVoidAsync("inicializarDataTable", "#tblListadoSolicitante");
-        }
-    }
 
     private void SeleccionarTodasFilas(ChangeEventArgs e)
     {
         seleccionarTodos = (bool)e.Value;
-        foreach (var alumno in alumnos)
+        foreach (var persona in personas)
         {
-            alumno.Seleccionado = seleccionarTodos;
+            persona.Seleccionado = seleccionarTodos;
         }
     }
 
     private async Task FirmarDigitalmente()
     {
-        var seleccionados = alumnos.Where(a => a.Seleccionado).ToList();
+        var seleccionados = personas.Where(a => a.Seleccionado).ToList();
 
         if (!seleccionados.Any())
         {
@@ -212,7 +228,7 @@
             await JS.InvokeVoidAsync("Swal.fire", new
             {
                 icon = "success",
-                title = $"Firma individual para: {seleccionados.First().NombreCompleto}",
+                title = $"Firma individual para: {seleccionados.First().NombresCompletos}",
                 showConfirmButton = true
             });
         }

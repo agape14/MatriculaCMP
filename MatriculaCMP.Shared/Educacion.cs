@@ -12,8 +12,10 @@ namespace MatriculaCMP.Shared
 		public int Id { get; set; }
 		public int PersonaId { get; set; }
 
+        // Propiedad de navegación
+        public Persona Persona { get; set; }
 
-		[Required(ErrorMessage = "El origen de universidad es requerido")]
+        [Required(ErrorMessage = "El origen de universidad es requerido")]
 		public string UniversidadOrigen { get; set; } = "1"; // Valor por defecto Nacional
 
 		public bool EsExtranjera { get; set; }

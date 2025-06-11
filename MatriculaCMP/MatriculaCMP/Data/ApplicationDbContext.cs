@@ -10,11 +10,6 @@ namespace MatriculaCMP.Server.Data
 		{
 		}
 
-		protected override void OnModelCreating(ModelBuilder modelBuilder)
-		{
-		}
-
-
 		public DbSet<Usuario> Usuarios { get; set; }
 		public DbSet<Menu> Menu { get; set; }
 		public DbSet<Perfil> Perfil { get; set; }
@@ -32,5 +27,14 @@ namespace MatriculaCMP.Server.Data
         public DbSet<ZonaDomicilio> ZonaDomicilios { get; set; }
         public DbSet<ViaDomicilio> ViaDomicilios { get; set; }
         public DbSet<Educacion> Educaciones { get; set; }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Educacion>()
+                .HasOne(e => e.Persona)          // Cada Educación tiene una Persona
+                .WithMany(p => p.Educaciones)    // Cada Persona tiene muchas Educaciones
+                .HasForeignKey(e => e.PersonaId) // La FK es PersonaId
+                .OnDelete(DeleteBehavior.Cascade); // Opcional: Eliminar en cascada
+        }
     }
 }

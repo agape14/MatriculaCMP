@@ -1,4 +1,63 @@
-﻿@page "/login"
+﻿@page "/"
+@layout LoginLayout
+@using MatriculaCMP.Client.Layout
+@using MatriculaCMP.Shared
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<h3>Login desde SGD</h3>
+
+<div>
+    <input @bind="TipoDocumento" placeholder="Tipo Documento" />
+    <input @bind="NumeroDocumento" placeholder="Numero Documento" />
+    <button @onclick="IniciarSesion">Login</button>
+</div>
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <p style="color:red">@mensaje</p>
+}
+
+@code {
+    string TipoDocumento;
+    string NumeroDocumento;
+    string mensaje;
+
+    private async Task IniciarSesion()
+    {
+        // Encriptar en Base64 usando JavaScript
+        string tipoEncriptado = await JS.InvokeAsync<string>("btoa", TipoDocumento);
+        string numeroEncriptado = await JS.InvokeAsync<string>("btoa", NumeroDocumento);
+
+        var dto = new UsuarioLoginEncryptedDTO
+        {
+            TipoDocumentoEncrypted = tipoEncriptado,
+            NumeroDocumentoEncrypted = numeroEncriptado
+        };
+
+        var response = await Http.PostAsJsonAsync("api/usuario/LoginSgd", dto);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var data = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
+            mensaje = data["mensaje"];
+            Nav.NavigateTo("/home");
+        }
+        else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            mensaje = "Usuario no encontrado. Comuníquese con el administrador.";
+        }
+        else
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            mensaje = $"Error: {response.StatusCode} - {error}";
+        }
+
+    }
+}
+
+@* @page "/login"
 @layout LoginLayout
 @using MatriculaCMP.Client.Layout
 @using MatriculaCMP.Shared
@@ -56,17 +115,6 @@
                                     </div>
 
 
-                                    @*
-                                    <div class="form-group auth-form-group-custom mb-4">
-                                        <i class="ri-lock-2-line auti-custom-input-icon"></i>
-                                        <label for="userpassword">Contraseña</label>
-                                        <input type="password" class="form-control" @bind-value=usuario.Password @onkeypress="VerificarEnter" @ref="passwordInput" />
-                                    </div>
-
-                                    <div class="custom-control custom-checkbox">
-                                        <input type="checkbox" class="form-check-input" id="recordarme" @bind="recordarme">
-                                        <label class="form-check-label" for="recordarme">Recordarme</label>
-                                    </div> *@
                                   
                                     <div class="form-check">
                                         <input type="checkbox" class="form-check-input" id="recordarme" @bind="recordarme">
@@ -222,3 +270,4 @@
         passwordFieldType = passwordFieldType == "password" ? "text" : "password";
     }
 }
+ *@

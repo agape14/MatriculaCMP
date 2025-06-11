@@ -117,5 +117,9 @@ namespace MatriculaCMP.Shared
 		[Range(typeof(bool), "true", "true", ErrorMessage = "Debe aceptar las políticas de privacidad")]
 		public bool AceptaPoliticas { get; set; }
 		public DateTime FechaRegistro { get; set; } = DateTime.Now;
-	}
+
+
+        // Relación con Educación (una persona puede tener muchas educaciones)
+        public List<Educacion> Educaciones { get; set; } = new List<Educacion>();
+    }
 }

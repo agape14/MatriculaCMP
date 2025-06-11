@@ -1,14 +1,15 @@
 ﻿using MatriculaCMP.Client.Pages;
 using MatriculaCMP.Components;
+using MatriculaCMP.Data;
+using MatriculaCMP.Interfaces;
+using MatriculaCMP.Server.Data;
+using MatriculaCMP.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using Microsoft.EntityFrameworkCore;
-using MatriculaCMP.Server.Data;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using MatriculaCMP.Services;
-using MatriculaCMP.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,6 +43,15 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 		});
 });
 
+builder.Services.AddDbContext<SgdDbContext>(options =>
+{
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("SGDConnection"),
+        sqlOptions =>
+        {
+            sqlOptions.CommandTimeout(600); // 10 minutos
+        });
+});
 builder.Services.AddMvc();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 	.AddJwtBearer(options =>
