@@ -6,54 +6,63 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
-<h3>Login desde SGD</h3>
+<style>
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+</style>
 
-<div>
-    <input @bind="TipoDocumento" placeholder="Tipo Documento" />
-    <input @bind="NumeroDocumento" placeholder="Numero Documento" />
-    <button @onclick="IniciarSesion">Login</button>
+<div class="login-container">
+    <button class="btn btn-danger  waves-effect waves-light" @onclick="IniciarSesion">INICIAR SESIÓN DESDE SGD</button>
 </div>
 
 @if (!string.IsNullOrEmpty(mensaje))
 {
-    <p style="color:red">@mensaje</p>
+    <p style="color:red; text-align: center">@mensaje</p>
 }
 
 @code {
-    string TipoDocumento;
-    string NumeroDocumento;
-    string mensaje;
+    private string mensaje;
+    // Valores por defecto
+    private string TipoDocumento = "2";
+    private string NumeroDocumento = "41342572";
 
     private async Task IniciarSesion()
     {
-        // Encriptar en Base64 usando JavaScript
-        string tipoEncriptado = await JS.InvokeAsync<string>("btoa", TipoDocumento);
-        string numeroEncriptado = await JS.InvokeAsync<string>("btoa", NumeroDocumento);
-
-        var dto = new UsuarioLoginEncryptedDTO
+        try
         {
-            TipoDocumentoEncrypted = tipoEncriptado,
-            NumeroDocumentoEncrypted = numeroEncriptado
-        };
+            // Encriptar en Base64 usando JavaScript
+            string tipoEncriptado = await JS.InvokeAsync<string>("btoa", TipoDocumento);
+            string numeroEncriptado = await JS.InvokeAsync<string>("btoa", NumeroDocumento);
 
-        var response = await Http.PostAsJsonAsync("api/usuario/LoginSgd", dto);
+            var dto = new UsuarioLoginEncryptedDTO
+                {
+                    TipoDocumentoEncrypted = tipoEncriptado,
+                    NumeroDocumentoEncrypted = numeroEncriptado
+                };
 
-        if (response.IsSuccessStatusCode)
-        {
-            var data = await response.Content.ReadFromJsonAsync<Dictionary<string, string>>();
-            mensaje = data["mensaje"];
-            Nav.NavigateTo("/home");
+            var response = await Http.PostAsJsonAsync("api/usuario/LoginSgd", dto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Nav.NavigateTo("/home");
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                mensaje = "Usuario no encontrado. Comuníquese con el administrador.";
+            }
+            else
+            {
+                mensaje = $"Error: {response.StatusCode}";
+            }
         }
-        else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        catch (Exception ex)
         {
-            mensaje = "Usuario no encontrado. Comuníquese con el administrador.";
+            mensaje = $"Error inesperado: {ex.Message}";
         }
-        else
-        {
-            var error = await response.Content.ReadAsStringAsync();
-            mensaje = $"Error: {response.StatusCode} - {error}";
-        }
-
     }
 }
 

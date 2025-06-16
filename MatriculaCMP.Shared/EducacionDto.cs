@@ -9,6 +9,6 @@ namespace MatriculaCMP.Shared
     public class EducacionDto
     {
         public int UniversidadId { get; set; }
-        public DateTime FechaEmision { get; set; }
+        public DateTime? FechaEmision { get; set; }
     }
 }

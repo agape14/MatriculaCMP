@@ -66,13 +66,6 @@
                                     <th>Universidad</th>
                                     <th>Tipo Validación</th>
                                     <th>Fecha Título</th>
-                                    @* <th>Nro. Doc.</th>
-                                    <th>Nombres Completos</th>
-                                    <th>Fecha Nac.</th>
-                                    <th>Lugar Nac.</th>
-                                    <th>Estado</th>
-                                    <th>Gen. Formatos</th>
-                                    @onclick="() => persona.Seleccionado = !persona.Seleccionado" style="cursor: pointer;"*@
                                     <th>Acción</th>
                                 </tr>
                             </thead>
@@ -99,11 +92,16 @@
                                             {
                                                 <div class="badge bg-danger text-white font-size-12">Rechazado</div>
                                             }
+                                            else
+                                            {
+                                                <div class="badge bg-success text-white font-size-12">Registrado</div>
+                                            }
                                         </td>
-                                        <td>@persona.Universidad</td>
-                                        <td>@persona.Educaciones</td>
+                                        <td>@(persona.Educaciones.FirstOrDefault()?.UniversidadId ?? 0)</td>
+                                        <td></td>
                                         <td>
-                                            @persona.FechaTitulo <button class="btn btn-light btn-rounded" @onclick="DescargarFormato">
+                                            @(persona.Educaciones.FirstOrDefault()?.FechaEmision) <br />
+                                            <button class="btn btn-light btn-rounded" @onclick="DescargarFormato">
                                                 Descargar <i class="mdi mdi-download ms-2"></i>
                                             </button>
                                         </td>

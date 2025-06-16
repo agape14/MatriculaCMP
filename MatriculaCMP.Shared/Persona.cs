@@ -29,8 +29,12 @@ namespace MatriculaCMP.Shared
 		[StringLength(50, ErrorMessage = "El apellido materno no puede exceder los 50 caracteres")]
 		public string? ApellidoMaterno { get; set; }
 
-		
-		[Required(ErrorMessage = "El sexo es requerido")]
+        // ✅ Propiedad calculada solo para visualización
+        [NotMapped]
+        public string NombresCompletos => $"{Nombres} {ApellidoPaterno} {ApellidoMaterno}";
+
+
+        [Required(ErrorMessage = "El sexo es requerido")]
 		public bool Sexo { get; set; } // true: Masculino, false: Femenino
 
 		[Required(ErrorMessage = "El estado civil es requerido")]

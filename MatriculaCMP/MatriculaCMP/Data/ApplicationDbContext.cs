@@ -28,13 +28,43 @@ namespace MatriculaCMP.Server.Data
         public DbSet<ViaDomicilio> ViaDomicilios { get; set; }
         public DbSet<Educacion> Educaciones { get; set; }
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        //Tablas maestras existentes en la bd
+		public DbSet<Mat_ConsejoRegional> Mat_ConsejoRegional { get; set; }
+		public DbSet<MaestroRegistro> MaestroRegistro { get; set; }
+		public DbSet<Mat_Pais> MatPaises { get; set; }
+		public DbSet<Mat_Ubigeo> MatUbigeos { get; set; }
+		protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Educacion>()
                 .HasOne(e => e.Persona)          // Cada Educación tiene una Persona
                 .WithMany(p => p.Educaciones)    // Cada Persona tiene muchas Educaciones
                 .HasForeignKey(e => e.PersonaId) // La FK es PersonaId
                 .OnDelete(DeleteBehavior.Cascade); // Opcional: Eliminar en cascada
-        }
+
+			// Evita que EF intente crear o modificar la tabla en futuras migraciones
+			modelBuilder.Entity<Mat_ConsejoRegional>(entity =>
+			{
+				entity.ToTable("Mat_ConsejoRegional");
+				entity.HasKey(e => e.ConsejoRegional_Key);
+			});
+
+			modelBuilder.Entity<MaestroRegistro>(entity =>
+			{
+				entity.ToTable("MaestroRegistro");
+				entity.HasKey(e => e.MaestroRegistro_Key);
+			});
+			
+			modelBuilder.Entity<Mat_Pais>(entity =>
+			{
+				entity.ToTable("Mat_Pais");
+				entity.HasKey(e => e.Pais_key);
+			});
+
+			modelBuilder.Entity<Mat_Ubigeo>(entity =>
+			{
+				entity.ToTable("Mat_Ubigeo");
+				entity.HasKey(e => e.UbigeoKey);
+			});
+		}
     }
 }

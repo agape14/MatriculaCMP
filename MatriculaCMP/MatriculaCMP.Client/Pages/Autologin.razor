@@ -1,0 +1,60 @@
+﻿@page "/autologin"
+@layout LoginLayout
+@using MatriculaCMP.Client.Layout
+@using MatriculaCMP.Shared
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<style>
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+</style>
+<div class="login-container">
+    <h3>Iniciando sesión automáticamente...</h3>
+</div>
+
+
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery]
+    public string Token { get; set; }
+
+    private bool isTokenValid = false;
+    private bool shouldRedirect = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(Token))
+        {
+            var response = await Http.GetAsync($"api/usuario/validate?token={Token}");
+            isTokenValid = response.IsSuccessStatusCode;
+            shouldRedirect = true;
+        }
+        else
+        {
+            Nav.NavigateTo("/", true);
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && shouldRedirect)
+        {
+            if (isTokenValid)
+            {
+                await JS.InvokeVoidAsync("localStorage.setItem", "authToken", Token);
+                Nav.NavigateTo("/home", true);
+            }
+            else
+            {
+                Nav.NavigateTo("/", true);
+            }
+        }
+    }
+}

@@ -19,7 +19,14 @@ builder.Services.AddRazorComponents()
 builder.Services.AddAuthorizationCore();//Agregado
 builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();//Agregado
 builder.Services.AddControllers();//agregado
-builder.Services.AddHttpClient();//Agregado
+//builder.Services.AddHttpClient();//Agregado
+// Para IHttpClientFactory (necesario para FotoValidatorController)
+builder.Services.AddHttpClient();
+builder.Services.AddScoped(sp => new HttpClient
+{
+    BaseAddress = new Uri(builder.Configuration["FrontendUrl"]) // ← pon aquí la URL de tu API
+});
+
 builder.Services.AddCascadingAuthenticationState();//Agregado
 builder.Services.AddScoped<MenuService>();
 
@@ -56,15 +63,18 @@ builder.Services.AddMvc();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 	.AddJwtBearer(options =>
 	{
-		options.TokenValidationParameters = new TokenValidationParameters
-		{
-			ValidateIssuerSigningKey = true,
-			IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8
-				.GetBytes("PROYECTO COLEGIO MEDICO DEL PERU EN BLAZOR WEB WASM_ DAGO PARA BLAZOR FOR AGAPE_DEV")),
-			ValidateIssuer = false,
-			ValidateAudience = false
-		};
-	});//agregado
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+        };
+    });//agregado
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>

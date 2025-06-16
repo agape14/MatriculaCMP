@@ -19,12 +19,13 @@ namespace MatriculaCMP.Controller
 	{
 		private readonly ApplicationDbContext _context;
 		private readonly SgdDbContext _sgdContext;
-		public UsuarioController(ApplicationDbContext context, SgdDbContext sgdContext)
+        private readonly IConfiguration _config;
+        public UsuarioController(ApplicationDbContext context, SgdDbContext sgdContext, IConfiguration config)
 		{
 
 			_context = context;
             _sgdContext = sgdContext;
-
+            _config = config;
         }
 
 		[HttpGet("ConexionServidor"), Authorize]
@@ -191,7 +192,6 @@ namespace MatriculaCMP.Controller
         //}
 
 
-        // En tu controlador de Usuario
         [HttpPost("LoginSgd")]
         public IActionResult LoginSgd([FromBody] UsuarioLoginEncryptedDTO request)
         {
@@ -200,9 +200,6 @@ namespace MatriculaCMP.Controller
                 // Desencriptar Base64
                 string tipoDoc = DecryptBase64(request.TipoDocumentoEncrypted);
                 string numDoc = DecryptBase64(request.NumeroDocumentoEncrypted);
-
-                // Aquí tu lógica de autenticación con los datos desencriptados
-                // Ejemplo: var usuario = _db.Usuarios.FirstOrDefault(u => u.TipoDoc == tipoDoc && u.NumDoc == numDoc);
 
                 var persona = _sgdContext.Persona
                     .FirstOrDefault(p => p.IdCatalogoTipoDocumentoPersonal.ToString() == tipoDoc &&
@@ -213,7 +210,11 @@ namespace MatriculaCMP.Controller
                     return NotFound("No se encontró el usuario. Comuníquese con el administrador.");
                 }
 
-                return Ok(new { mensaje = "Login correcto", nombre = persona.NombreCompleto });
+                // Generar token de autenticación (ejemplo simplificado)
+                var token = GenerateJwtToken(persona);
+
+                // Redirigir a la aplicación con el token de autenticación
+                return Redirect($"{_config["FrontendUrl"]}/autologin?token={token}");
             }
             catch (Exception ex)
             {
@@ -242,6 +243,71 @@ namespace MatriculaCMP.Controller
             }
         }
 
+        // En tu controlador API
+        [HttpGet("LoginSgdRedirect")]
+        public IActionResult LoginSgdRedirect([FromQuery] string tipo, [FromQuery] string numero)
+        {
+            var dto = new UsuarioLoginEncryptedDTO
+            {
+                TipoDocumentoEncrypted = tipo,
+                NumeroDocumentoEncrypted = numero
+            };
 
+            // Llama al método POST original
+            return LoginSgd(dto);
+        }
+
+        private string GenerateJwtToken(PersonaSGD persona)
+        {
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+            var claims = new[]
+            {
+                new Claim(JwtRegisteredClaimNames.Sub, persona.NumeroDocumento),
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim("nombrescompletos", persona.NombreCompleto),
+                new Claim("tipoDocumento", persona.IdCatalogoTipoDocumentoPersonal.ToString())
+                // Agrega más claims según necesites
+            };
+
+            var token = new JwtSecurityToken(
+                issuer: _config["Jwt:Issuer"],
+                audience: _config["Jwt:Audience"],
+                claims: claims,
+                expires: DateTime.Now.AddMinutes(30),
+                signingCredentials: credentials
+            );
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+        [HttpGet("validate")]
+        public IActionResult ValidateToken([FromQuery] string token)
+        {
+            try
+            {
+                var tokenHandler = new JwtSecurityTokenHandler();
+                var key = Encoding.ASCII.GetBytes(_config["Jwt:Key"]);
+
+                tokenHandler.ValidateToken(token, new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = new SymmetricSecurityKey(key),
+                    ValidateIssuer = true,
+                    ValidIssuer = _config["Jwt:Issuer"],
+                    ValidateAudience = true,
+                    ValidAudience = _config["Jwt:Audience"],
+                    ValidateLifetime = true,
+                    ClockSkew = TimeSpan.Zero
+                }, out SecurityToken validatedToken);
+
+                return Ok(new { valid = true });
+            }
+            catch
+            {
+                return Unauthorized(new { valid = false });
+            }
+        }
     }
 }

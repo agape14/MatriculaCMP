@@ -47,9 +47,9 @@
 											<label for="lblConsejoRegional">Consejo Regional *</label>
 											<InputSelect @bind-Value="formData.ConsejoRegional" class="form-control" id="cbxConsejoRegional" requiered>
 												<option value="">Seleccione...</option>
-												@foreach (var consejo in ConsejosRegionales)
+												@foreach (var consejo in consejos)
 												{
-													<option value="@consejo.Value">@consejo.Text</option>
+													<option value="@consejo.ConsejoRegional_Key">@consejo.Nombre</option>
 												}
 											</InputSelect>
 											<ValidationMessage For="@(() => formData.ConsejoRegional)" />
@@ -97,11 +97,11 @@
 												<div class="form-group">
 													<label for="ec">Estado Civil *</label>
 													<InputSelect @bind-Value="formData.EstadoCivil" class="form-control" id="ec">
-														<option value="70">Casado</option>
-														<option value="73">Conviviente</option>
-														<option value="72">Divorciado</option>
-														<option value="69">Soltero</option>
-														<option value="71">Viudo</option>
+														<option value="">Seleccione...</option>
+														@foreach (var ec in estacivil)
+														{
+															<option value="@ec.MaestroRegistro_Key">@ec.Nombre</option>
+														}
 													</InputSelect>
 													<ValidationMessage For="@(() => formData.EstadoCivil)" />
 												</div>
@@ -111,8 +111,11 @@
 												<div class="form-group">
 													<label for="td">Tipo de Documento *</label>
 													<InputSelect @bind-Value="formData.TipoDocumento" class="form-control" id="td">
-														<option value="64">Carnet Extranjeria</option>
-														<option value="62" selected>DNI</option>
+														<option value="">Seleccione...</option>
+														@foreach (var td in tipodoc)
+														{
+															<option value="@td.MaestroRegistro_Key">@td.Nombre</option>
+														}
 													</InputSelect>
 													<ValidationMessage For="@(() => formData.TipoDocumento)" />
 												</div>
@@ -128,14 +131,11 @@
 												<div class="form-group">
 													<label for="gs">Grupo Sanguineo *</label>
 													<InputSelect @bind-Value="formData.GrupoSanguineo" class="form-control" id="gs">
-														<option value="173">A+</option>
-														<option value="174">A-</option>
-														<option value="171">AB+</option>
-														<option value="172">AB-</option>
-														<option value="175">B+</option>
-														<option value="176">B-</option>
-														<option value="177">O+</option>
-														<option value="178">O-</option>
+														<option value="">Seleccione...</option>
+														@foreach (var gs in gruposang)
+														{
+															<option value="@gs.MaestroRegistro_Key">@gs.Nombre</option>
+														}
 													</InputSelect>
 													<ValidationMessage For="@(() => formData.GrupoSanguineo)" />
 												</div>
@@ -151,10 +151,10 @@
 												<div class="form-group">
 													<label for="pais">País *</label>
 													<InputSelect @bind-Value="formData.PaisNacimiento" class="form-control" id="pais">
-														<option value="">Seleccione país</option>
-														@foreach (var pais in paises)
+														<option value="">Seleccione Pais Nacimiento</option>
+														@foreach (var pais in matpaises)
 														{
-															<option value="@pais.Id" >
+															<option value="@pais.Pais_key" >
 																@pais.Nombre
 															</option>
 														}
@@ -164,20 +164,31 @@
 											</div>
 											<div class="col-md-3">
 												<div class="form-group">
-													<label for="departamento">Departamento *</label>
-													<InputSelect @bind-Value="formData.DepartamentoNacimiento" class="form-control" id="departamento">
+													<label for="departamentonac">Departamento *</label>
+													<InputSelect TValue="string"
+													 Value="@formData.DepartamentoNacimiento"
+													 ValueChanged="@((string val) => OnLoadProvincias(val))"
+													 ValueExpression="@(() => formData.DepartamentoNacimiento)"
+													 class="form-control">
 														<option value="">Seleccione Departamento Nacimiento</option>
-														<option value="1">LIMA</option>
+														@foreach (var depto in departamentos)
+														{
+															<option value="@depto.DepartamentoId">@depto.Nombre</option>
+														}
 													</InputSelect>
+
 													<ValidationMessage For="@(() => formData.DepartamentoNacimiento)" />
 												</div>
 											</div>
 											<div class="col-md-3">
 												<div class="form-group">
 													<label for="provincia">Provincia *</label>
-													<InputSelect @bind-Value="formData.ProvinciaNacimiento" class="form-control" id="provincia">
+													<InputSelect @bind-Value="formData.ProvinciaNacimiento" class="form-control" id="provincia"	 @onchange="LoadDistritos">
 														<option value="">Seleccione Provincia Nacimiento</option>
-														<option value="1">LIMA</option>
+														@foreach (var prov in provincias)
+														{
+															<option value="@prov.ProvinciaId">@prov.Nombre</option>
+														}
 													</InputSelect>
 													<ValidationMessage For="@(() => formData.ProvinciaNacimiento)" />
 												</div>
@@ -186,8 +197,11 @@
 												<div class="form-group">
 													<label for="distrito">Distrito *</label>
 													<InputSelect @bind-Value="formData.DistritoNacimiento" class="form-control" id="distrito">
-														<option value="">Seleccione DistritoNacimiento</option>
-														<option value="1">LIMA</option>
+														<option value="">Seleccione Distrito Nacimiento</option>
+														@foreach (var dist in distritos)
+														{
+															<option value="@dist.UbigeoId">@dist.Nombre</option>
+														}
 													</InputSelect>
 													<ValidationMessage For="@(() => formData.DistritoNacimiento)" />
 												</div>
@@ -212,16 +226,10 @@
 													<label for="zona">Zona *</label>
 													<InputSelect @bind-Value="formData.ZonaDomicilio" class="form-control" id="zona">
 														<option value="">Seleccione Zona Domicilio</option>
-														<option value="8">ASENTAMIENTO HUMANO</option>
-														<option value="9">ASOCIACION</option>
-														<option value="10">CONDOMINIO</option>
-														<option value="11">CONJUNTO  HABITACIONAL</option>
-														<option value="580">COOPERATIVA</option>
-														<option value="587">OTRO</option>
-														<option value="579">PUEBLO JOVEN</option>
-														<option value="12">RESIDENCIAL</option>
-														<option value="14">UNIDAD VECINAL</option>
-														<option value="13">URBANIZACION</option>
+														@foreach (var zona in zonas)
+														{
+															<option value="@zona.MaestroRegistro_Key">@zona.Nombre</option>
+														}
 													</InputSelect>
 													<ValidationMessage For="@(() => formData.ZonaDomicilio)" />
 												</div>
@@ -238,12 +246,10 @@
 													<label for="via">Vía *</label>
 													<InputSelect @bind-Value="formData.ViaDomicilio" class="form-control" id="via">
 														<option value="">Seleccione Via Domicilio</option>
-														<option value="1">AVENIDA</option>
-														<option value="2">BARRIO</option>
-														<option value="3">CALLE</option>
-														<option value="4">JIRON</option>
-														<option value="578">MALECON</option>
-														<option value="6">PASAJE</option>
+														@foreach (var via in vias)
+														{
+															<option value="@via.MaestroRegistro_Key">@via.Nombre</option>
+														}
 													</InputSelect>
 													<ValidationMessage For="@(() => formData.ViaDomicilio)" />
 												</div>
@@ -569,9 +575,13 @@
 	private FormData formData = new FormData();
 	private EditContext editContext;
 	private MatriculaRequest MatriculaRequestModel = new MatriculaRequest();
-
-
-
+	private List<Mat_ConsejoRegional> consejos = new();
+	private List<MaestroRegistro> estacivil = new();
+	private List<MaestroRegistro> tipodoc = new();
+	private List<MaestroRegistro> gruposang = new();
+	private List<MaestroRegistro> zonas = new();
+	private List<MaestroRegistro> vias = new();
+	private List<Mat_Pais> matpaises = new();
 
 	private IBrowserFile fotoFile;
 	private string? imagePreviewUrl;
@@ -584,16 +594,11 @@
 	private bool mostrarEjemplos = false;
 	private bool formularioEsValido = false;
 
-	// Modelos con datos del formulario
-	// protected override async Task OnAfterRenderAsync(bool firstRender)
-	// {
-	// 	if (firstRender)
-	// 	{
-	// 		await JS.InvokeVoidAsync("select2interop.init", "#pais_uni");
-	// 		await JS.InvokeVoidAsync("select2interop.init", "#nombre_uni");
-	// 		await JS.InvokeVoidAsync("select2interop.init", "#universidad_peruana");
-	// 	}
-	// }
+	private List<Mat_Ubigeo> departamentos = new List<Mat_Ubigeo>();
+	private List<Mat_Ubigeo> provincias = new List<Mat_Ubigeo>();
+	private List<Mat_Ubigeo> distritos = new List<Mat_Ubigeo>();
+	private string selectedDepartamento;
+	private string selectedProvincia;
 
 	private async Task OnFotoSelected(InputFileChangeEventArgs e)
 	{
@@ -707,6 +712,15 @@
 
 	protected override async Task OnInitializedAsync()
 	{
+		consejos = await Http.GetFromJsonAsync<List<Mat_ConsejoRegional>>("api/consejoregional");
+		tipodoc = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/23");
+		estacivil = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/21");
+		gruposang = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/19");
+		zonas = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/17");
+		vias = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/16");
+		matpaises = await Http.GetFromJsonAsync<List<Mat_Pais>>("/api/MatPais");
+		departamentos = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>("api/MatUbigeo/departamentos");
+
 		paises = await PaisUniversidadesService.ObtenerPaisesAsync();
 		var peru = paises.FirstOrDefault(p => p.Nombre.ToLower().Contains("perú"));
 		if (peru != null)
@@ -738,18 +752,18 @@
 		formData.UniversidadOrigen = "1";
 
 		editContext = new EditContext(formData);
-		editContext.OnFieldChanged += async (_, __) => await VerificarFormularioValido();
-		await VerificarFormularioValido();
+		// editContext.OnFieldChanged += async (_, __) => await VerificarFormularioValido();
+		// await VerificarFormularioValido();
 
 		await CargarUniversidades();
 		await CargarUniversidadesPeruanas();
 	}
 
-	private async Task VerificarFormularioValido()
-	{
-		formularioEsValido = editContext.Validate();
-		await InvokeAsync(StateHasChanged);
-	}
+	// private async Task VerificarFormularioValido()
+	// {
+	// 	formularioEsValido = editContext.Validate();
+	// 	await InvokeAsync(StateHasChanged);
+	// }
 
 	async Task OnTipoSeleccionado(ChangeEventArgs e)
 	{
@@ -822,44 +836,49 @@
 		universidadesperuanas = await PaisUniversidadesService.ObtenerUniversidadesAsync(peruselect.Id);
 	}
 
+	private async Task OnLoadProvincias(string selected)
+	{
+		formData.DepartamentoNacimiento = selected;
+		provincias = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>($"api/MatUbigeo/provincias/{selected}");
+	}
+	// async Task OnLoadProvincias(ChangeEventArgs e)
+	// {
+	// 	selectedDepartamento = e.Value?.ToString();
+	// 	formData.DepartamentoDomicilio = selectedDepartamento;
+
+	// 	if (!string.IsNullOrEmpty(selectedDepartamento))
+	// 	{
+	// 		provincias = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>($"api/Ubigeo/provincias/{selectedDepartamento}");
+	// 		selectedProvincia = null;
+	// 		distritos.Clear();
+	// 	}
+	// 	else
+	// 	{
+	// 		provincias.Clear();
+	// 		distritos.Clear();
+	// 	}
+	// }
+
+	async Task LoadDistritos(ChangeEventArgs e)
+	{
+		selectedProvincia = e.Value?.ToString();
+		formData.ProvinciaDomicilio = selectedProvincia;
+
+		if (!string.IsNullOrEmpty(selectedDepartamento) && !string.IsNullOrEmpty(selectedProvincia))
+		{
+			distritos = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>(
+				$"api/Ubigeo/distritos/{selectedDepartamento}/{selectedProvincia}");
+		}
+		else
+		{
+			distritos.Clear();
+		}
+	}
 	 public class SelectListItem
     {
         public string Value { get; set; }
         public string Text { get; set; }
     }
-
-	// Luego declara la lista
-	private List<SelectListItem> ConsejosRegionales = new List<SelectListItem>
-	{
-		new SelectListItem { Value = "1", Text = "CONSEJO REGIONAL I - LA LIBERTAD" },
-		new SelectListItem { Value = "2", Text = "CONSEJO REGIONAL II - IQUITOS" },
-        // Agrega todos los consejos regionales
-        new SelectListItem { Value = "3", Text = "CONSEJO REGIONAL III - LIMA" },
-		new SelectListItem { Value = "4", Text = "CONSEJO REGIONAL IV - JUNIN" },
-		new SelectListItem { Value = "9", Text = "CONSEJO REGIONAL IX - ICA" },
-		new SelectListItem { Value = "5", Text = "CONSEJO REGIONAL V - AREQUIPA" },
-		new SelectListItem { Value = "6", Text = "CONSEJO REGIONAL VI - CUZCO" },
-		new SelectListItem { Value = "7", Text = "CONSEJO REGIONAL VII - PIURA" },
-		new SelectListItem { Value = "8", Text = "CONSEJO REGIONAL VIII - CHICLAYO" },
-		new SelectListItem { Value = "10", Text = "CONSEJO REGIONAL X - HUANUCO" },
-		new SelectListItem { Value = "11", Text = "CONSEJO REGIONAL XI - HUARAZ" },
-		new SelectListItem { Value = "12", Text = "CONSEJO REGIONAL XII - TACNA" },
-		new SelectListItem { Value = "13", Text = "CONSEJO REGIONAL XIII - PUCALLPA" },
-		new SelectListItem { Value = "14", Text = "CONSEJO REGIONAL XIV - PUNO" },
-		new SelectListItem { Value = "19", Text = "CONSEJO REGIONAL XIX - CHIMBOTE" },
-		new SelectListItem { Value = "15", Text = "CONSEJO REGIONAL XV - SAN MARTIN" },
-		new SelectListItem { Value = "16", Text = "CONSEJO REGIONAL XVI - AYACUCHO" },
-		new SelectListItem { Value = "17", Text = "CONSEJO REGIONAL XVII - CAJAMARCA" },
-		new SelectListItem { Value = "18", Text = "CONSEJO REGIONAL XVIII - CALLAO" },
-		new SelectListItem { Value = "20", Text = "CONSEJO REGIONAL XX - PASCO" },
-		new SelectListItem { Value = "21", Text = "CONSEJO REGIONAL XXI - MOQUEGUA" },
-		new SelectListItem { Value = "22", Text = "CONSEJO REGIONAL XXII - APURIMAC" },
-		new SelectListItem { Value = "23", Text = "CONSEJO REGIONAL XXIII - TUMBES" },
-		new SelectListItem { Value = "24", Text = "CONSEJO REGIONAL XXIV - HUANCAVELICA" },
-		new SelectListItem { Value = "25", Text = "CONSEJO REGIONAL XXV - AMAZONAS" },
-		new SelectListItem { Value = "26", Text = "CONSEJO REGIONAL XXVI - MADRE DE DIOS" },
-		new SelectListItem { Value = "27", Text = "CONSEJO REGIONAL XXVII - LIMA-PROVINCIAS" }
-	};
 
 	private async Task HandleValidSubmit()
 	{
@@ -1019,8 +1038,8 @@
 	private void LimpiarFormulario()
 	{
 		formData = new FormData();
-		editContext = new EditContext(formData);
-		editContext.OnFieldChanged += async (_, __) => await VerificarFormularioValido();
+		// editContext = new EditContext(formData);
+		// editContext.OnFieldChanged += async (_, __) => await VerificarFormularioValido();
 
 		fotoFile = null;
 		resolucionFile = null;
@@ -1053,6 +1072,5 @@
 	{
 		return $"/api/fotovalidator/reference-image/{imageName}";
 	}
-
 }
 
