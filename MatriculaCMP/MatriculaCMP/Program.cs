@@ -93,6 +93,7 @@ builder.Services.AddScoped<PaisesService>();
 builder.Services.AddScoped<UniversidadesService>();
 builder.Services.AddScoped<UniversidadScraper>();
 builder.Services.AddScoped<MatriculaService>();
+builder.Services.AddScoped<FirmaDigitalService>();
 var app = builder.Build();
 app.UseCors("AllowAll"); // 🔴 Muy importante: debe estar antes de UseAuthorization
 // Configure the HTTP request pipeline.

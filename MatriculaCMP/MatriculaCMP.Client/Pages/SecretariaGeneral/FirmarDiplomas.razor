@@ -1,5 +1,7 @@
 ﻿@page "/secretariageneral/firmar-diplomas"
 @using MatriculaCMP.Shared
+@using static MatriculaCMP.Shared.FirmaDigitalDTO
+@inject HttpClient Http
 @inject IJSRuntime JS
 
 
@@ -187,6 +189,24 @@
                 </div>
             </div>
         </div>
+        <div class="col-ls-12">
+            <div class="card">
+                <div class="card-body">
+        
+                    <h4 class="card-title">Block Buttons</h4>
+                    <p class="card-title-desc">Create block level buttons—those that
+                        span the full width of a parent—by adding <code class="highlighter-rouge">.d-grid</code>.</p>
+                    <div>
+                        <div class="d-grid mb-3">
+                            <button type="button" class="btn btn-primary btn-lg waves-effect waves-light" @onclick="IniciarFirma">Iniciar Firma</button>
+                        </div>
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-light btn-sm waves-effect waves-light">Block level button</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
 </div>
@@ -286,6 +306,90 @@
     private void CambiarTab(string tab)
     {
         tabActiva = tab;
+    }
+    
+    private async Task IniciarFirma()
+    {
+        // Mostrar alerta de carga
+        await JS.InvokeVoidAsync("Swal.fire", new
+            {
+                icon = "warning",
+                title = "Iniciando proceso de firma digital...",
+                showConfirmButton = false
+            });
+
+        try
+        {
+            var firmaRequest = new
+            {
+                IdExpedienteDocumento = 123,
+                IdExpedienteDocumentoFirmante = 0,
+                TipoDocumentoFirmado = 0
+            };
+
+            // Paso 1: Enviar documento para firma
+            var responseFirma = await Http.PostAsJsonAsync("api/firmadigital/firmar", firmaRequest);
+
+            if (responseFirma.IsSuccessStatusCode)
+            {
+                var resultadoFirma = await responseFirma.Content.ReadFromJsonAsync<UploadResponse>();
+            
+                if (resultadoFirma?.codigoFirma > 0)
+                {
+                    // Paso 2: Subir documento firmado
+                    var uploadRequest = new
+                    {
+                        IdExpedienteDocumento = 123,
+                        IdExpedienteDocumentoFirmante = 0,
+                        CodigoFirma = resultadoFirma.codigoFirma
+                    };
+
+                    var responseUpload = await Http.PostAsJsonAsync("api/firmadigital/upload", uploadRequest);
+
+                    if (responseUpload.IsSuccessStatusCode)
+                    {
+                        var resultadoUpload = await responseUpload.Content.ReadFromJsonAsync<DownloadResponse>();
+                    
+                        await JS.InvokeVoidAsync("Swal.fire", new 
+                        {
+                            icon= "success",
+                            title= "Firma completada",
+                            showConfirmButton = false
+                        });
+                    }
+                    else
+                    {
+                        var error = await responseUpload.Content.ReadAsStringAsync();
+                        await MostrarErrorSweetAlert("Error al subir documento firmado", error);
+                    }
+                }
+                else
+                {
+                    await MostrarErrorSweetAlert("Error en el proceso de firma", 
+                        resultadoFirma?.descripcion ?? "Error desconocido");
+                }
+            }
+            else
+            {
+                var error = await responseFirma.Content.ReadAsStringAsync();
+                await MostrarErrorSweetAlert("Error al enviar documento para firma", error);
+            }
+        }
+        catch (Exception ex)
+        {
+            await MostrarErrorSweetAlert("Error inesperado", ex.Message);
+        }
+    }
+
+    private async Task MostrarErrorSweetAlert(string titulo, string mensaje)
+    {
+        await JS.InvokeVoidAsync("Swal.fire", new
+        {
+            icon= "error",
+            title= titulo,
+            html= mensaje,
+            confirmButtonText= "Aceptar"
+        });
     }
 }
 
