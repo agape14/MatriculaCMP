@@ -193,15 +193,20 @@
             <div class="card">
                 <div class="card-body">
         
-                    <h4 class="card-title">Block Buttons</h4>
-                    <p class="card-title-desc">Create block level buttons—those that
-                        span the full width of a parent—by adding <code class="highlighter-rouge">.d-grid</code>.</p>
+                    <h4 class="card-title">Firma Digital</h4>
+                    <div style="height: 600px;" class="mb-3">
+                        @if (!string.IsNullOrEmpty(pdfUrl))
+                        {
+                            <iframe src="@pdfUrl" width="100%" height="100%" style="border: none;"></iframe>
+                        }
+                        else
+                        {
+                            <p>Cargando documento...</p>
+                        }
+                    </div>
                     <div>
                         <div class="d-grid mb-3">
                             <button type="button" class="btn btn-primary btn-lg waves-effect waves-light" @onclick="IniciarFirma">Iniciar Firma</button>
-                        </div>
-                        <div class="d-grid">
-                            <button type="button" class="btn btn-light btn-sm waves-effect waves-light">Block level button</button>
                         </div>
                     </div>
                 </div>
@@ -215,7 +220,12 @@
 @code {
     private bool seleccionarTodos = false;
     private string tabActiva = "nacionales";
-
+    private string pdfUrl;
+    protected override void OnInitialized()
+    {
+        // Puedes usar esta lógica si conoces el nombre del archivo
+        pdfUrl = "https://localhost:5181/firmas_digitales/documento_1235.pdf";
+    }
     private List<ListadoPrematricula> alumnos = new()
     {
         new ListadoPrematricula {Id=12, Numero = "89451512", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
@@ -315,14 +325,14 @@
             {
                 icon = "warning",
                 title = "Iniciando proceso de firma digital...",
-                showConfirmButton = false
+                showConfirmButton = true
             });
 
         try
         {
             var firmaRequest = new
             {
-                IdExpedienteDocumento = 123,
+                IdExpedienteDocumento = 1235,
                 IdExpedienteDocumentoFirmante = 0,
                 TipoDocumentoFirmado = 0
             };
@@ -339,29 +349,60 @@
                     // Paso 2: Subir documento firmado
                     var uploadRequest = new
                     {
-                        IdExpedienteDocumento = 123,
+                        IdExpedienteDocumento = 1235,
                         IdExpedienteDocumentoFirmante = 0,
                         CodigoFirma = resultadoFirma.codigoFirma
                     };
+                    DownloadResponse? resultadoUpload = null;
+                    int maxIntentos = 5;
+                    int delayMilisegundos = 3000;
 
-                    var responseUpload = await Http.PostAsJsonAsync("api/firmadigital/upload", uploadRequest);
-
-                    if (responseUpload.IsSuccessStatusCode)
+                    for (int intento = 1; intento <= maxIntentos; intento++)
                     {
-                        var resultadoUpload = await responseUpload.Content.ReadFromJsonAsync<DownloadResponse>();
-                    
-                        await JS.InvokeVoidAsync("Swal.fire", new 
+                        var responseUpload = await Http.PostAsJsonAsync("api/firmadigital/upload", uploadRequest);
+
+                        if (responseUpload.IsSuccessStatusCode)
                         {
-                            icon= "success",
-                            title= "Firma completada",
-                            showConfirmButton = false
+                            resultadoUpload = await responseUpload.Content.ReadFromJsonAsync<DownloadResponse>();
+                            if (resultadoUpload?.estado > 0)
+                                break; // éxito
+                        }
+
+                        await Task.Delay(delayMilisegundos); // espera antes del siguiente intento
+                    }
+                    if (resultadoUpload?.estado > 0)
+                    {
+                        await JS.InvokeVoidAsync("Swal.fire", new
+                        {
+                            icon = "success",
+                            title = resultadoUpload.descripcion,
+                            showConfirmButton = false,
+                            timer = 3000
                         });
                     }
                     else
                     {
-                        var error = await responseUpload.Content.ReadAsStringAsync();
-                        await MostrarErrorSweetAlert("Error al subir documento firmado", error);
+                        await MostrarErrorSweetAlert("Documento aún no está firmado",
+                            "Se agotaron los intentos para obtener el archivo firmado. Intenta nuevamente en unos minutos.");
                     }
+                    // var responseUpload = await Http.PostAsJsonAsync("api/firmadigital/upload", uploadRequest);
+
+                    // if (responseUpload.IsSuccessStatusCode)
+                    // {
+                    //     var resultadoUpload = await responseUpload.Content.ReadFromJsonAsync<DownloadResponse>();
+                    
+                    //     await JS.InvokeVoidAsync("Swal.fire", new 
+                    //     {
+                    //         icon= "success",
+                    //         title = resultadoUpload.descripcion,
+                    //         showConfirmButton = false
+                    //     });
+                    // }
+                    // else
+                    // {
+                    //     var error = await responseUpload.Content.ReadAsStringAsync();
+                    //     await MostrarErrorSweetAlert("Error al subir documento firmado", error);
+                    // }
                 }
                 else
                 {

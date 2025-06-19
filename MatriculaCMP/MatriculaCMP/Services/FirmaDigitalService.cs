@@ -46,7 +46,7 @@ namespace MatriculaCMP.Services
                 string pdfBase64 = Convert.ToBase64String(pdfBytes);
                 string nombreArchivo = Path.GetFileName(rutaDocumento);
 
-                bool indAval = request.IdAvalMedico > 0; // Simplificación de la lógica de aval
+                bool indAval = true; //request.IdAvalMedico > 0; // Simplificación de la lógica de aval
 
                 var responseEnvio = await EnviarFirmaCargaPendienteAsync(token.access_token, pdfBase64, nombreArchivo, indAval);
 
@@ -143,33 +143,81 @@ namespace MatriculaCMP.Services
             }
         }
 
-        private async Task<DownloadResponse> DescargarDocumentoFirmadoAsync(string token, int codigo)
+        //private async Task<DownloadResponse> DescargarDocumentoFirmadoAsync(string token, int codigo)
+        //{
+        //    try
+        //    {
+        //        var request = new HttpRequestMessage(HttpMethod.Post,
+        //            $"{_config["FirmaDigital:UrlFirmador"]}/api/firma-descarga-firmado");
+
+        //        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+        //        var payload = new { codigo };
+        //        var jsonContent = JsonSerializer.Serialize(payload,
+        //            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+        //        request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+
+        //        var response = await _httpClient.SendAsync(request);
+        //        response.EnsureSuccessStatusCode();
+
+        //        var jsonResponse = await response.Content.ReadAsStringAsync();
+        //        return JsonSerializer.Deserialize<DownloadResponse>(jsonResponse,
+        //            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        //    }
+        //    catch
+        //    {
+        //        return null;
+        //    }
+        //}
+
+
+        private async Task<DownloadResponse?> DescargarDocumentoFirmadoAsync(string token, int codigo)
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Post,
-                    $"{_config["FirmaDigital:UrlFirmador"]}/api/firma-descarga-firmado");
+                var url = $"{_config["FirmaDigital:UrlFirmador"]}/api/firma-descarga-firmado";
 
+                using var request = new HttpRequestMessage(HttpMethod.Post, url);
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
                 var payload = new { codigo };
-                var jsonContent = JsonSerializer.Serialize(payload,
-                    new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
-                request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
+                request.Content = new StringContent(
+                    JsonSerializer.Serialize(payload, new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    }),
+                    Encoding.UTF8,
+                    "application/json"
+                );
 
-                var response = await _httpClient.SendAsync(request);
-                response.EnsureSuccessStatusCode();
+                using var response = await _httpClient.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    // Puedes registrar el error si quieres más detalle
+                    var errorText = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Error: {response.StatusCode} - {errorText}");
+                    return null;
+                }
 
                 var jsonResponse = await response.Content.ReadAsStringAsync();
-                return JsonSerializer.Deserialize<DownloadResponse>(jsonResponse,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                var result = JsonSerializer.Deserialize<DownloadResponse>(jsonResponse, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+
+                return result;
             }
-            catch
+            catch (Exception ex)
             {
+                // Para depuración: Console.WriteLine(ex.Message);
                 return null;
             }
         }
+
 
         private async Task<UploadResponse> EnviarFirmaCargaPendienteAsync(string token, string archivoBase64,
             string nombreArchivo, bool indAval)
@@ -194,15 +242,6 @@ namespace MatriculaCMP.Services
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-                // Configuración segura de parámetros de imagen
-                var imagenConfig = new
-                {
-                    aplicarImagen = "0",  // Deshabilitar uso de imagen
-                    imagen = "",          // Cadena vacía para imagen
-                    rutaImagen = "/",     // Ruta mínima válida
-                    altoImagen = 0,       // Alto cero cuando no se usa imagen
-                    anchoImagen = 0       // Ancho cero cuando no se usa imagen
-                };
                 //coordenadas = indAval ? _config["FirmaDigital:CoordenadasFirmador"] : _config["FirmaDigital:CoordenadasFirmadorCentro"],
                 var payload = new
                 {
@@ -215,11 +254,11 @@ namespace MatriculaCMP.Services
                         coordenadas = _config["FirmaDigital:CoordenadasFirmador"],
                         estiloFirma = "ID",
                         invisible = "1",
-                        aplicarImagen = imagenConfig.aplicarImagen,
-                        imagen = imagenConfig.imagen,
-                        rutaImagen = imagenConfig.rutaImagen,
-                        altoImagen = imagenConfig.altoImagen,
-                        anchoImagen = imagenConfig.anchoImagen,
+                        aplicarImagen = "0",
+                        imagen = "",
+                        rutaImagen = _config["FirmaDigital:HostImagenesFirmaPeru"],
+                        altoImagen = 60,
+                        anchoImagen = 60,
                         aplicarTsa = 1
                     }
                 };

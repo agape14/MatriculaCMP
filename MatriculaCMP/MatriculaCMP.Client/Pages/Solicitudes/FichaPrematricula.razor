@@ -9,8 +9,6 @@
 
 
 @inject IJSRuntime JS
-@inject PaisUniversidadesService PaisUniversidadesService
-@inject IMatriculaService MatriculaService
 @inject NavigationManager Navigation
 @inject HttpClient Http
 
@@ -38,9 +36,9 @@
 					<div class="container-contact100">
 						<div class="wrap-contact100">
 							<EditForm Model="@formData" OnValidSubmit="@HandleValidSubmit">
-								<div class="alert alert-info mb-4" role="alert">
+								@* <div class="alert alert-info mb-4" role="alert">
 									<center><b>******** Para el correcto funcionamiento de este servicio, utilizar el explorador Chrome. ********</b></center>
-								</div>								
+								</div> *@								
 								 <div class="row">
 									<div class="col-md-12">
 										<div class="form-group">
@@ -60,7 +58,39 @@
 									<h5 class="card-header card-title ">Datos Personales</h5>
 									<div class="card-body">
 										<div class="row">
-
+											<div class="col-md-4">
+												<div class="form-group">
+													<label for="td">Tipo de Documento *</label>
+													<InputSelect @bind-Value="formData.TipoDocumento" class="form-control" id="td">
+														<option value="">Seleccione...</option>
+														@foreach (var td in tipodoc)
+														{
+															<option value="@td.MaestroRegistro_Key">@td.Nombre</option>
+														}
+													</InputSelect>
+													<ValidationMessage For="@(() => formData.TipoDocumento)" />
+												</div>
+											</div>
+											<div class="col-md-4">
+												<div class="form-group">
+													<label for="nd">Nro. documento *</label>
+													<InputText @bind-Value="formData.NumeroDocumento" class="form-control" id="nd" />
+													<ValidationMessage For="@(() => formData.NumeroDocumento)" />
+												</div>
+											</div>
+											<div class="col-md-4">
+												<div class="form-group">
+													<label for="gs">Grupo Sanguineo *</label>
+													<InputSelect @bind-Value="formData.GrupoSanguineo" class="form-control" id="gs">
+														<option value="">Seleccione...</option>
+														@foreach (var gs in gruposang)
+														{
+															<option value="@gs.MaestroRegistro_Key">@gs.Nombre</option>
+														}
+													</InputSelect>
+													<ValidationMessage For="@(() => formData.GrupoSanguineo)" />
+												</div>
+											</div>
 											<div class="col-md-4">
 												<div class="form-group">
 													<label for="nombres">Nombres Completos *</label>
@@ -106,40 +136,6 @@
 													<ValidationMessage For="@(() => formData.EstadoCivil)" />
 												</div>
 											</div>
-
-											<div class="col-md-4">
-												<div class="form-group">
-													<label for="td">Tipo de Documento *</label>
-													<InputSelect @bind-Value="formData.TipoDocumento" class="form-control" id="td">
-														<option value="">Seleccione...</option>
-														@foreach (var td in tipodoc)
-														{
-															<option value="@td.MaestroRegistro_Key">@td.Nombre</option>
-														}
-													</InputSelect>
-													<ValidationMessage For="@(() => formData.TipoDocumento)" />
-												</div>
-											</div>
-											<div class="col-md-4">
-												<div class="form-group">
-													<label for="nd">Nro. documento *</label>
-													<InputText @bind-Value="formData.NumeroDocumento" class="form-control" id="nd" />
-													<ValidationMessage For="@(() => formData.NumeroDocumento)" />
-												</div>
-											</div>
-											<div class="col-md-4">
-												<div class="form-group">
-													<label for="gs">Grupo Sanguineo *</label>
-													<InputSelect @bind-Value="formData.GrupoSanguineo" class="form-control" id="gs">
-														<option value="">Seleccione...</option>
-														@foreach (var gs in gruposang)
-														{
-															<option value="@gs.MaestroRegistro_Key">@gs.Nombre</option>
-														}
-													</InputSelect>
-													<ValidationMessage For="@(() => formData.GrupoSanguineo)" />
-												</div>
-											</div>
 										</div>
 									</div>
 								</div>
@@ -183,7 +179,11 @@
 											<div class="col-md-3">
 												<div class="form-group">
 													<label for="provincia">Provincia *</label>
-													<InputSelect @bind-Value="formData.ProvinciaNacimiento" class="form-control" id="provincia"	 @onchange="LoadDistritos">
+													<InputSelect TValue="string"
+																 Value="@formData.ProvinciaNacimiento"
+																 ValueChanged="@((string prov) => OnLoadDistritos(prov))"
+																 ValueExpression="@(() => formData.ProvinciaNacimiento)"
+																 class="form-control">
 														<option value="">Seleccione Provincia Nacimiento</option>
 														@foreach (var prov in provincias)
 														{
@@ -264,10 +264,23 @@
 											<div class="col-md-4">
 												<div class="form-group">
 													<label for="departamento_id">Departamento  *</label>
-													<InputSelect @bind-Value="formData.DepartamentoDomicilio" class="form-control" id="departamento_id">
+													@* <InputSelect @bind-Value="formData.DepartamentoDomicilio" class="form-control" id="departamento_id">
 														<option value="">Seleccione Departamento Domicilio</option>
 														<option value="14" selected>LIMA</option>
+													</InputSelect> *@
+
+													<InputSelect TValue="string"
+																 Value="@formData.DepartamentoDomicilio"
+																 ValueChanged="@((string val) => OnLoadProvinciasdm(val))"
+																 ValueExpression="@(() => formData.DepartamentoDomicilio)"
+																 class="form-control">
+														<option value="">Seleccione Departamento Domicilio</option>
+														@foreach (var deptodm in departamentosdm)
+														{
+															<option value="@deptodm.DepartamentoId">@deptodm.Nombre</option>
+														}
 													</InputSelect>
+
 													<ValidationMessage For="@(() => formData.DepartamentoDomicilio)" />
 													
 												</div>
@@ -275,9 +288,21 @@
 											<div class="col-md-4">
 												<div class="form-group">
 													<label for="provincia_id">Provincia *</label>
-													<InputSelect @bind-Value="formData.ProvinciaDomicilio" class="form-control" id="provincia_id">
+													@* <InputSelect @bind-Value="formData.ProvinciaDomicilio" class="form-control" id="provincia_id">
 														<option value="">Seleccione Provincia Domicilio</option>
 														<option value="1" selected>LIMA</option>
+													</InputSelect> *@
+
+													<InputSelect TValue="string"
+																 Value="@formData.ProvinciaDomicilio"
+																 ValueChanged="@((string prov) => OnLoadDistritosdm(prov))"
+																 ValueExpression="@(() => formData.ProvinciaDomicilio)"
+																 class="form-control">
+														<option value="">Seleccione Provincia Domicilio</option>
+														@foreach (var provdm in provinciasdm)
+														{
+															<option value="@provdm.ProvinciaId">@provdm.Nombre</option>
+														}
 													</InputSelect>
 													<ValidationMessage For="@(() => formData.ProvinciaDomicilio)" />
 												</div>
@@ -285,9 +310,17 @@
 											<div class="col-md-4">
 												<div class="form-group">
 													<label for="distrito_id">Distrito *</label>
-													<InputSelect @bind-Value="formData.DistritoDomicilio" class="form-control" id="distrito_id">
+													@* <InputSelect @bind-Value="formData.DistritoDomicilio" class="form-control" id="distrito_id">
 														<option value="">Seleccione Provincia Domicilio</option>
 														<option value="1" selected>LIMA</option>
+													</InputSelect> *@
+
+													<InputSelect @bind-Value="formData.DistritoDomicilio" class="form-control" id="distrito">
+														<option value="">Seleccione Distrito Domicilio</option>
+														@foreach (var distdn in distritosdm)
+														{
+															<option value="@distdn.UbigeoId">@distdn.Nombre</option>
+														}
 													</InputSelect>
 													<ValidationMessage For="@(() => formData.DistritoDomicilio)" />
 												</div>
@@ -324,7 +357,17 @@
 											<div class="col-md-6">
 												<div class="form-group">
 													<label for="uniori">Origen de Universidad *</label>
-													<InputSelect @bind-Value="formData.UniversidadOrigen" class="form-control" @onchange="OnTipoSeleccionado" id="uniori">
+													@* <InputSelect @bind-Value="formData.UniversidadOrigen" class="form-control" @onchange="OnTipoSeleccionado" id="uniori">
+														<option value="">Seleccione Universidad</option>
+														<option value="1">Nacional</option>
+														<option value="0">Extranjera</option>
+													</InputSelect> *@
+
+													<InputSelect TValue="string"
+																 Value="@formData.UniversidadOrigen"
+																 ValueChanged="@((string val) => OnTipoSeleccionado(val))"
+																 ValueExpression="@(() => formData.UniversidadOrigen)"
+																 class="form-control">
 														<option value="">Seleccione Universidad</option>
 														<option value="1">Nacional</option>
 														<option value="0">Extranjera</option>
@@ -597,6 +640,9 @@
 	private List<Mat_Ubigeo> departamentos = new List<Mat_Ubigeo>();
 	private List<Mat_Ubigeo> provincias = new List<Mat_Ubigeo>();
 	private List<Mat_Ubigeo> distritos = new List<Mat_Ubigeo>();
+	private List<Mat_Ubigeo> departamentosdm = new List<Mat_Ubigeo>();
+	private List<Mat_Ubigeo> provinciasdm = new List<Mat_Ubigeo>();
+	private List<Mat_Ubigeo> distritosdm = new List<Mat_Ubigeo>();
 	private string selectedDepartamento;
 	private string selectedProvincia;
 
@@ -683,7 +729,6 @@
 				mostrarErrorFoto = true;
 				mensajeValidacion = result.mensaje ?? "La imagen no cumple los requisitos";
 				formData.FotoMedico = null;
-				// Opcional: limpiar vista previa si no es válida
 				// imagePreviewUrl = null;
 			}
 		}
@@ -720,8 +765,9 @@
 		vias = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/16");
 		matpaises = await Http.GetFromJsonAsync<List<Mat_Pais>>("/api/MatPais");
 		departamentos = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>("api/MatUbigeo/departamentos");
-
-		paises = await PaisUniversidadesService.ObtenerPaisesAsync();
+		departamentosdm = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>("api/MatUbigeo/departamentos");
+		paises = await Http.GetFromJsonAsync<List<Pais>>("api/Pais");
+		//paises = await PaisUniversidadesService.ObtenerPaisesAsync();
 		var peru = paises.FirstOrDefault(p => p.Nombre.ToLower().Contains("perú"));
 		if (peru != null)
 		{
@@ -735,14 +781,14 @@
 		formData.Nombres = "Agapito";
 		formData.ApellidoPaterno = "De la cruz";
 		formData.ApellidoMaterno = "Carlos";
-		formData.PaisNacimiento = "356";
 		formData.NumeroDocumento = "45742029";
-		formData.DepartamentoNacimiento = "1";
+		formData.PaisNacimiento = "173";
+		// formData.DepartamentoNacimiento = "1";
 		formData.ProvinciaNacimiento = "1";
 		formData.DistritoNacimiento = "1";
 		formData.DescripcionZona = "Zona";
 		formData.DescripcionVia = "Via";
-		formData.DepartamentoDomicilio = "14";
+		// formData.DepartamentoDomicilio = "14";
 		formData.Telefono = "4526544";
 		formData.Celular = "981525451";
 		formData.Email = "adelacruzcarlos@gmail.com";
@@ -765,9 +811,10 @@
 	// 	await InvokeAsync(StateHasChanged);
 	// }
 
-	async Task OnTipoSeleccionado(ChangeEventArgs e)
+	async Task OnTipoSeleccionado(string valorseleccionado)
 	{
-		tipoSeleccionado = e.Value?.ToString() ?? "1";
+		tipoSeleccionado = valorseleccionado ?? "1";
+		// tipoSeleccionado = e.Value?.ToString() ?? "1";
 
 		if (tipoSeleccionado == "1") // Nacional
 		{
@@ -810,7 +857,8 @@
 		if (int.TryParse(e.Value?.ToString(), out int id))
 		{
 			paisId = id;
-			universidades = await PaisUniversidadesService.ObtenerUniversidadesAsync(paisId);
+			universidades = await Http.GetFromJsonAsync<List<Universidad>>($"api/universidad/{paisId}");
+			// universidades = await PaisUniversidadesService.ObtenerUniversidadesAsync(paisId);
 		}
 	}
 
@@ -818,7 +866,8 @@
 	{
 		if (paisId > 0)
 		{
-			universidades = await PaisUniversidadesService.ObtenerUniversidadesAsync(paisId);
+			universidades = await Http.GetFromJsonAsync<List<Universidad>>($"api/universidad/{paisId}");
+			// universidades = await PaisUniversidadesService.ObtenerUniversidadesAsync(paisId);
 		}
 		else
 		{
@@ -829,17 +878,21 @@
 	}
 
 	async Task CargarUniversidadesPeruanas()
-	{
-		
-		var peruselect = paises.FirstOrDefault(p => p.Nombre.ToLower().Contains("perú"));
-		
-		universidadesperuanas = await PaisUniversidadesService.ObtenerUniversidadesAsync(peruselect.Id);
+	{		
+		var peruselect = paises.FirstOrDefault(p => p.Nombre.ToLower().Contains("perú"));		
+		universidadesperuanas = await Http.GetFromJsonAsync<List<Universidad>>($"api/universidad/{peruselect.Id}");
+		// universidadesperuanas = await PaisUniversidadesService.ObtenerUniversidadesAsync(peruselect.Id);
 	}
 
 	private async Task OnLoadProvincias(string selected)
 	{
 		formData.DepartamentoNacimiento = selected;
 		provincias = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>($"api/MatUbigeo/provincias/{selected}");
+	}
+	private async Task OnLoadProvinciasdm(string selected)
+	{
+		formData.DepartamentoDomicilio = selected;
+		provinciasdm = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>($"api/MatUbigeo/provincias/{selected}");
 	}
 	// async Task OnLoadProvincias(ChangeEventArgs e)
 	// {
@@ -859,20 +912,31 @@
 	// 	}
 	// }
 
-	async Task LoadDistritos(ChangeEventArgs e)
-	{
-		selectedProvincia = e.Value?.ToString();
-		formData.ProvinciaDomicilio = selectedProvincia;
+	// async Task LoadDistritos(ChangeEventArgs e)
+	// {
+	// 	selectedProvincia = e.Value?.ToString();
+	// 	formData.ProvinciaDomicilio = selectedProvincia;
 
-		if (!string.IsNullOrEmpty(selectedDepartamento) && !string.IsNullOrEmpty(selectedProvincia))
-		{
-			distritos = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>(
-				$"api/Ubigeo/distritos/{selectedDepartamento}/{selectedProvincia}");
-		}
-		else
-		{
-			distritos.Clear();
-		}
+	// 	if (!string.IsNullOrEmpty(selectedDepartamento) && !string.IsNullOrEmpty(selectedProvincia))
+	// 	{
+	// 		distritos = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>(
+	// 			$"api/Ubigeo/distritos/{selectedDepartamento}/{selectedProvincia}");
+	// 	}
+	// 	else
+	// 	{
+	// 		distritos.Clear();
+	// 	}
+	// }
+
+	private async Task OnLoadDistritos(string selected)
+	{
+		formData.ProvinciaNacimiento = selected;
+		distritos = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>($"api/MatUbigeo/distritos/{formData.DepartamentoNacimiento}/{selected}");
+	}
+	private async Task OnLoadDistritosdm(string selected)
+	{
+		formData.ProvinciaDomicilio = selected;
+		distritosdm = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>($"api/MatUbigeo/distritos/{formData.DepartamentoDomicilio}/{selected}");
 	}
 	 public class SelectListItem
     {

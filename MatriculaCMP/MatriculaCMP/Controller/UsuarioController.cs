@@ -51,6 +51,7 @@ namespace MatriculaCMP.Controller
 				CreatePasswordHash(objeto.Password, out byte[] passwordHash, out byte[] passwordSalt);
 				usuario.NombreUsuario = objeto.NombreUsuario;
 				usuario.Correo = objeto.Correo;
+                usuario.PerfilId = 1;
 				usuario.PasswordHash = passwordHash;
 				usuario.PasswordSalt = passwordSalt;
 

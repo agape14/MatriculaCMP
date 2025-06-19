@@ -1,0 +1,67 @@
+﻿@page "/"
+@layout LoginLayout
+@using MatriculaCMP.Client.Layout
+@using MatriculaCMP.Shared
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<style>
+    .login-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+</style>
+
+<div class="login-container">
+    <button class="btn btn-danger  waves-effect waves-light" @onclick="IniciarSesion">INICIAR SESIÓN DESDE SGD</button>
+</div>
+
+@if (!string.IsNullOrEmpty(mensaje))
+{
+    <p style="color:red; text-align: center">@mensaje</p>
+}
+
+@code {
+    private string mensaje;
+    // Valores por defecto
+    private string TipoDocumento = "2";
+    private string NumeroDocumento = "41342572";
+
+    private async Task IniciarSesion()
+    {
+        try
+        {
+            // Encriptar en Base64 usando JavaScript
+            string tipoEncriptado = await JS.InvokeAsync<string>("btoa", TipoDocumento);
+            string numeroEncriptado = await JS.InvokeAsync<string>("btoa", NumeroDocumento);
+
+            var dto = new UsuarioLoginEncryptedDTO
+                {
+                    TipoDocumentoEncrypted = tipoEncriptado,
+                    NumeroDocumentoEncrypted = numeroEncriptado
+                };
+
+            var response = await Http.PostAsJsonAsync("api/usuario/LoginSgd", dto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Nav.NavigateTo("/home");
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                mensaje = "Usuario no encontrado. Comuníquese con el administrador.";
+            }
+            else
+            {
+                mensaje = $"Error: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            mensaje = $"Error inesperado: {ex.Message}";
+        }
+    }
+}

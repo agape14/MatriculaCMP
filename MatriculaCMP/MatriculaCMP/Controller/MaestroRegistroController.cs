@@ -21,8 +21,17 @@ namespace MatriculaCMP.Controller
 		{
 			try
 			{
-				var resultado = await _context.MaestroRegistro
-					.Where(m => m.MaestroTabla_Key == tablaKey)
+				var query = _context.MaestroRegistro
+					.Where(m => m.MaestroTabla_Key == tablaKey);
+
+				// Si el ID es 23, filtramos por Nombre
+				if (tablaKey == 23)
+				{
+					query = query.Where(m =>
+						m.Nombre == "DNI" || m.Nombre == "Carnet Extranjeria");
+				}
+
+				var resultado = await query
 					.OrderBy(m => m.Nombre)
 					.Select(m => new MaestroRegistro
 					{
@@ -43,5 +52,6 @@ namespace MatriculaCMP.Controller
 				});
 			}
 		}
+
 	}
 }
