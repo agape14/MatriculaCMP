@@ -27,13 +27,17 @@ namespace MatriculaCMP.Server.Data
         public DbSet<ZonaDomicilio> ZonaDomicilios { get; set; }
         public DbSet<ViaDomicilio> ViaDomicilios { get; set; }
         public DbSet<Educacion> Educaciones { get; set; }
-
+       
         //Tablas maestras existentes en la bd
-		public DbSet<Mat_ConsejoRegional> Mat_ConsejoRegional { get; set; }
+        public DbSet<Mat_ConsejoRegional> Mat_ConsejoRegional { get; set; }
 		public DbSet<MaestroRegistro> MaestroRegistro { get; set; }
 		public DbSet<Mat_Pais> MatPaises { get; set; }
 		public DbSet<Mat_Ubigeo> MatUbigeos { get; set; }
-		protected override void OnModelCreating(ModelBuilder modelBuilder)
+
+        public DbSet<Solicitud> Solicitudes { get; set; }
+        public DbSet<EstadoSolicitud> EstadoSolicitudes { get; set; }
+        public DbSet<Area> Areas { get; set; }
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Educacion>()
                 .HasOne(e => e.Persona)          // Cada Educación tiene una Persona
@@ -65,6 +69,18 @@ namespace MatriculaCMP.Server.Data
 				entity.ToTable("Mat_Ubigeo");
 				entity.HasKey(e => e.UbigeoKey);
 			});
-		}
+
+            modelBuilder.Entity<Solicitud>()
+				.HasOne(s => s.EstadoSolicitud)
+				.WithMany(e => e.Solicitudes)
+				.HasForeignKey(s => s.EstadoSolicitudId)
+				.OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Solicitud>()
+                .HasOne(s => s.Area)
+                .WithMany(a => a.Solicitudes)
+                .HasForeignKey(s => s.AreaId)
+                .OnDelete(DeleteBehavior.Restrict);
+        }
     }
 }

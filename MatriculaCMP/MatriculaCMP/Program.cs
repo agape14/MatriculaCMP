@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Components.Server;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -19,6 +20,13 @@ builder.Services.AddRazorComponents()
 builder.Services.AddAuthorizationCore();//Agregado
 builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();//Agregado
 builder.Services.AddControllers();//agregado
+builder.Services.AddControllers()
+        .AddJsonOptions(o =>
+        {
+            o.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+            o.JsonSerializerOptions.DefaultIgnoreCondition =
+                    JsonIgnoreCondition.WhenWritingNull;
+        });
 //builder.Services.AddHttpClient();//Agregado
 // Para IHttpClientFactory (necesario para FotoValidatorController)
 builder.Services.AddHttpClient();

@@ -1,0 +1,160 @@
+﻿@page "/admin/usuarios/new"
+@page "/admin/usuarios/{Id:int?}"
+@using MatriculaCMP.Shared
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime Js
+
+<h3>@(_id is null ? "Nuevo Usuario" : $"Editar Usuario #{_id}")</h3>
+
+@if (_cargando)
+{
+    <em>Cargando…</em>
+}
+else if (_error is not null)
+{
+    <div class="alert alert-danger">Error: @_error</div>
+}
+else
+{
+    <EditForm Model="_model" OnValidSubmit="Guardar">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+       
+            <h5 class="mt-4">Datos de la Persona</h5>
+
+            <InputText @bind-Value="_model.Persona.Nombres"
+                       class="form-control mb-2"
+                       placeholder="Nombres" />
+
+            <InputText @bind-Value="_model.Persona.ApellidoPaterno"
+                       class="form-control mb-2"
+                       placeholder="Apellido Paterno" />
+
+            <InputText @bind-Value="_model.Persona.ApellidoMaterno"
+                       class="form-control mb-2"
+                       placeholder="Apellido Materno" />
+
+            <InputText @bind-Value="_model.Persona.NumeroDocumento"
+                       class="form-control mb-2"
+                       placeholder="N° Documento" />
+
+            <InputText @bind-Value="_model.Persona.Celular"
+                       class="form-control mb-2"
+                       placeholder="Celular" />
+
+            <InputText @bind-Value="_model.Persona.Email"
+                       class="form-control mb-2"
+                       placeholder="Email" />
+
+            <InputDate @bind-Value="_model.Persona.FechaNacimiento"
+                       class="form-control mb-3" />
+        
+
+        <InputText @bind-Value="_model.Correo"
+                   class="form-control mb-3"
+                   placeholder="Correo" />
+
+        <InputText @bind-Value="_model.Password"
+                   class="form-control mb-3"
+                   placeholder="Password" />
+
+        <InputText @bind-Value="_model.NombreUsuario"
+                   class="form-control mb-3"
+                   placeholder="Nombre de usuario" />
+
+        <label class="form-label">Perfil</label>
+        <InputSelect @bind-Value="_model.PerfilId" class="form-select mb-3">
+            <option value="">--Seleccione--</option>
+            @foreach (var p in _perfiles)
+            {
+                <option value="@p.Id">@p.Nombre</option>
+            }
+        </InputSelect>
+
+        <button class="btn btn-primary" type="submit" disabled="@_guardando">
+            Guardar
+        </button>
+        <button class="btn btn-secondary ms-2"
+                type="button"
+                @onclick="Volver">
+            Cancelar
+        </button>
+    </EditForm>
+}
+
+@code {
+    // ------------------ parámetros y estado ------------------
+    [Parameter] public int? Id { get; set; }
+
+    private int? _id;                 // se copia en OnParametersSetAsync
+    private Usuario _model = new();
+    private List<Perfil> _perfiles = new();
+
+    private bool _cargando = true;
+    private bool _guardando = false;
+    private string? _error;
+
+    // ------------------ ciclo de vida ------------------
+    protected override async Task OnParametersSetAsync()
+    {
+        _id = Id;          // caches para usar en Save()
+        _cargando = true;
+        _error = null;
+
+        try
+        {
+            // Descarga perfiles y (si aplica) el usuario en paralelo
+            var perfilesTask = Http.GetFromJsonAsync<List<Perfil>>("/api/perfiles");
+            var usuarioTask = _id is null
+                ? Task.FromResult<Usuario?>(new Usuario())
+                : Http.GetFromJsonAsync<Usuario>($"/api/usuario/{_id}");
+
+            await Task.WhenAll(perfilesTask, usuarioTask);
+
+            _perfiles = perfilesTask.Result ?? new();
+            _model = usuarioTask.Result ?? new();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    // ------------------ acciones ------------------
+    async Task Guardar()
+    {
+        if (_guardando) return;
+        _guardando = true;
+
+        try
+        {
+            HttpResponseMessage resp = _id is null
+                ? await Http.PostAsJsonAsync("/api/usuario", _model)
+                : await Http.PutAsJsonAsync($"/api/usuario/{_id}", _model);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = $"Error {(int)resp.StatusCode}: {await resp.Content.ReadAsStringAsync()}";
+                return;
+            }
+
+            Volver(); // éxito → vuelve a la lista
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _guardando = false;
+        }
+    }
+
+    void Volver() => Nav.NavigateTo("/admin/usuarios");
+}

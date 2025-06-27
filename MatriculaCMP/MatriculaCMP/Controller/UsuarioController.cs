@@ -20,12 +20,14 @@ namespace MatriculaCMP.Controller
 		private readonly ApplicationDbContext _context;
 		private readonly SgdDbContext _sgdContext;
         private readonly IConfiguration _config;
-        public UsuarioController(ApplicationDbContext context, SgdDbContext sgdContext, IConfiguration config)
+        private readonly ILogger<UsuarioController> _logger;
+        public UsuarioController(ApplicationDbContext context, SgdDbContext sgdContext, IConfiguration config,ILogger<UsuarioController> logger)
 		{
 
 			_context = context;
             _sgdContext = sgdContext;
             _config = config;
+            _logger = logger;
         }
 
 		[HttpGet("ConexionServidor"), Authorize]
@@ -105,8 +107,7 @@ namespace MatriculaCMP.Controller
             catch (Exception ex)
             {
                 // Loggear el error (recomendado)
-                // _logger.LogError(ex, "Error en el proceso de login");
-
+                _logger.LogError(ex, "Error en el proceso de login");
                 return StatusCode(500, $"Error interno: {ex.Message}");
             }
         }
@@ -135,7 +136,7 @@ namespace MatriculaCMP.Controller
 			List<Claim> claims = new List<Claim>
  			{
 				 new Claim(ClaimTypes.Name, user.Correo),
-				 new Claim(ClaimTypes.Role,user.Rol),
+				 //new Claim(ClaimTypes.Role,user.Rol),
                  new Claim(ClaimTypes.Name, user.NombreUsuario),
 				new Claim("PerfilId", user.PerfilId.ToString()),
              };
@@ -308,6 +309,127 @@ namespace MatriculaCMP.Controller
             catch
             {
                 return Unauthorized(new { valid = false });
+            }
+        }
+
+
+        // GET api/usuario
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<Usuario>>> Get()
+        {
+            try
+            {
+                var lista = await _context.Usuarios
+                              .Include(u => u.Perfil)
+                              .Select(u => new {
+                                  u.Id,
+                                  u.NombreUsuario,
+                                  u.Correo,
+                                  Perfil = new { u.Perfil.Id, u.Perfil.Nombre }
+                              })
+                              .ToListAsync();
+                return Ok(lista);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener usuarios");
+                return StatusCode(500, "Ocurrió un error al consultar los usuarios");
+            }
+        }
+
+        // GET api/usuarios/5
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<Usuario>> Get(int id)
+        {
+            try
+            {
+                var u = await _context.Usuarios
+                                      .Include(x => x.Perfil)
+                                      .AsNoTracking()
+                                      .FirstOrDefaultAsync(x => x.Id == id);
+
+                return u is null ? NotFound() : Ok(u);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener el usuario {Id}", id);
+                return StatusCode(500, "Ocurrió un error al consultar el usuario");
+            }
+        }
+
+        // POST api/usuarios
+        [HttpPost]
+        public async Task<IActionResult> Post(Usuario usuario)
+        {
+            try
+            {
+                // Si viene con datos de Persona
+                if (usuario.Persona is not null)
+                {
+                    _context.Personas.Add(usuario.Persona);
+                    await _context.SaveChangesAsync();
+
+                    // Asignar el ID recién generado
+                    usuario.PersonaId = usuario.Persona.Id;
+                }
+                CreatePasswordHash(usuario.Password, out byte[] passwordHash, out byte[] passwordSalt);
+                // Preparar hash y salt (si aplica)
+                usuario.PasswordSalt = passwordSalt;
+                usuario.PasswordHash = passwordHash; // ejemplo fijo o reemplaza
+
+                _context.Usuarios.Add(usuario);
+                await _context.SaveChangesAsync();
+
+                return CreatedAtAction(nameof(Get), new { id = usuario.Id }, usuario);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al crear usuario");
+                return StatusCode(500, "Ocurrió un error al crear el usuario");
+            }
+        }
+
+        // PUT api/usuarios/5
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> Put(int id, Usuario dto)
+        {
+            if (id != dto.Id) return BadRequest("Id del cuerpo y de la URL no coinciden");
+
+            try
+            {
+                _context.Entry(dto).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+                return NoContent();
+            }
+            catch (DbUpdateConcurrencyException cx)
+            {
+                _logger.LogWarning(cx, "Conflicto de concurrencia al actualizar {Id}", id);
+                return NotFound("El usuario fue eliminado o modificado por otro proceso");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error inesperado al actualizar {Id}", id);
+                return StatusCode(500, "Ocurrió un error al actualizar el usuario");
+            }
+        }
+
+        // DELETE api/usuarios/5
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            try
+            {
+                var u = await _context.Usuarios.FindAsync(id);
+                if (u is null) return NotFound();
+
+                _context.Usuarios.Remove(u);
+                await _context.SaveChangesAsync();
+                return NoContent();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error inesperado al eliminar {Id}", id);
+                return StatusCode(500, "Ocurrió un error al eliminar el usuario");
             }
         }
     }

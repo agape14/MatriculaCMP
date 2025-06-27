@@ -27,11 +27,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <_ContentIncludedByDefault Remove="Pages\Admin\Usuarios.razor" />
     <_ContentIncludedByDefault Remove="Pages\ConsejoRegional\ListaSolicitudes.razor" />
     <_ContentIncludedByDefault Remove="Pages\ListaSolicitudesSG.razor" />
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="Pages\Admin\Usuarios.razor" />
     <None Include="Pages\ConsejoRegional\ListaSolicitudes.razor" />
     <None Include="Pages\SecretariaGeneral\ListaSolicitudesSG.razor" />
   </ItemGroup>
@@ -41,7 +43,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Pages\Admin\" />
+    <UpToDateCheckInput Remove="Pages\Admin\Usuarios.razor" />
   </ItemGroup>
 
 </Project>

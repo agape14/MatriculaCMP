@@ -1,6 +1,7 @@
 ﻿@page "/secretariageneral/firmar-diplomas"
 @using MatriculaCMP.Shared
 @using static MatriculaCMP.Shared.FirmaDigitalDTO
+@using System.Text.Json;
 @inject HttpClient Http
 @inject IJSRuntime JS
 
@@ -206,21 +207,81 @@
                     </div>
                     <div>
                         <div class="d-grid mb-3">
-                            <button type="button" class="btn btn-primary btn-lg waves-effect waves-light" @onclick="IniciarFirma">Iniciar Firma</button>
+                            <button type="button" class="btn btn-primary btn-lg waves-effect waves-light" @onclick="Paso1EnviarParaFirma">Iniciar Firma</button>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
 </div>
+<center>
+    <form type="post" id="ssoForm" name="ssoForm" target="iframeFirma" action="https://firmadorsignnet.cmp.org.pe:8443/SignnetSignature/Servicio" accept-charset="ISO-8859-1" style="display:none">
+        <h1>Prueba de Firma Digital</h1>
+        <table>
+            <tr>
+                <td>Codigo de Firma:</td>
+                <td>
+                    <input type="text" id="codigoFirma" name="codigoFirma" value="13052" size="40">
+                </td>
+            </tr>
+        </table>
+        <br />
+        <input type="button" class="btn btn-primary" style="width: 100px !important" id="btnFirma" name="btnFirma" value="Firma">
+        <br /><br />
+    </form>
+    <!-- Modal de Bootstrap -->
+    <div id="dvIframe" class="modal fade">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <iframe frameborder="0" name="iframeFirma" id="iframeFirma" width="550px" height="320px"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</center>
+<script>
+    let componenteRazor;
+    window.registrarInstanciaDotNet = function (instancia) {
+        componenteRazor = instancia;
+    };
+    window.mostrarFormularioFirma = function (codigoFirma) {
+        document.getElementById("codigoFirma").value = codigoFirma;
+        $('#dvIframe').modal({ backdrop: 'static', keyboard: false, show: true });
+        document.getElementById("ssoForm").submit();
+    }
+    window.obtenerCodigoFirmaDesdeFormulario = function () {
+        return document.getElementById("codigoFirma").value;
+    };
 
+    // Escucha del mensaje desde el iframe (respuesta de SignNet)
+    window.addEventListener("message", function (e) {
+        try {
+            var rptJSON = JSON.parse(e.data);
+            console.log("Respuesta recibida:", rptJSON);
+            console.log("Respuesta recibida codigoFirma:", rptJSON.resultado);
+            $('#dvIframe').modal('hide');
+
+            if (componenteRazor && rptJSON.resultado === "0") {
+                componenteRazor.invokeMethodAsync('SubirDocumentoFirmado', JSON.stringify(rptJSON))
+                    .then(() => console.log("Método C# invocado con éxito"))
+                    .catch(err => console.error("Error al invocar método C#", err));
+            } else {
+                console.warn("Firma fallida o instancia no disponible");
+            }
+        } catch (ex) {
+            console.error("Error en respuesta del iframe", e.data);
+        }
+    });
+</script>
 
 @code {
     private bool seleccionarTodos = false;
     private string tabActiva = "nacionales";
     private string pdfUrl;
+    private DotNetObjectReference<FirmarDiplomas>? dotNetRef;
+
     protected override void OnInitialized()
     {
         // Puedes usar esta lógica si conoces el nombre del archivo
@@ -263,6 +324,8 @@
         if (firstRender)
         {
             await JS.InvokeVoidAsync("inicializarDataTable", "#tblListadoConsejoRegional");
+            dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("registrarInstanciaDotNet", dotNetRef);
         }
     }
 
@@ -354,55 +417,25 @@
                         CodigoFirma = resultadoFirma.codigoFirma
                     };
                     DownloadResponse? resultadoUpload = null;
-                    int maxIntentos = 5;
-                    int delayMilisegundos = 3000;
+                    
+                    var responseUpload = await Http.PostAsJsonAsync("api/firmadigital/upload", uploadRequest);
 
-                    for (int intento = 1; intento <= maxIntentos; intento++)
+                    if (responseUpload.IsSuccessStatusCode)
                     {
-                        var responseUpload = await Http.PostAsJsonAsync("api/firmadigital/upload", uploadRequest);
-
-                        if (responseUpload.IsSuccessStatusCode)
+                        resultadoUpload = await responseUpload.Content.ReadFromJsonAsync<DownloadResponse>();
+                    
+                        await JS.InvokeVoidAsync("Swal.fire", new 
                         {
-                            resultadoUpload = await responseUpload.Content.ReadFromJsonAsync<DownloadResponse>();
-                            if (resultadoUpload?.estado > 0)
-                                break; // éxito
-                        }
-
-                        await Task.Delay(delayMilisegundos); // espera antes del siguiente intento
-                    }
-                    if (resultadoUpload?.estado > 0)
-                    {
-                        await JS.InvokeVoidAsync("Swal.fire", new
-                        {
-                            icon = "success",
+                            icon= "success",
                             title = resultadoUpload.descripcion,
-                            showConfirmButton = false,
-                            timer = 3000
+                            showConfirmButton = false
                         });
                     }
                     else
                     {
-                        await MostrarErrorSweetAlert("Documento aún no está firmado",
-                            "Se agotaron los intentos para obtener el archivo firmado. Intenta nuevamente en unos minutos.");
+                        var error = await responseUpload.Content.ReadAsStringAsync();
+                        await MostrarErrorSweetAlert("Error al subir documento firmado", error);
                     }
-                    // var responseUpload = await Http.PostAsJsonAsync("api/firmadigital/upload", uploadRequest);
-
-                    // if (responseUpload.IsSuccessStatusCode)
-                    // {
-                    //     var resultadoUpload = await responseUpload.Content.ReadFromJsonAsync<DownloadResponse>();
-                    
-                    //     await JS.InvokeVoidAsync("Swal.fire", new 
-                    //     {
-                    //         icon= "success",
-                    //         title = resultadoUpload.descripcion,
-                    //         showConfirmButton = false
-                    //     });
-                    // }
-                    // else
-                    // {
-                    //     var error = await responseUpload.Content.ReadAsStringAsync();
-                    //     await MostrarErrorSweetAlert("Error al subir documento firmado", error);
-                    // }
                 }
                 else
                 {
@@ -422,6 +455,86 @@
         }
     }
 
+    private async Task Paso1EnviarParaFirma()
+    {
+        var firmaRequest = new
+        {
+            IdExpedienteDocumento = 1235,
+            IdExpedienteDocumentoFirmante = 0,
+            TipoDocumentoFirmado = 0
+        };
+
+        var responseFirma = await Http.PostAsJsonAsync("api/firmadigital/firmar", firmaRequest);
+
+        if (responseFirma.IsSuccessStatusCode)
+        {
+            var resultadoFirma = await responseFirma.Content.ReadFromJsonAsync<UploadResponse>();
+
+            if (resultadoFirma?.codigoFirma > 0)
+            {
+                // Llenar el input oculto con el código de firma
+                await JS.InvokeVoidAsync("mostrarFormularioFirma", resultadoFirma.codigoFirma);
+            }
+            else
+            {
+                await MostrarErrorSweetAlert("Error en el proceso de firma",
+                    resultadoFirma?.descripcion ?? "Error desconocido");
+            }
+        }
+        else
+        {
+            var error = await responseFirma.Content.ReadAsStringAsync();
+            await MostrarErrorSweetAlert("Error al enviar documento para firma", error);
+        }
+    }
+    [JSInvokable]
+    public async Task SubirDocumentoFirmado(string rptJsonStr)
+    {
+        try
+        {
+            var rptJson = JsonSerializer.Deserialize<RespuestaSignNet>(rptJsonStr);
+
+            if (rptJson?.resultado == "0")
+            {
+                // Obtener el valor de codigoFirma desde el input del DOM
+                string codigoFirma = await JS.InvokeAsync<string>("obtenerCodigoFirmaDesdeFormulario");
+
+                var uploadRequest = new
+                {
+                    IdExpedienteDocumento = 1235,
+                    IdExpedienteDocumentoFirmante = 0,
+                    CodigoFirma = int.Parse(codigoFirma)
+                };
+
+                var responseUpload = await Http.PostAsJsonAsync("api/firmadigital/upload", uploadRequest);
+
+                if (responseUpload.IsSuccessStatusCode)
+                {
+                    var resultadoUpload = await responseUpload.Content.ReadFromJsonAsync<DownloadResponse>();
+                    await JS.InvokeVoidAsync("Swal.fire", new
+                    {
+                        icon = "success",
+                        title = resultadoUpload?.descripcion ?? "Documento subido correctamente",
+                        showConfirmButton = false
+                    });
+                }
+                else
+                {
+                    var error = await responseUpload.Content.ReadAsStringAsync();
+                    await MostrarErrorSweetAlert("Error al subir documento firmado", error);
+                }
+            }
+            else
+            {
+                await MostrarErrorSweetAlert("Error en la firma digital", rptJson?.estado ?? "Error desconocido");
+            }
+        }
+        catch (Exception ex)
+        {
+            await MostrarErrorSweetAlert("Error inesperado", ex.Message);
+        }
+    }
+
     private async Task MostrarErrorSweetAlert(string titulo, string mensaje)
     {
         await JS.InvokeVoidAsync("Swal.fire", new
@@ -431,6 +544,18 @@
             html= mensaje,
             confirmButtonText= "Aceptar"
         });
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        dotNetRef?.Dispose();
+    }
+    // Clase para deserializar JSON
+    public class RespuestaSignNet
+    {
+        public string estado { get; set; }
+        public string resultado { get; set; }
+        public string sujeto { get; set; }
     }
 }
 

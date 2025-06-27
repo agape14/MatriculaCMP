@@ -1,0 +1,102 @@
+﻿@page "/admin/usuarios"
+@using MatriculaCMP.Shared
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime Js
+
+<h3>Usuarios</h3>
+
+<button class="btn btn-primary mb-3"
+        @onclick="@(() => Nav.NavigateTo("/admin/usuarios/new"))">
+    <i class="ri-add-fill"></i> Nuevo
+</button>
+
+@switch (estado)
+{
+    case Estado.Cargando:
+        <em>Cargando…</em>
+        break;
+
+    case Estado.Error:
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @mensajeError
+        </div>
+        break;
+
+    case Estado.Listo:
+        <table class="table table-striped">
+            <thead>
+                <tr><th>#</th><th>Correo</th><th>Rol</th><th>Perfil</th><th></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var u in usuarios!)
+                {
+                    <tr>
+                        <td>@u.Id</td>
+                        <td>@u.Correo</td>
+                        <td>@u.Perfil?.Nombre</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-secondary me-1"
+                                    @onclick="() => Editar(u.Id)">
+                                <i class="ri-edit-2-line"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger"
+                                    @onclick="() => Eliminar(u.Id)">
+                                <i class="ri-delete-bin-line"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        break;
+}
+
+@code
+{
+    enum Estado { Cargando, Listo, Error }
+
+    List<Usuario>? usuarios;
+    Estado estado = Estado.Cargando;
+    string? mensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    async Task CargarDatos()
+    {
+        estado = Estado.Cargando;
+        try
+        {
+            usuarios = await Http.GetFromJsonAsync<List<Usuario>>("/api/usuario");
+            estado = Estado.Listo;
+        }
+        catch (Exception ex)
+        {
+            mensajeError = ex.Message;
+            estado = Estado.Error;
+        }
+    }
+
+    void Editar(int id) => Nav.NavigateTo($"/admin/usuarios/{id}");
+
+    async Task Eliminar(int id)
+    {
+        if (!await Js.InvokeAsync<bool>("confirm", $"¿Eliminar usuario {id}?")) return;
+
+        try
+        {
+            var resp = await Http.DeleteAsync($"/api/usuario/{id}");
+            if (resp.IsSuccessStatusCode)
+                await CargarDatos(); // refrescar lista
+            else
+                throw new ApplicationException($"Error {resp.StatusCode}");
+        }
+        catch (Exception ex)
+        {
+            await Js.InvokeVoidAsync("alert", $"No se pudo eliminar: {ex.Message}");
+        }
+    }
+}
