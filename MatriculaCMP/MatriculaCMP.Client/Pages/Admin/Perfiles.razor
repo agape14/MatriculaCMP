@@ -1,0 +1,78 @@
+﻿@page "/admin/perfiles"
+@using MatriculaCMP.Shared
+@using System.Text.Json;
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<h3>Perfiles</h3>
+
+@switch (estado)
+{
+    case Estado.Cargando:
+        <em>Cargando…</em>
+        break;
+
+    case Estado.Error:
+        <div class="alert alert-danger">
+            <strong>Error:</strong> @mensajeError
+        </div>
+        break;
+
+    case Estado.Listo:
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Nombre</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var (p, idx) in perfiles!.Select((value, index) => (value, index)))
+                {
+                    <tr>
+                        <td>@(idx + 1)</td>
+                        <td>@p.Nombre</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-secondary"
+                                    @onclick="() => Editar(p.Id)">
+                                <i class="ri-edit-2-line"></i> Editar
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        break;
+}
+
+@code {
+    enum Estado { Cargando, Listo, Error }
+
+    List<Perfil>? perfiles;
+    Estado estado = Estado.Cargando;
+    string? mensajeError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarDatos();
+    }
+
+    async Task CargarDatos()
+    {
+        estado = Estado.Cargando;
+        try
+        {
+            perfiles = await Http.GetFromJsonAsync<List<Perfil>>("/api/perfiles");
+            estado = Estado.Listo;
+        }
+        catch (Exception ex)
+        {
+            mensajeError = ex.Message;
+            estado = Estado.Error;
+        }
+    }
+
+    void Editar(int id) => Nav.NavigateTo($"/admin/perfiles/{id}");
+}

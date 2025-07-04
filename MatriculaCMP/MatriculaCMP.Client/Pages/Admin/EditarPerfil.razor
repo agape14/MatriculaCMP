@@ -1,0 +1,96 @@
+﻿@page "/admin/perfiles/{Id:int}"
+@using MatriculaCMP.Shared
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IJSRuntime Js
+
+<h3>Editar Perfil #@_id</h3>
+
+@if (_cargando)
+{
+    <em>Cargando…</em>
+}
+else if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @_error
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+<EditForm Model="_model" OnValidSubmit="Guardar">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <InputText @bind-Value="_model.Nombre"
+               class="form-control mb-3"
+               placeholder="Nombre del perfil" />
+
+    <button class="btn btn-primary" type="submit" disabled="@_guardando">
+        Guardar
+    </button>
+    <button class="btn btn-secondary ms-2"
+            type="button"
+            @onclick="Volver">
+        Cancelar
+    </button>
+</EditForm>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private int _id;
+    private Perfil _model = new();
+    private bool _cargando = true;
+    private bool _guardando = false;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _id = Id;
+        _cargando = true;
+        _error = null;
+
+        try
+        {
+            _model = await Http.GetFromJsonAsync<Perfil>($"/api/perfiles/{_id}") ?? new Perfil();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _cargando = false;
+        }
+    }
+
+    async Task Guardar()
+    {
+        if (_guardando) return;
+        _guardando = true;
+
+        try
+        {
+            var resp = await Http.PutAsJsonAsync($"/api/perfiles/{_id}", _model);
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                _error = $"Error {(int)resp.StatusCode}: {await resp.Content.ReadAsStringAsync()}";
+                return;
+            }
+
+            Volver(); // éxito → vuelve a la lista
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _guardando = false;
+        }
+    }
+
+    void Volver() => Nav.NavigateTo("/admin/perfiles");
+}
