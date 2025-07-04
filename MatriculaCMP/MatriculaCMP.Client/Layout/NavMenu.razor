@@ -27,68 +27,65 @@
                 <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Inicio
             </NavLink>
         </div>
-                
-        @* <div class="nav-item px-3">
-            <NavLink class="nav-link" href="prematricula">
-                <i class="ri-add-box-fill fs-3 me-2"></i> Pre Matrícula
-            </NavLink>
-        </div> *@
-        <!-- Solicitante -->
-        <div class="nav-item px-3 text-info"><strong>Solicitante</strong></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/solicitudes/prematricula"><i class=" ri-article-fill  fs-3  me-2"></i> Reg. Pre-matricula</NavLink></div>
-      @*   <div class="nav-item px-3"><NavLink class="nav-link" href="/solicitudes/subsanar"><i class="ri-file-forbid-fill fs-3  me-2"></i> Subsanar Obs.</NavLink></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/solicitudes/formatos"><i class="ri-book-open-fill fs-3  me-2"></i> Generar Formatos</NavLink></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/solicitudes/firma"><i class="ri-file-shield-2-fill fs-3  me-2"></i> Firma Digital</NavLink></div> *@
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/solicitudes/seguimiento"><i class="ri-folder-received-fill fs-3  me-2"></i> Seguimiento Trámite</NavLink></div>
-
-        <!-- Consejo Regional -->
-        <div class="nav-item px-3 text-info"><strong>Consejo Regional</strong></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/consejoregional/lista"><i class="ri-folder-5-line  fs-3  me-2"></i> Solicitudes</NavLink></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/consejoregional/firmar-diplomas"><i class="ri-shield-star-fill fs-3  me-2"></i> Firmar Diplomas</NavLink></div>
-        @*<div class="nav-item px-3"><NavLink class="nav-link" href="/consejoregional/observar">Diplomas - Decano</NavLink></div>
-         <div class="nav-item px-3"><NavLink class="nav-link" href="/consejoregional/formatos"><i class="ri-file-text-line fs-3  me-2"></i> Generar Formatos</NavLink></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/consejoregional/firma-solicitudes"><i class="ri-file-shield-line fs-3  me-2"></i> Firma Solicitudes</NavLink></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/consejoregional/firma-diplomas"><i class="ri-folder-shield-2-line fs-3  me-2"></i>Firma Diplomas</NavLink></div>
-        *@
-        <!-- Secretaría General -->
-        <div class="nav-item px-3 text-info"><strong>Secretaría General</strong></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/secretariageneral/lista"><i class="ri-folder-shield-2-fill fs-3  me-2"></i> Solicitudes CR</NavLink></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/secretariageneral/firmar-diplomas"><i class="ri-shield-star-fill fs-3  me-2"></i> Firmar Diplomas</NavLink></div>
-        @* <div class="nav-item px-3"><NavLink class="nav-link" href="/secretariageneral/aprobar">Aprobar Solicitudes</NavLink></div> 
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/secretariageneral/formatos">Generar Formatos</NavLink></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/secretariageneral/firma">Firma Aprobaciones</NavLink></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/secretariageneral/diplomas">Generar Diplomas</NavLink></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/secretariageneral/firma-diplomas">Firma Diplomas</NavLink></div> *@
-
-        <!-- Oficina Matrícula -->
-        <div class="nav-item px-3 text-info"><strong>Oficina Matrícula</strong></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/oficinamatricula/lista"><i class="ri-folder-keyhole-fill fs-3  me-2"></i>  Lista Autorizadas</NavLink></div>
-        @* <div class="nav-item px-3"><NavLink class="nav-link" href="/oficinamatricula/asignar">Asignar N° Colegiatura</NavLink></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/oficinamatricula/formatos">Generar Formatos</NavLink></div> 
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/oficinamatricula/firma">Firma Asignaciones</NavLink></div> *@
-
-        <!-- Decanato -->
-        <div class="nav-item px-3 text-info"><strong>Decanato</strong></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/decanato/lista"><i class="ri-shield-star-fill fs-3  me-2"></i>  Lista de Diplomas</NavLink></div>
-        @* <div class="nav-item px-3"><NavLink class="nav-link" href="/decanato/firma">Firma Diplomas</NavLink></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/decanato/envio">Envío Diplomas Virtuales</NavLink></div> *@
-
-        <!-- Administración -->
-        <div class="nav-item px-3 text-info"><strong>Administrador</strong></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/admin/usuarios"><i class="ri-file-user-fill fs-3  me-2"></i> Crear Usuarios</NavLink></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/admin/perfil"><i class="ri-profile-fill fs-3  me-2"></i> Perfil</NavLink></div>
-        <div class="nav-item px-3"><NavLink class="nav-link" href="/admin/perfiles-menu"><i class="ri-menu-add-fill fs-3  me-2"></i> Menú Perfiles</NavLink></div>
+        @if (perfilUsuario == "2" || perfilUsuario == "1")
+        {
+            <!-- Solicitante -->
+            <div class="nav-item px-3 text-info"><strong>Solicitante</strong></div>
+            <div class="nav-item px-3"><NavLink class="nav-link" href="/solicitudes/prematricula"><i class=" ri-article-fill  fs-3  me-2"></i> Reg. Pre-matricula</NavLink></div>
+            <div class="nav-item px-3"><NavLink class="nav-link" href="/solicitudes/seguimiento"><i class="ri-folder-received-fill fs-3  me-2"></i> Seguimiento Trámite</NavLink></div>
+        }
+        @if (perfilUsuario == "3" || perfilUsuario == "4" || perfilUsuario == "1")
+        {
+            <!-- Consejo Regional -->
+            <div class="nav-item px-3 text-info"><strong>Consejo Regional</strong></div>
+            <div class="nav-item px-3"><NavLink class="nav-link" href="/consejoregional/lista"><i class="ri-folder-5-line  fs-3  me-2"></i> Solicitudes</NavLink></div>
+            <div class="nav-item px-3"><NavLink class="nav-link" href="/consejoregional/firmar-diplomas"><i class="ri-shield-star-fill fs-3  me-2"></i> Firmar Diplomas</NavLink></div>
+        }
+        
+        @if (perfilUsuario == "3" || perfilUsuario == "5" || perfilUsuario == "1")
+        {
+            <!-- Secretaría General -->
+            <div class="nav-item px-3 text-info"><strong>Secretaría General</strong></div>
+            <div class="nav-item px-3"><NavLink class="nav-link" href="/secretariageneral/lista"><i class="ri-folder-shield-2-fill fs-3  me-2"></i> Solicitudes CR</NavLink></div>
+            <div class="nav-item px-3"><NavLink class="nav-link" href="/secretariageneral/firmar-diplomas"><i class="ri-shield-star-fill fs-3  me-2"></i> Firmar Diplomas</NavLink></div>
+        }
+        
+        @if (perfilUsuario == "7" || perfilUsuario == "1")
+        {
+            <!-- Oficina Matrícula -->
+            <div class="nav-item px-3 text-info"><strong>Oficina Matrícula</strong></div>
+            <div class="nav-item px-3"><NavLink class="nav-link" href="/oficinamatricula/lista"><i class="ri-folder-keyhole-fill fs-3  me-2"></i>  Lista Autorizadas</NavLink></div>
+        }
+        
+        @if (perfilUsuario == "6" || perfilUsuario == "1")
+        {
+            <!-- Decanato -->
+            <div class="nav-item px-3 text-info"><strong>Decanato</strong></div>
+            <div class="nav-item px-3"><NavLink class="nav-link" href="/decanato/lista"><i class="ri-shield-star-fill fs-3  me-2"></i>  Lista de Diplomas</NavLink></div>
+        }
+        @if ( perfilUsuario == "1")
+        {
+            <!-- Administración -->
+            <div class="nav-item px-3 text-info"><strong>Administrador</strong></div>
+            <div class="nav-item px-3"><NavLink class="nav-link" href="/admin/usuarios"><i class="ri-file-user-fill fs-3  me-2"></i> Crear Usuarios</NavLink></div>
+            <div class="nav-item px-3"><NavLink class="nav-link" href="/admin/perfil"><i class="ri-profile-fill fs-3  me-2"></i> Perfil</NavLink></div>
+            <div class="nav-item px-3"><NavLink class="nav-link" href="/admin/perfiles-menu"><i class="ri-menu-add-fill fs-3  me-2"></i> Menú Perfiles</NavLink></div>
+        }
+        
     </nav>
 </div>
-@* @code {
-    private List<MenuDto> menus = new();
+@code {
+    //private List<MenuDto> menus = new();
+    private string perfilUsuario = "";
 
     protected override async Task OnInitializedAsync()
     {
-        var auth = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var identity = (ClaimsIdentity)auth.User.Identity;
-        var perfilId = int.Parse(identity.FindFirst("PerfilId")?.Value ?? "0");
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
 
-        menus = await MenuHttpService.ObtenerMenusPorPerfilAsync(perfilId);
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            perfilUsuario = user.FindFirst("PerfilId")?.Value ?? "1"; 
+        }
     }
-} *@
+}

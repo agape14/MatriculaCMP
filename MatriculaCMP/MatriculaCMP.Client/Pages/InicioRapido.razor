@@ -2,9 +2,14 @@
 @layout LoginLayout
 @using MatriculaCMP.Client.Layout
 @using MatriculaCMP.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@using System.IdentityModel.Tokens.Jwt
+@using System.Text.Json
 @inject HttpClient Http
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <style>
     .login-container {
@@ -16,25 +21,28 @@
 </style>
 
 <div class="login-container">
-    <button class="btn btn-danger  waves-effect waves-light" @onclick="IniciarSesion">INICIAR SESIÓN DESDE SGD</button>
+    <button class="btn btn-danger  waves-effect waves-light" @onclick="IniciarSesion">INICIAR SESIÓN DESDE SGD</button> | 
+    <button class="btn btn-primary  waves-effect waves-light" @onclick="IniciarSesionUsuarioContraseña">INICIAR CON USUARIO Y CONTRASEÑA</button>
 </div>
 
-@if (!string.IsNullOrEmpty(mensaje))
-{
-    <p style="color:red; text-align: center">@mensaje</p>
-}
 
 @code {
     private string mensaje;
-    // Valores por defecto
+    // Valores por defecto 41342572
     private string TipoDocumento = "2";
-    private string NumeroDocumento = "41342572";
+    private string NumeroDocumento = "10102695";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Salir();
+    }
 
     private async Task IniciarSesion()
     {
         try
         {
-            // Encriptar en Base64 usando JavaScript
+            // Mostrar spinner mientras se procesa
+            await JS.InvokeVoidAsync("mostrarSpinnerLogin", "Validando usuario...");
             string tipoEncriptado = await JS.InvokeAsync<string>("btoa", TipoDocumento);
             string numeroEncriptado = await JS.InvokeAsync<string>("btoa", NumeroDocumento);
 
@@ -45,23 +53,58 @@
                 };
 
             var response = await Http.PostAsJsonAsync("api/usuario/LoginSgd", dto);
-
+            await JS.InvokeVoidAsync("Swal.close");
             if (response.IsSuccessStatusCode)
             {
-                Nav.NavigateTo("/home");
+                //Nav.NavigateTo("/home");
+                var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+                var token = json.GetProperty("token").GetString();
+
+                // Redirigir manualmente a /autologin con el token
+                Nav.NavigateTo($"/autologin?token={token}", forceLoad: true);
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                mensaje = "Usuario no encontrado. Comuníquese con el administrador.";
+                await JS.InvokeVoidAsync("Swal.fire", new
+                {
+                    icon = "error",
+                    title = "Usuario no encontrado",
+                    text = "Comuníquese con el administrador.",
+                    confirmButtonText = "Aceptar"
+                });
             }
             else
             {
-                mensaje = $"Error: {response.StatusCode}";
+                await JS.InvokeVoidAsync("Swal.fire", new
+                {
+                    icon = "error",
+                    title = "Error al iniciar sesión",
+                    text = $"Código: {(int)response.StatusCode}",
+                    confirmButtonText = "Cerrar"
+                });
             }
         }
         catch (Exception ex)
         {
-            mensaje = $"Error inesperado: {ex.Message}";
+            await JS.InvokeVoidAsync("Swal.close");
+            await JS.InvokeVoidAsync("Swal.fire", new
+            {
+                icon = "error",
+                title = "Error inesperado",
+                text = ex.Message,
+                confirmButtonText = "Cerrar"
+            });
         }
+    }
+
+    private async Task IniciarSesionUsuarioContraseña()
+    {
+        Nav.NavigateTo("/login");
+    }
+
+    async Task Salir()
+    {
+        await JS.InvokeVoidAsync("localStorage.removeItem", "Token");
+        await AuthenticationStateProvider.GetAuthenticationStateAsync();
     }
 }

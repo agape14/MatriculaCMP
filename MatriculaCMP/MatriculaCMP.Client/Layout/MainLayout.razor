@@ -1,5 +1,8 @@
 ﻿@using MatriculaCMP.Shared
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@using System.IdentityModel.Tokens.Jwt
+@using System.Security.Claims
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inherits LayoutComponentBase
 @inject IJSRuntime JS
@@ -12,9 +15,16 @@
 
     <main>
         <div class="top-row px-4">
-            @* <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a> 
-            <button @onclick='() => Navigation.NavigateTo("/login", true)'>Cerrar Sesión</button>*@
-            <button class="btn btn-danger" @onclick=Salir><i class="bi bi-escape "></i> </button>
+            <div class="d-flex justify-content-between align-items-center w-100">
+                <span class="me-3 text-info text-truncate">
+                    Bienvenido: <strong>@nombresCompletos</strong>  - Perfil: <strong>@nombrePerfil</strong>
+                </span>
+
+                <button class="btn btn-danger btn-sm d-flex align-items-center" @onclick="Salir" title="Cerrar sesión">
+                    <i class="bi bi-escape"></i>
+                    <span class="ms-1 d-none d-sm-inline">Cerrar Sesión</span>
+                </button>
+            </div>
         </div>
 
         <article class="content px-4">
@@ -24,12 +34,30 @@
 </div>
 
 <div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
+    Se ha producido un error no manejado.
+    <a href="" class="reload">Recargar Página</a>
     <a class="dismiss">🗙</a>
 </div>
 
 @code {
+    private string nombresCompletos;
+    private string nombrePerfil;
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            // Aquí deberías obtener el perfil real del usuario desde tus claims o base de datos
+            nombresCompletos = user.FindFirst("NombresCompletos")?.Value ?? "-"; // Valor de ejemplo
+            nombrePerfil = user.FindFirst("PerfilNombre")?.Value ?? "-"; // Valor de ejemplo
+        }
+        // nombresCompletos = jwtToken.Claims.FirstOrDefault(c => c.Type == "nombrescompletos")?.Value ?? "";
+        // tipoDocumento = jwtToken.Claims.FirstOrDefault(c => c.Type == "tipoDocumento")?.Value ?? "";
+        
+    }
+
     async Task Salir()
     {
         await JS.InvokeVoidAsync("localStorage.removeItem", "Token");

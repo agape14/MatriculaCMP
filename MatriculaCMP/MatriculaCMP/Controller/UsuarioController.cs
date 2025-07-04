@@ -83,7 +83,10 @@ namespace MatriculaCMP.Controller
             try
             {
                 // Buscar usuario
-                var cuenta = await _context.Usuarios.FirstOrDefaultAsync(x => x.Correo == objeto.Correo);
+                var cuenta = await _context.Usuarios
+                    .Include(u => u.Persona)
+                    .Include(u => u.Perfil)
+                    .FirstOrDefaultAsync(x => x.Correo == objeto.Correo);
                 if (cuenta == null)
                     return Unauthorized("Credenciales inválidas.");
 
@@ -133,12 +136,14 @@ namespace MatriculaCMP.Controller
 
 		private string CreateToken(Usuario user)
 		{
-			List<Claim> claims = new List<Claim>
+            List<Claim> claims = new List<Claim>
  			{
 				 new Claim(ClaimTypes.Name, user.Correo),
 				 //new Claim(ClaimTypes.Role,user.Rol),
                  new Claim(ClaimTypes.Name, user.NombreUsuario),
 				new Claim("PerfilId", user.PerfilId.ToString()),
+                new Claim("PerfilNombre", user.Perfil.Nombre),
+                new Claim("NombresCompletos", user.Persona.NombresCompletos),
              };
 
 			//var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
@@ -150,7 +155,9 @@ namespace MatriculaCMP.Controller
 			var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
 			var token = new JwtSecurityToken(
-				claims: claims,
+                issuer: _config["Jwt:Issuer"],         // ✅ Emisor del token
+                audience: _config["Jwt:Audience"],     // ✅ Destinatario válido
+                claims: claims,
 				expires: DateTime.Now.AddMinutes(1),
 				signingCredentials: creds);
 
@@ -159,43 +166,8 @@ namespace MatriculaCMP.Controller
 			return jwt;
 		}
 
-
-        //[HttpPost("LoginSgd")]
-        //public async Task<IActionResult> LoginDesdeSgd([FromBody] UsuarioLoginEncryptedDTO dto, [FromServices] SgdDbContext sgdContext)
-        //{
-        //    string clave = "clave-secreta";
-
-        //    try
-        //    {
-        //        string tipoDocumentoDesencriptado = Decrypt(dto.TipoDocumentoEncrypted, clave);
-        //        string numeroDocumentoDesencriptado = Decrypt(dto.NumeroDocumentoEncrypted, clave);
-
-        //        int tipoDoc = int.Parse(tipoDocumentoDesencriptado);
-        //        string numDoc = numeroDocumentoDesencriptado;
-
-        //        var persona = await sgdContext.Persona
-        //            .FirstOrDefaultAsync(p => p.IdCatalogoTipoDocumentoPersonal == tipoDoc && p.NumeroDocumento == numDoc);
-
-        //        if (persona == null)
-        //        {
-        //            return NotFound("No se encontró el usuario. Comuníquese con el administrador.");
-        //        }
-
-        //        return Ok(new
-        //        {
-        //            mensaje = "Login exitoso",
-        //            nombre = persona.NombreCompleto
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return StatusCode(500, "Error interno: " + ex.Message);
-        //    }
-        //}
-
-
         [HttpPost("LoginSgd")]
-        public IActionResult LoginSgd([FromBody] UsuarioLoginEncryptedDTO request)
+        public async Task<IActionResult> LoginSgd([FromBody] UsuarioLoginEncryptedDTO request)
         {
             try
             {
@@ -206,17 +178,77 @@ namespace MatriculaCMP.Controller
                 var persona = _sgdContext.Persona
                     .FirstOrDefault(p => p.IdCatalogoTipoDocumentoPersonal.ToString() == tipoDoc &&
                             p.NumeroDocumento == numDoc);
-
                 if (persona == null)
                 {
                     return NotFound("No se encontró el usuario. Comuníquese con el administrador.");
                 }
+                var token="";
+                var idPersona = 0;
+                var persona_prem = _context.Personas.FirstOrDefault(x => x.NumeroDocumento == numDoc);
+               
+                if (persona_prem == null )
+                {
+                    if (persona_prem == null)
+                    {
+                        var nuevaPersona = new Persona
+                        {
+                            Nombres = persona.Nombres,
+                            ApellidoPaterno = persona.ApellidoPaterno,
+                            ApellidoMaterno = persona.ApellidoMaterno,
+                            TipoDocumentoId = persona.IdCatalogoTipoDocumentoPersonal.ToString(),
+                            NumeroDocumento = persona.NumeroDocumento
+                        };
 
+                        _context.Personas.Add(nuevaPersona);
+                        await _context.SaveChangesAsync();
+                        idPersona = nuevaPersona.Id;
+                    }
+                    else
+                    {
+                        idPersona = persona_prem.Id;
+                    }
+                    var usuario_prem = _sgdContext.UsuariosSGD.FirstOrDefault(x => x.IdPersona == persona.IdPersona && x.Bloqueado == false);
+                    if (usuario_prem != null)
+                    {
+                        // Crear hash + salt (si quieres clave genérica)
+                        var password = numDoc; // ⚠️ Opcional: puedes generar o encriptar una
+                        CreatePasswordHash(password, out byte[] hash, out byte[] salt);
+
+                        var nuevoUsuario = new Usuario
+                        {
+                            Correo = usuario_prem.Email ?? "", // o cualquier otro valor por defecto
+                            NombreUsuario = usuario_prem.Logueo, // o algo único
+                            PasswordHash = hash,
+                            PasswordSalt = salt,
+                            PerfilId = 2, // Medico
+                            PersonaId = idPersona
+                        };
+
+                        _context.Usuarios.Add(nuevoUsuario);
+                        await _context.SaveChangesAsync();
+                        var usuarioCompleto = _context.Usuarios
+                        .Include(u => u.Persona)
+                        .Include(u => u.Perfil)
+                        .FirstOrDefault(u => u.Id == nuevoUsuario.Id);
+
+                        token = CreateToken(usuarioCompleto);
+                    }
+
+                }
+                else
+                {
+                    var usuariotoken = _context.Usuarios
+                       .Include(u => u.Persona)
+                       .Include(u => u.Perfil)
+                       .FirstOrDefault(u => u.PersonaId == persona_prem.Id);
+                    token = CreateToken(usuariotoken);
+                }
                 // Generar token de autenticación (ejemplo simplificado)
-                var token = GenerateJwtToken(persona);
+                //var token = GenerateJwtToken(persona);
 
                 // Redirigir a la aplicación con el token de autenticación
-                return Redirect($"{_config["FrontendUrl"]}/autologin?token={token}");
+                //return Redirect($"{_config["FrontendUrl"]}/autologin?token={token}");
+                return Ok(new { token });
             }
             catch (Exception ex)
             {
@@ -247,7 +279,7 @@ namespace MatriculaCMP.Controller
 
         // En tu controlador API
         [HttpGet("LoginSgdRedirect")]
-        public IActionResult LoginSgdRedirect([FromQuery] string tipo, [FromQuery] string numero)
+        public async Task<IActionResult> LoginSgdRedirect([FromQuery] string tipo, [FromQuery] string numero)
         {
             var dto = new UsuarioLoginEncryptedDTO
             {
@@ -256,7 +288,7 @@ namespace MatriculaCMP.Controller
             };
 
             // Llama al método POST original
-            return LoginSgd(dto);
+            return await LoginSgd(dto);
         }
 
         private string GenerateJwtToken(PersonaSGD persona)
@@ -296,9 +328,9 @@ namespace MatriculaCMP.Controller
                 {
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(key),
-                    ValidateIssuer = true,
+                    ValidateIssuer = false,
                     ValidIssuer = _config["Jwt:Issuer"],
-                    ValidateAudience = true,
+                    ValidateAudience = false,
                     ValidAudience = _config["Jwt:Audience"],
                     ValidateLifetime = true,
                     ClockSkew = TimeSpan.Zero
@@ -321,10 +353,12 @@ namespace MatriculaCMP.Controller
             {
                 var lista = await _context.Usuarios
                               .Include(u => u.Perfil)
+                              .Include(u => u.Persona)
                               .Select(u => new {
                                   u.Id,
                                   u.NombreUsuario,
                                   u.Correo,
+                                  Persona = new { u.Persona.Id, u.Persona.Nombres, u.Persona.ApellidoPaterno, u.Persona.ApellidoMaterno, u.Persona.NombresCompletos },
                                   Perfil = new { u.Perfil.Id, u.Perfil.Nombre }
                               })
                               .ToListAsync();
@@ -343,12 +377,30 @@ namespace MatriculaCMP.Controller
         {
             try
             {
-                var u = await _context.Usuarios
-                                      .Include(x => x.Perfil)
-                                      .AsNoTracking()
-                                      .FirstOrDefaultAsync(x => x.Id == id);
+                    var usuario = await _context.Usuarios
+                .Include(x => x.Perfil)
+                .Include(x => x.Persona)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == id);
 
-                return u is null ? NotFound() : Ok(u);
+                if (usuario == null)
+                    return NotFound();
+
+                var model = new UsuarioInsert
+                {
+                    Nombres = usuario.Persona?.Nombres ?? "",
+                    ApellidoPaterno = usuario.Persona?.ApellidoPaterno ?? "",
+                    ApellidoMaterno = usuario.Persona?.ApellidoMaterno ?? "",
+                    NumeroDocumento = usuario.Persona?.NumeroDocumento ?? "",
+                    Correo = usuario.Correo,
+                    NombreUsuario = usuario.NombreUsuario,
+                    PerfilId = usuario.PerfilId,
+                    Perfil = usuario.Perfil,
+                    PersonaId = usuario.PersonaId,
+                    Persona = usuario.Persona
+                };
+
+                return Ok(model);
             }
             catch (Exception ex)
             {
@@ -359,23 +411,34 @@ namespace MatriculaCMP.Controller
 
         // POST api/usuarios
         [HttpPost]
-        public async Task<IActionResult> Post(Usuario usuario)
+        public async Task<IActionResult> Post([FromBody] UsuarioInsert model)
         {
             try
             {
-                // Si viene con datos de Persona
-                if (usuario.Persona is not null)
+                // Mapear de UsuarioInsert → Usuario + Persona
+                var persona = new Persona
                 {
-                    _context.Personas.Add(usuario.Persona);
-                    await _context.SaveChangesAsync();
+                    Nombres = model.Nombres.ToUpper().Trim(),
+                    ApellidoPaterno = model.ApellidoPaterno.ToUpper().Trim(),
+                    ApellidoMaterno = model.ApellidoMaterno.ToUpper().Trim(),
+                    NumeroDocumento = model.NumeroDocumento,
+                    Email = model.Correo,
+                };
 
-                    // Asignar el ID recién generado
-                    usuario.PersonaId = usuario.Persona.Id;
-                }
-                CreatePasswordHash(usuario.Password, out byte[] passwordHash, out byte[] passwordSalt);
-                // Preparar hash y salt (si aplica)
-                usuario.PasswordSalt = passwordSalt;
-                usuario.PasswordHash = passwordHash; // ejemplo fijo o reemplaza
+                _context.Personas.Add(persona);
+                await _context.SaveChangesAsync();
+
+                CreatePasswordHash(model.Password, out byte[] passwordHash, out byte[] passwordSalt);
+
+                var usuario = new Usuario
+                {
+                    Correo = model.Correo,
+                    NombreUsuario = model.NombreUsuario.ToUpper().Trim(),
+                    PerfilId = model.PerfilId,
+                    PersonaId = persona.Id,
+                    PasswordHash = passwordHash,
+                    PasswordSalt = passwordSalt
+                };
 
                 _context.Usuarios.Add(usuario);
                 await _context.SaveChangesAsync();
@@ -391,13 +454,41 @@ namespace MatriculaCMP.Controller
 
         // PUT api/usuarios/5
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> Put(int id, Usuario dto)
+        public async Task<IActionResult> Put(int id, [FromBody] UsuarioInsert model)
         {
-            if (id != dto.Id) return BadRequest("Id del cuerpo y de la URL no coinciden");
+            if (id == null) return BadRequest("Id del cuerpo y de la URL no coinciden");
 
             try
             {
-                _context.Entry(dto).State = EntityState.Modified;
+                var usuario = await _context.Usuarios
+           .Include(u => u.Persona)
+           .FirstOrDefaultAsync(u => u.Id == id);
+
+                if (usuario == null)
+                    return NotFound();
+
+                // Actualizar datos de Persona
+                if (usuario.Persona != null)
+                {
+                    usuario.Persona.Nombres = model.Nombres.ToUpper().Trim();
+                    usuario.Persona.ApellidoPaterno = model.ApellidoPaterno.ToUpper().Trim();
+                    usuario.Persona.ApellidoMaterno = model.ApellidoMaterno.ToUpper().Trim();
+                    usuario.Persona.NumeroDocumento = model.NumeroDocumento;
+                    usuario.Persona.Email = model.Correo;
+                }
+
+                // Actualizar datos de Usuario
+                usuario.Correo = model.Correo;
+                usuario.NombreUsuario = model.NombreUsuario.ToUpper().Trim();
+                usuario.PerfilId = model.PerfilId;
+
+                if (!string.IsNullOrWhiteSpace(model.Password))
+                {
+                    CreatePasswordHash(model.Password, out byte[] passwordHash, out byte[] passwordSalt);
+                    usuario.PasswordHash = passwordHash;
+                    usuario.PasswordSalt = passwordSalt;
+                }
+
                 await _context.SaveChangesAsync();
                 return NoContent();
             }

@@ -91,7 +91,18 @@
             }
         };
 
-       
+        function mostrarSpinnerLogin(titulo) {
+            Swal.fire({
+                title: titulo,
+                text: "Por favor espere.",
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+        }
     </script>
 
     <script src="js/site.js"></script>

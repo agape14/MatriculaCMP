@@ -11,12 +11,18 @@
 {
     <em>Cargando…</em>
 }
-else if (_error is not null)
+@* else if (_error is not null)
 {
     <div class="alert alert-danger">Error: @_error</div>
-}
-else
+} *@
+else if (!string.IsNullOrEmpty(_error))
 {
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        @_error
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
     <EditForm Model="_model" OnValidSubmit="Guardar">
         <DataAnnotationsValidator />
         <ValidationSummary />
@@ -24,33 +30,21 @@ else
        
             <h5 class="mt-4">Datos de la Persona</h5>
 
-            <InputText @bind-Value="_model.Persona.Nombres"
+            <InputText @bind-Value="_model.Nombres"
                        class="form-control mb-2"
                        placeholder="Nombres" />
 
-            <InputText @bind-Value="_model.Persona.ApellidoPaterno"
+            <InputText @bind-Value="_model.ApellidoPaterno"
                        class="form-control mb-2"
                        placeholder="Apellido Paterno" />
 
-            <InputText @bind-Value="_model.Persona.ApellidoMaterno"
+            <InputText @bind-Value="_model.ApellidoMaterno"
                        class="form-control mb-2"
                        placeholder="Apellido Materno" />
 
-            <InputText @bind-Value="_model.Persona.NumeroDocumento"
+            <InputText @bind-Value="_model.NumeroDocumento"
                        class="form-control mb-2"
                        placeholder="N° Documento" />
-
-            <InputText @bind-Value="_model.Persona.Celular"
-                       class="form-control mb-2"
-                       placeholder="Celular" />
-
-            <InputText @bind-Value="_model.Persona.Email"
-                       class="form-control mb-2"
-                       placeholder="Email" />
-
-            <InputDate @bind-Value="_model.Persona.FechaNacimiento"
-                       class="form-control mb-3" />
-        
 
         <InputText @bind-Value="_model.Correo"
                    class="form-control mb-3"
@@ -82,14 +76,14 @@ else
             Cancelar
         </button>
     </EditForm>
-}
+
 
 @code {
     // ------------------ parámetros y estado ------------------
     [Parameter] public int? Id { get; set; }
 
     private int? _id;                 // se copia en OnParametersSetAsync
-    private Usuario _model = new();
+    private UsuarioInsert _model = new();
     private List<Perfil> _perfiles = new();
 
     private bool _cargando = true;
@@ -108,8 +102,8 @@ else
             // Descarga perfiles y (si aplica) el usuario en paralelo
             var perfilesTask = Http.GetFromJsonAsync<List<Perfil>>("/api/perfiles");
             var usuarioTask = _id is null
-                ? Task.FromResult<Usuario?>(new Usuario())
-                : Http.GetFromJsonAsync<Usuario>($"/api/usuario/{_id}");
+                ? Task.FromResult<UsuarioInsert?>(new UsuarioInsert())
+                : Http.GetFromJsonAsync<UsuarioInsert>($"/api/usuario/{_id}");
 
             await Task.WhenAll(perfilesTask, usuarioTask);
 
@@ -132,6 +126,13 @@ else
         if (_guardando) return;
         _guardando = true;
 
+        // Validación de contraseña solo si es nuevo
+        if (_id is null && string.IsNullOrWhiteSpace(_model.Password))
+        {
+            await MostrarErrorTemporal("La contraseña es obligatoria para nuevos usuarios.");
+            _guardando = false;
+            return;
+        }
         try
         {
             HttpResponseMessage resp = _id is null
@@ -140,7 +141,9 @@ else
 
             if (!resp.IsSuccessStatusCode)
             {
-                _error = $"Error {(int)resp.StatusCode}: {await resp.Content.ReadAsStringAsync()}";
+                // _error = $"Error {(int)resp.StatusCode}: {await resp.Content.ReadAsStringAsync()}";
+                // return;
+                await MostrarErrorTemporal($"Error {(int)resp.StatusCode}: {await resp.Content.ReadAsStringAsync()}");
                 return;
             }
 
@@ -157,4 +160,14 @@ else
     }
 
     void Volver() => Nav.NavigateTo("/admin/usuarios");
+
+    private async Task MostrarErrorTemporal(string mensaje, int milisegundos = 5000)
+    {
+        _error = mensaje;
+        StateHasChanged(); // refresca UI inmediatamente
+        await Task.Delay(milisegundos);
+        _error = null;
+        StateHasChanged(); // vuelve a refrescar para ocultar
+    }
+
 }

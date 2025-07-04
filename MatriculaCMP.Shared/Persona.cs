@@ -9,8 +9,8 @@ namespace MatriculaCMP.Shared
     {
         public int Id { get; set; }
 
-        [Required(ErrorMessage = "El consejo regional es requerido")]
-        public string ConsejoRegionalId { get; set; } = string.Empty;
+        //[Required(ErrorMessage = "El consejo regional es requerido")]
+        public string? ConsejoRegionalId { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Los nombres son requeridos")]
         [StringLength(50)]
@@ -52,15 +52,15 @@ namespace MatriculaCMP.Shared
         [StringLength(10)]
         public string? Telefono { get; set; }
 
-        [Required]
+        //[Required]
         [StringLength(10)]
         [RegularExpression(@"^\d+$")]
-        public string Celular { get; set; } = string.Empty;
+        public string? Celular { get; set; } = string.Empty;
 
-        [Required]
+        //[Required]
         [EmailAddress]
         [StringLength(100)]
-        public string Email { get; set; } = string.Empty;
+        public string? Email { get; set; } = string.Empty;
 
         // Domicilio
         public string? ZonaDomicilioId { get; set; } = "8";

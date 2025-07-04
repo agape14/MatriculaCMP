@@ -1,8 +1,9 @@
 ﻿@page "/admin/usuarios"
 @using MatriculaCMP.Shared
+@using System.Text.Json;
 @inject HttpClient Http
 @inject NavigationManager Nav
-@inject IJSRuntime Js
+@inject IJSRuntime JS
 
 <h3>Usuarios</h3>
 
@@ -26,13 +27,21 @@
     case Estado.Listo:
         <table class="table table-striped">
             <thead>
-                <tr><th>#</th><th>Correo</th><th>Rol</th><th>Perfil</th><th></th></tr>
+                <tr>
+                    <th>#</th>
+                    <th>Nombres Completos</th>
+                    <th>Correo</th>
+                    <th>Rol</th>                    
+                    <th></th>
+                </tr>
             </thead>
             <tbody>
-                @foreach (var u in usuarios!)
+                @* @foreach (var u in usuarios!) *@
+                @foreach (var (u, idx) in usuarios!.Select((value, index) => (value, index)))
                 {
                     <tr>
-                        <td>@u.Id</td>
+                        <td>@(idx + 1)</td>
+                        <td>@u.Persona?.NombresCompletos</td>
                         <td>@u.Correo</td>
                         <td>@u.Perfil?.Nombre</td>
                         <td class="text-end">
@@ -59,7 +68,6 @@
     List<Usuario>? usuarios;
     Estado estado = Estado.Cargando;
     string? mensajeError;
-
     protected override async Task OnInitializedAsync()
     {
         await CargarDatos();
@@ -84,19 +92,45 @@
 
     async Task Eliminar(int id)
     {
-        if (!await Js.InvokeAsync<bool>("confirm", $"¿Eliminar usuario {id}?")) return;
+        var confirmado = await JS.InvokeAsync<bool>("confirmarSweet", "¿Estás seguro?", "Esta acción no se puede deshacer");
 
-        try
+        if (confirmado)
         {
-            var resp = await Http.DeleteAsync($"/api/usuario/{id}");
-            if (resp.IsSuccessStatusCode)
-                await CargarDatos(); // refrescar lista
-            else
-                throw new ApplicationException($"Error {resp.StatusCode}");
+            try
+            {
+                var resp = await Http.DeleteAsync($"/api/usuario/{id}");
+                if (resp.IsSuccessStatusCode)
+                {
+                    await JS.InvokeVoidAsync("Swal.fire", new
+                    {
+                        icon = "success",
+                        title = "Se elimino al usuario de manera correcta.",
+                        showConfirmButton = false
+                    });
+                    await CargarDatos();
+                }
+                else
+                {
+                    await MostrarErrorSweetAlert("Error inesperado", resp.StatusCode.ToString());
+                    //throw new ApplicationException($"Error {resp.StatusCode}");
+                }
+                
+            }
+            catch (Exception ex)
+            {
+                await JS.InvokeVoidAsync("alert", $"No se pudo eliminar: {ex.Message}");
+            }
         }
-        catch (Exception ex)
+        // if (!await JS.InvokeAsync<bool>("confirm", $"¿Eliminar usuario {id}?")) return;
+    }
+    private async Task MostrarErrorSweetAlert(string titulo, string mensaje)
+    {
+        await JS.InvokeVoidAsync("Swal.fire", new
         {
-            await Js.InvokeVoidAsync("alert", $"No se pudo eliminar: {ex.Message}");
-        }
+            icon = "error",
+            title = titulo,
+            html = mensaje,
+            confirmButtonText = "Aceptar"
+        });
     }
 }

@@ -9,9 +9,10 @@
 
 @code {
     private string perfilUsuario = "";
+    private string perfilNombre = "";
 
     // Simulando totales por perfil
-    private Dictionary<string, List<(string titulo, int valor, string color, string icono)>> totalesPorPerfil = new();
+    private Dictionary<string, List<(string titulo, int valor, string color, string icono, string? colortexto)>> totalesPorPerfil = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -21,7 +22,8 @@
         if (user.Identity?.IsAuthenticated ?? false)
         {
             // Aquí deberías obtener el perfil real del usuario desde tus claims o base de datos
-            perfilUsuario = user.FindFirst("perfil")?.Value ?? "ADMINISTRADOR"; // Valor de ejemplo
+            perfilUsuario = user.FindFirst("PerfilId")?.Value ?? "1"; // Valor de ejemplo
+            perfilNombre = user.FindFirst("PerfilNombre")?.Value ?? ""; // Valor de ejemplo
         }
 
         CargarTotales();
@@ -31,39 +33,51 @@
     {
         totalesPorPerfil = new()
             {
-                ["SOLICITANTE"] = new() {
-                ("Mis Solicitudes Enviadas", 4, "primary", "ri-folder-3-line"),
-                ("Observadas", 1, "warning", "ri-error-warning-line"),
-                ("Firmas Digitales", 2, "success", "ri-fingerprint-line"),
-                ("Trámites en Proceso", 1, "info", "ri-loop-left-line")
+                ["2"] = new() {
+                ("Mis Solicitudes Enviadas", 4, "primary", "ri-folder-3-line", null),
+                ("Observadas", 1, "warning", "ri-error-warning-line", null),
+                ("Firmas Digitales", 2, "success", "ri-fingerprint-line", null),
+                ("Trámites en Proceso", 1, "info", "ri-loop-left-line", null)
             },
-                ["CONSEJO REGIONAL"] = new() {
-                ("Solicitudes Recibidas", 280, "primary", "ri-mail-line"),
-                ("Observadas", 35, "warning", "ri-eye-line"),
-                ("Firmas Realizadas", 198, "success", "ri-ink-bottle-line"),
-                ("Diplomas Firmados", 76, "info", "ri-medal-line")
+                ["3"] = new() {
+                ("Solicitudes Recibidas", 280, "primary", "ri-mail-line", null),
+                ("Observadas", 35, "warning", "ri-eye-line", null),
+                ("Firmas Realizadas", 198, "success", "ri-ink-bottle-line", null),
+                ("Diplomas Firmados", 76, "info", "ri-medal-line", null)
             },
-                ["SECRETARIA GENERAL"] = new() {
-                ("Solicitudes Evaluadas", 540, "primary", "ri-check-line"),
-                ("Aprobadas", 472, "success", "ri-thumb-up-line"),
-                ("Diplomas Emitidos", 150, "info", "ri-award-line"),
-                ("Firmas Realizadas", 140, "success", "ri-fingerprint-line")
+                ["4"] = new() {
+                ("Solicitudes Recibidas", 280, "primary", "ri-mail-line", null),
+                ("Observadas", 35, "warning", "ri-eye-line", null),
+                ("Firmas Realizadas", 198, "success", "ri-ink-bottle-line", null),
+                ("Diplomas Firmados", 76, "info", "ri-medal-line", null)
             },
-                ["OFICINA MATRICULA"] = new() {
-                ("Solicitudes Autorizadas", 210, "primary", "ri-check-double-line"),
-                ("Nros. Colegiatura Asignados", 198, "success", "ri-number-line"),
-                ("Diplomas Firmados", 88, "info", "ri-medal-line")
+                ["3"] = new() {
+                ("Solicitudes Evaluadas", 540, "primary", "ri-check-line", null),
+                ("Aprobadas", 472, "success", "ri-thumb-up-line", null),
+                ("Diplomas Emitidos", 150, "info", "ri-award-line", null),
+                ("Firmas Realizadas", 140, "success", "ri-fingerprint-line", null)
             },
-                ["DECANATO"] = new() {
-                ("Diplomas para Firma", 63, "warning", "ri-draft-line"),
-                ("Firmados", 60, "success", "ri-verified-badge-line"),
-                ("Enviados", 55, "primary", "ri-send-plane-line")
+                ["5"] = new() {
+                ("Solicitudes Evaluadas", 540, "primary", "ri-check-line", null),
+                ("Aprobadas", 472, "success", "ri-thumb-up-line", null),
+                ("Diplomas Emitidos", 150, "info", "ri-award-line", null),
+                ("Firmas Realizadas", 140, "success", "ri-fingerprint-line", null)
             },
-                ["ADMINISTRADOR"] = new() {
-                ("Usuarios Creados", 17, "primary", "ri-user-add-line"),
-                ("Perfiles Creados", 6, "info", "ri-shield-user-line"),
-                ("Menús Activos", 4, "success", "ri-menu-3-line"),
-                ("Solicitudes Totales", 2315, "dark", "ri-database-2-line")
+                ["7"] = new() {
+                ("Solicitudes Autorizadas", 210, "primary", "ri-check-double-line", null),
+                ("Nros. Colegiatura Asignados", 198, "success", "ri-number-line", null),
+                ("Diplomas Firmados", 88, "info", "ri-medal-line", null)
+            },
+                ["6"] = new() {
+                ("Diplomas para Firma", 63, "warning", "ri-draft-line", null),
+                ("Firmados", 60, "success", "ri-verified-badge-line", null),
+                ("Enviados", 55, "primary", "ri-send-plane-line", null)
+            },
+                ["1"] = new() {
+                ("Usuarios Creados", 17, "primary", "ri-user-add-line", null),
+                ("Perfiles Creados", 6, "info", "ri-shield-user-line", null),
+                ("Menús Activos", 4, "success", "ri-menu-3-line", null),
+                ("Solicitudes Totales", 2315, "dark", "ri-database-2-line", "white")
             }
             };
     }
@@ -71,50 +85,25 @@
 
 @if (!string.IsNullOrEmpty(perfilUsuario) && totalesPorPerfil.ContainsKey(perfilUsuario))
 {
-    <h3 class="mb-4">Panel de Control - @perfilUsuario</h3>
+    <h3 class="mb-4">Panel de Control - @perfilNombre</h3>
 
-    @if (perfilUsuario == "ADMINISTRADOR")
-    {
-        foreach (var grupo in totalesPorPerfil)
+    <div class="row">
+    @foreach (var item in totalesPorPerfil[perfilUsuario])
         {
-            <h5 class="mt-4 text-primary">@grupo.Key</h5>
-            <div class="row">
-                @foreach (var item in grupo.Value)
-                {
-                    <div class="col-md-3 mb-4">
-                        <div class="card bg-@item.color shadow text-white-50">
-                            <div class="card-body d-flex align-items-center justify-content-between">
-                                <div>
-                                    <h6 class="card-title">@item.titulo </h6>
-                                    <h3 class="fw-bold">@item.valor</h3>
-                                </div>
-                                <i class="@item.icono display-4 opacity-50"></i>
-                            </div>
+            <div class="col-md-3 mb-4">
+                <div class="card text-@(item.colortexto ?? "dark") bg-@item.color shadow">
+                    <div class="card-body d-flex align-items-center justify-content-between">
+                        <div>
+                            <h6 class="card-title text-@(item.colortexto ?? "dark")">@item.titulo</h6>
+                            <h3 class="fw-bold text-@(item.colortexto ?? "dark")">@item.valor</h3>
                         </div>
-                    </div>
-                }
-            </div>
-        }
-    }
-    else
-    {
-        <div class="row">
-            @foreach (var item in totalesPorPerfil[perfilUsuario])
-            {
-                <div class="col-md-3 mb-4">
-                    <div class="card text-white bg-@item.color shadow">
-                        <div class="card-body d-flex align-items-center justify-content-between">
-                            <div>
-                                <h6 class="card-title">@item.titulo</h6>
-                                <h3 class="fw-bold">@item.valor</h3>
-                            </div>
-                            <i class="@item.icono display-4 opacity-50"></i>
-                        </div>
+                        <i class="@item.icono text-@(item.colortexto ?? "dark") display-4 opacity-50"></i>
                     </div>
                 </div>
-            }
-        </div>
-    }
+            </div>
+        }
+    </div>
+    
 }
 else
 {

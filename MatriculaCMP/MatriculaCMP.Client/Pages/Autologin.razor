@@ -25,11 +25,13 @@
     [SupplyParameterFromQuery]
     public string Token { get; set; }
 
-    private bool isTokenValid = false;
+    private bool isTokenValid = true;
     private bool shouldRedirect = false;
 
     protected override async Task OnInitializedAsync()
     {
+        Console.WriteLine($"[autologin] Token recibido: {Token}");
+
         if (!string.IsNullOrEmpty(Token))
         {
             var response = await Http.GetAsync($"api/usuario/validate?token={Token}");
@@ -38,17 +40,21 @@
         }
         else
         {
+            Console.WriteLine("[autologin] Token vacío, redirigiendo a /");
             Nav.NavigateTo("/", true);
         }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender && shouldRedirect)
+        if (firstRender)
         {
+            Console.WriteLine($"[autologin] Ejecutando redirección. Token válido: {isTokenValid}");
+
             if (isTokenValid)
             {
-                await JS.InvokeVoidAsync("localStorage.setItem", "authToken", Token);
+                await JS.InvokeVoidAsync("console.log", "Guardando token en localStorage");
+                await JS.InvokeVoidAsync("localStorage.setItem", "Token", Token);
                 Nav.NavigateTo("/home", true);
             }
             else
