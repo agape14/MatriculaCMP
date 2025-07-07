@@ -4,7 +4,7 @@
 @inject NavigationManager Nav
 @inject IJSRuntime Js
 
-<h3>Editar Perfil #@_id</h3>
+@* <h3>Editar Perfil #@_id</h3> *@
 
 @if (_cargando)
 {
@@ -18,23 +18,56 @@ else if (!string.IsNullOrEmpty(_error))
     </div>
 }
 
-<EditForm Model="_model" OnValidSubmit="Guardar">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
+<div class="container-fluid">
+    <!-- start page title -->
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <h4 class="mb-sm-0">Perfil</h4>
 
-    <InputText @bind-Value="_model.Nombre"
-               class="form-control mb-3"
-               placeholder="Nombre del perfil" />
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        <li class="breadcrumb-item"><a href="javascript: void(0);">Inicio</a></li>
+                        <li class="breadcrumb-item active">Perfil / Editar Perfil</li>
+                    </ol>
+                </div>
 
-    <button class="btn btn-primary" type="submit" disabled="@_guardando">
-        Guardar
-    </button>
-    <button class="btn btn-secondary ms-2"
-            type="button"
-            @onclick="Volver">
-        Cancelar
-    </button>
-</EditForm>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <h5 class="card-header card-title bg-primary">Editar Perfil</h5>
+                <div class="card-body  pt-0">
+                    <EditForm Model="_model" OnValidSubmit="Guardar">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+                        <div class="row mt-2">
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label>Nombre del perfil *</label>
+                                    <InputText @bind-Value="_model.Nombre"
+                                               class="form-control mb-3"
+                                               placeholder="Nombre del perfil" />
+                                </div>
+                            </div>
+                        </div> 
+
+                        <button class="btn btn-primary waves-effect waves-light" type="submit" disabled="@_guardando">
+                            <i class="ri-save-line align-middle"></i> Guardar
+                        </button>
+                        <button class="btn btn-secondary  waves-effect waves-light ms-2" type="button" @onclick="Volver">
+                            <i class="ri-arrow-go-back-line"></i> Cancelar
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 
 @code {
     [Parameter] public int Id { get; set; }

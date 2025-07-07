@@ -23,11 +23,12 @@ namespace MatriculaCMP.Shared
         [StringLength(50)]
         public string? ApellidoMaterno { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "El Numero Documento es requerido")]
         [StringLength(20)]
         [RegularExpression(@"^\d+$", ErrorMessage = "Solo dígitos")]
         public string NumeroDocumento { get; set; } = string.Empty;
 
+        [Required(ErrorMessage = "El Correo es requerido")]
         public string Correo { get; set; } = string.Empty;
         [NotMapped]
         public string Password { get; set; } = string.Empty;

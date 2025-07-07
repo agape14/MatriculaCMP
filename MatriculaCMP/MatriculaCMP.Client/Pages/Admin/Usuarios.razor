@@ -5,13 +5,6 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
-<h3>Usuarios</h3>
-
-<button class="btn btn-primary mb-3"
-        @onclick="@(() => Nav.NavigateTo("/admin/usuarios/new"))">
-    <i class="ri-add-fill"></i> Nuevo
-</button>
-
 @switch (estado)
 {
     case Estado.Cargando:
@@ -25,39 +18,78 @@
         break;
 
     case Estado.Listo:
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Nombres Completos</th>
-                    <th>Correo</th>
-                    <th>Rol</th>                    
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @* @foreach (var u in usuarios!) *@
-                @foreach (var (u, idx) in usuarios!.Select((value, index) => (value, index)))
-                {
-                    <tr>
-                        <td>@(idx + 1)</td>
-                        <td>@u.Persona?.NombresCompletos</td>
-                        <td>@u.Correo</td>
-                        <td>@u.Perfil?.Nombre</td>
-                        <td class="text-end">
-                            <button class="btn btn-sm btn-secondary me-1"
-                                    @onclick="() => Editar(u.Id)">
-                                <i class="ri-edit-2-line"></i>
-                            </button>
-                            <button class="btn btn-sm btn-danger"
-                                    @onclick="() => Eliminar(u.Id)">
-                                <i class="ri-delete-bin-line"></i>
-                            </button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <div class="container-fluid">
+            <!-- start page title -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0">Usuarios</h4>
+
+                        <div class="page-title-right">
+                            <ol class="breadcrumb m-0">
+                                <li class="breadcrumb-item"><a href="javascript: void(0);">Inicio</a></li>
+                                <li class="breadcrumb-item active">Usuarios</li>
+                            </ol>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="card">
+                        <div class="card-body  pt-0">
+                            <div class="alert alert-primary mb-2 mt-2" role="alert">
+                                <div class="button-items">
+                                    <button class="btn btn-primary waves-effect waves-light mb-3"
+                                            @onclick="@(() => Nav.NavigateTo("/admin/usuarios/new"))">
+                                        <i class="ri-add-fill"></i> Nuevo Usuario
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="col-sm-12">
+                                <table id="tblListadoUsuarios" class="table table-centered datatable dt-responsive nowrap dataTable no-footer dtr-inline ml-2 w-100">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Nombres Completos</th>
+                                            <th>Correo</th>
+                                            <th>Rol</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @* @foreach (var u in usuarios!) *@
+                                        @foreach (var (u, idx) in usuarios!.Select((value, index) => (value, index)))
+                                        {
+                                            <tr>
+                                                <td>@(idx + 1)</td>
+                                                <td>@u.Persona?.NombresCompletos</td>
+                                                <td>@u.Correo</td>
+                                                <td>@u.Perfil?.Nombre</td>
+                                                <td class="text-end">
+                                                    <button class="btn btn-sm btn-secondary me-1"
+                                                            @onclick="() => Editar(u.Id)">
+                                                        <i class="ri-edit-2-line"></i>
+                                                    </button>
+                                                    <button class="btn btn-sm btn-danger"
+                                                            @onclick="() => Eliminar(u.Id)">
+                                                        <i class="ri-delete-bin-line"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         break;
 }
 

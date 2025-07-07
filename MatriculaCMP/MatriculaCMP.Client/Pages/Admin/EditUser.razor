@@ -5,16 +5,12 @@
 @inject NavigationManager Nav
 @inject IJSRuntime Js
 
-<h3>@(_id is null ? "Nuevo Usuario" : $"Editar Usuario #{_id}")</h3>
+
 
 @if (_cargando)
 {
     <em>Cargando…</em>
 }
-@* else if (_error is not null)
-{
-    <div class="alert alert-danger">Error: @_error</div>
-} *@
 else if (!string.IsNullOrEmpty(_error))
 {
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -22,60 +18,115 @@ else if (!string.IsNullOrEmpty(_error))
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 }
+<div class="container-fluid">
+    <!-- start page title -->
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <h4 class="mb-sm-0">Usuarios</h4>
 
-    <EditForm Model="_model" OnValidSubmit="Guardar">
-        <DataAnnotationsValidator />
-        <ValidationSummary />
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        <li class="breadcrumb-item"><a href="javascript: void(0);">Inicio</a></li>
+                        <li class="breadcrumb-item active">Usuarios / @(_id is null ? "Nuevo Usuario" : $"Editar Usuario")</li>
+                    </ol>
+                </div>
 
-       
-            <h5 class="mt-4">Datos de la Persona</h5>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <h5 class="card-header card-title bg-primary">@(_id is null ? "Nuevo Usuario" : $"Editar Usuario")</h5>
+                <div class="card-body  pt-0">
+                    <EditForm Model="_model" OnValidSubmit="Guardar">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+                        <div class="row mt-2">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>N° Documento *</label>
+                                    <InputText @bind-Value="_model.NumeroDocumento"
+                                                class="form-control mb-2"
+                                                placeholder="N° Documento" />
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="form-group">
+                                    <label>Correo</label>
+                                    <InputText @bind-Value="_model.Correo"
+                                                class="form-control mb-3"
+                                                placeholder="Correo" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Nombres *</label>
+                                    <InputText @bind-Value="_model.Nombres"
+                                                class="form-control mb-2"
+                                                placeholder="Nombres" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Apellido Paterno *</label>
+                                    <InputText @bind-Value="_model.ApellidoPaterno"
+                                                class="form-control mb-2"
+                                                placeholder="Apellido Paterno" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Apellido Materno *</label>
+                                    <InputText @bind-Value="_model.ApellidoMaterno"
+                                                class="form-control mb-2"
+                                                placeholder="Apellido Materno" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Usuario</label>
+                                    <InputText @bind-Value="_model.NombreUsuario"
+                                                class="form-control mb-3"
+                                                placeholder="Nombre de usuario" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Contraseña @(_id is null ? "*" : $"")</label>
+                                    <InputText @bind-Value="_model.Password"
+                                                class="form-control mb-3"
+                                                placeholder="Contraseña" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Perfil *</label>
+                                    <InputSelect @bind-Value="_model.PerfilId" class="form-select mb-3">
+                                        <option value="">--Seleccione--</option>
+                                        @foreach (var p in _perfiles)
+                                        {
+                                            <option value="@p.Id">@p.Nombre</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                            </div>
+                        </div>
 
-            <InputText @bind-Value="_model.Nombres"
-                       class="form-control mb-2"
-                       placeholder="Nombres" />
-
-            <InputText @bind-Value="_model.ApellidoPaterno"
-                       class="form-control mb-2"
-                       placeholder="Apellido Paterno" />
-
-            <InputText @bind-Value="_model.ApellidoMaterno"
-                       class="form-control mb-2"
-                       placeholder="Apellido Materno" />
-
-            <InputText @bind-Value="_model.NumeroDocumento"
-                       class="form-control mb-2"
-                       placeholder="N° Documento" />
-
-        <InputText @bind-Value="_model.Correo"
-                   class="form-control mb-3"
-                   placeholder="Correo" />
-
-        <InputText @bind-Value="_model.Password"
-                   class="form-control mb-3"
-                   placeholder="Password" />
-
-        <InputText @bind-Value="_model.NombreUsuario"
-                   class="form-control mb-3"
-                   placeholder="Nombre de usuario" />
-
-        <label class="form-label">Perfil</label>
-        <InputSelect @bind-Value="_model.PerfilId" class="form-select mb-3">
-            <option value="">--Seleccione--</option>
-            @foreach (var p in _perfiles)
-            {
-                <option value="@p.Id">@p.Nombre</option>
-            }
-        </InputSelect>
-
-        <button class="btn btn-primary" type="submit" disabled="@_guardando">
-            Guardar
-        </button>
-        <button class="btn btn-secondary ms-2"
-                type="button"
-                @onclick="Volver">
-            Cancelar
-        </button>
-    </EditForm>
+                        <button class="btn btn-primary waves-effect waves-light" type="submit" disabled="@_guardando">
+                            <i class="ri-save-line align-middle"></i> Guardar
+                        </button>
+                        <button class="btn btn-secondary waves-effect waves-light ms-2" type="button" @onclick="Volver">
+                            <i class="ri-arrow-go-back-line"></i> Cancelar
+                        </button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+    
 
 
 @code {

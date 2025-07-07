@@ -5,8 +5,6 @@
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
-<h3>Perfiles</h3>
-
 @switch (estado)
 {
     case Estado.Cargando:
@@ -20,30 +18,59 @@
         break;
 
     case Estado.Listo:
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Nombre</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var (p, idx) in perfiles!.Select((value, index) => (value, index)))
-                {
-                    <tr>
-                        <td>@(idx + 1)</td>
-                        <td>@p.Nombre</td>
-                        <td class="text-end">
-                            <button class="btn btn-sm btn-secondary"
-                                    @onclick="() => Editar(p.Id)">
-                                <i class="ri-edit-2-line"></i> Editar
-                            </button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <div class="container-fluid">
+            <!-- start page title -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                        <h4 class="mb-sm-0">Perfiles</h4>
+
+                        <div class="page-title-right">
+                            <ol class="breadcrumb m-0">
+                                <li class="breadcrumb-item"><a href="javascript: void(0);">Inicio</a></li>
+                                <li class="breadcrumb-item active">Perfiles</li>
+                            </ol>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="card">
+                        <div class="card-body  pt-0">
+                            <div class="col-sm-12">
+                                <table id="tblListadoUsuarios" class="table table-centered datatable dt-responsive nowrap dataTable no-footer dtr-inline ml-2 w-100">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Nombre</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var (p, idx) in perfiles!.Select((value, index) => (value, index)))
+                                        {
+                                            <tr>
+                                                <td>@(idx + 1)</td>
+                                                <td>@p.Nombre</td>
+                                                <td class="text-end">
+                                                    <button class="btn btn-sm btn-secondary"
+                                                            @onclick="() => Editar(p.Id)">
+                                                        <i class="ri-edit-2-line"></i> Editar
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         break;
 }
 
