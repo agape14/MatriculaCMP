@@ -24,5 +24,9 @@ namespace MatriculaCMP.Shared
         public Area? Area { get; set; }
 
         public string? Observaciones { get; set; }
+
+        // 👇 NUEVO CAMPO AGREGADO
+        public int NumeroSolicitud { get; set; }
+        public ICollection<SolicitudHistorialEstado> HistorialEstados { get; set; } = new List<SolicitudHistorialEstado>();
     }
 }

@@ -10,8 +10,9 @@ namespace MatriculaCMP.Shared
 {
 	public class FormData
 	{
-		// Datos del Consejo Regional
-		[Required(ErrorMessage = "El consejo regional es requerido")]
+        public int PersonaId { get; set; }
+        // Datos del Consejo Regional
+        [Required(ErrorMessage = "El consejo regional es requerido")]
 		public string ConsejoRegional { get; set; }
 
 		// Datos Personales

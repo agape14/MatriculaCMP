@@ -41,7 +41,7 @@ namespace MatriculaCMP.Shared
 
         public string? GrupoSanguineoId { get; set; } = "177";
 
-        public DateTime? FechaNacimiento { get; set; }
+        public DateTime? FechaNacimiento { get; set; } = new DateTime(1990, 1, 1);
 
         public string? PaisNacimientoId { get; set; }
 

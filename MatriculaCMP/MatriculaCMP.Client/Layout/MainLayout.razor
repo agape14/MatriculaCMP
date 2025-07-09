@@ -49,12 +49,9 @@
 
         if (user.Identity?.IsAuthenticated ?? false)
         {
-            // Aquí deberías obtener el perfil real del usuario desde tus claims o base de datos
-            nombresCompletos = user.FindFirst("NombresCompletos")?.Value ?? "-"; // Valor de ejemplo
-            nombrePerfil = user.FindFirst("PerfilNombre")?.Value ?? "-"; // Valor de ejemplo
+            nombresCompletos = user.FindFirst("NombresCompletos")?.Value ?? "-";
+            nombrePerfil = user.FindFirst("PerfilNombre")?.Value ?? "-";
         }
-        // nombresCompletos = jwtToken.Claims.FirstOrDefault(c => c.Type == "nombrescompletos")?.Value ?? "";
-        // tipoDocumento = jwtToken.Claims.FirstOrDefault(c => c.Type == "tipoDocumento")?.Value ?? "";
         
     }
 

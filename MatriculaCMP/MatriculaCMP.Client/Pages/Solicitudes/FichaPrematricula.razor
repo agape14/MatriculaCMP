@@ -2,6 +2,7 @@
 @using MatriculaCMP.Client.Services
 @using System.Net.Http.Headers;
 @using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Web
 @using MatriculaCMP.Shared
@@ -11,7 +12,32 @@
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject HttpClient Http
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
+<style>
+	.loading-overlay {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	height: 100vh;
+	background-color: rgba(255, 255, 255, 0.7);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 2000; /* aseguramos que esté encima */
+}
+</style>
+
+
+@if (charging)
+{
+	<div class="loading-overlay">
+		<div class="spinner-border text-primary" role="status">
+			<span class="visually-hidden">Cargando...</span>
+		</div>
+	</div>
+}
 <div class="container-fluid">
 	<!-- start page title -->
 	<div class="row">
@@ -35,10 +61,8 @@
 				<div class="card-body">
 					<div class="container-contact100">
 						<div class="wrap-contact100">
-							<EditForm Model="@formData" OnValidSubmit="@HandleValidSubmit">
-								@* <div class="alert alert-info mb-4" role="alert">
-									<center><b>******** Para el correcto funcionamiento de este servicio, utilizar el explorador Chrome. ********</b></center>
-								</div> *@								
+							<EditForm Model="@formData" OnValidSubmit="@HandleValidSubmit">		
+								
 								 <div class="row">
 									<div class="col-md-12">
 										<div class="form-group">
@@ -117,6 +141,7 @@
 												<div class="form-group">
 													<label for="sexo">Sexo *</label>
 													<InputSelect @bind-Value="formData.Sexo" class="form-control" id="sexo">
+														<option value="">Seleccione...</option>
 														<option value="1">Masculino</option>
 														<option value="0">Femenino</option>
 													</InputSelect>
@@ -209,8 +234,12 @@
 											<div class="col-md-3">
 												<div class="form-group">
 													<label for="fnac">Fecha de Nacimiento *</label>
-													<InputDate @bind-Value="formData.FechaNacimiento" class="form-control" id="fnac" />
+													<InputDate @bind-Value="formData.FechaNacimiento" class="form-control" id="fnac" max="@MaxFechaNacimiento.ToString("yyyy-MM-dd")" @onchange="@(() => ValidarFechaNacimiento())"  />
 													<ValidationMessage For="@(() => formData.FechaNacimiento)" />
+													@if (fechaInvalida)
+													{
+														<span class="text-danger">Debes tener al menos 18 años.</span>
+													}
 												</div>
 											</div>
 										</div>
@@ -579,7 +608,7 @@
 								{
 									<div class="alert alert-danger">@mensajeError</div>
 								}
-								<button type="submit" disabled="@(!formularioEsValido || enviando)" class="btn btn-primary btn-lg btn-block waves-effect waves-light mb-1">
+								<button type="submit"  class="btn btn-primary btn-lg btn-block waves-effect waves-light mb-1">
 									@if (enviando)
 									{
 										<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
@@ -600,7 +629,7 @@
 			</div>
 		</div>
 	</div>
-
+	
 </div>
 
 @code {
@@ -645,6 +674,10 @@
 	private List<Mat_Ubigeo> distritosdm = new List<Mat_Ubigeo>();
 	private string selectedDepartamento;
 	private string selectedProvincia;
+	private string PersonaId;
+	private bool charging = true;
+	private DateTime MaxFechaNacimiento = DateTime.Today.AddYears(-18);
+	private bool fechaInvalida = false;
 
 	private async Task OnFotoSelected(InputFileChangeEventArgs e)
 	{
@@ -757,59 +790,86 @@
 
 	protected override async Task OnInitializedAsync()
 	{
-		consejos = await Http.GetFromJsonAsync<List<Mat_ConsejoRegional>>("api/consejoregional");
-		tipodoc = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/23");
-		estacivil = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/21");
-		gruposang = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/19");
-		zonas = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/17");
-		vias = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/16");
-		matpaises = await Http.GetFromJsonAsync<List<Mat_Pais>>("/api/MatPais");
-		departamentos = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>("api/MatUbigeo/departamentos");
-		departamentosdm = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>("api/MatUbigeo/departamentos");
-		paises = await Http.GetFromJsonAsync<List<Pais>>("api/Pais");
-		//paises = await PaisUniversidadesService.ObtenerPaisesAsync();
-		var peru = paises.FirstOrDefault(p => p.Nombre.ToLower().Contains("perú"));
-		if (peru != null)
+		try
 		{
-			paisId = peru.Id;
+			var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+			var user = authState.User;
+
+			if (user.Identity?.IsAuthenticated ?? false)
+			{
+				PersonaId = user.FindFirst("PersonaId")?.Value ?? "-";
+			}
+
+			consejos = await Http.GetFromJsonAsync<List<Mat_ConsejoRegional>>("api/consejoregional");
+			tipodoc = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/23");
+			estacivil = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/21");
+			gruposang = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/19");
+			zonas = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/17");
+			vias = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/16");
+			matpaises = await Http.GetFromJsonAsync<List<Mat_Pais>>("/api/MatPais");
+			departamentos = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>("api/MatUbigeo/departamentos");
+			departamentosdm = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>("api/MatUbigeo/departamentos");
+			paises = await Http.GetFromJsonAsync<List<Pais>>("api/Pais");
+
+			var persona = await Http.GetFromJsonAsync<Persona>($"api/personaseducacion/{PersonaId}");
+
+			var peru = paises.FirstOrDefault(p => p.Nombre.ToLower().Contains("perú"));
+			if (peru != null)
+			{
+				paisId = peru.Id;
+			}
+
+			paisesFiltrados = paises;
+			formData = await MapPersonaToFormDataAsync(persona);
+			editContext = new EditContext(formData);
+
+			await CargarUniversidades();
+			await CargarUniversidadesPeruanas();
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error en carga inicial: {ex.Message}");
+		}
+		finally
+		{
+			charging = false; // Ocultar el spinner
+			StateHasChanged();
 		}
 
-		paisesFiltrados = paises; // Inicialmente todos, pero se ajusta más abajo
+		// var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+		//       var user = authState.User;
 
-		// Initialize with default values if needed
-		formData.ConsejoRegional = "3";
-		formData.Nombres = "Agapito";
-		formData.ApellidoPaterno = "De la cruz";
-		formData.ApellidoMaterno = "Carlos";
-		formData.NumeroDocumento = "45742029";
-		formData.PaisNacimiento = "173";
-		// formData.DepartamentoNacimiento = "1";
-		formData.ProvinciaNacimiento = "1";
-		formData.DistritoNacimiento = "1";
-		formData.DescripcionZona = "Zona";
-		formData.DescripcionVia = "Via";
-		// formData.DepartamentoDomicilio = "14";
-		formData.Telefono = "4526544";
-		formData.Celular = "981525451";
-		formData.Email = "adelacruzcarlos@gmail.com";
-		formData.ProvinciaDomicilio = "1";
-		formData.DistritoDomicilio = "1";
-		formData.AceptaPoliticas = true;
-		formData.UniversidadOrigen = "1";
+		//       if (user.Identity?.IsAuthenticated ?? false)
+		//       {
+		// 	PersonaId = user.FindFirst("PersonaId")?.Value ?? "-";
+		//       }
 
-		editContext = new EditContext(formData);
-		// editContext.OnFieldChanged += async (_, __) => await VerificarFormularioValido();
-		// await VerificarFormularioValido();
+		// consejos = await Http.GetFromJsonAsync<List<Mat_ConsejoRegional>>("api/consejoregional");
+		// tipodoc = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/23");
+		// estacivil = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/21");
+		// gruposang = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/19");
+		// zonas = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/17");
+		// vias = await Http.GetFromJsonAsync<List<MaestroRegistro>>("/api/MaestroRegistro/id/16");
+		// matpaises = await Http.GetFromJsonAsync<List<Mat_Pais>>("/api/MatPais");
+		// departamentos = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>("api/MatUbigeo/departamentos");
+		// departamentosdm = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>("api/MatUbigeo/departamentos");
+		// paises = await Http.GetFromJsonAsync<List<Pais>>("api/Pais");
+		// var persona = await Http.GetFromJsonAsync<Persona>($"api/personaseducacion/{PersonaId}");
+		// var peru = paises.FirstOrDefault(p => p.Nombre.ToLower().Contains("perú"));
+		// if (peru != null)
+		// {
+		// 	paisId = peru.Id;
+		// }
 
-		await CargarUniversidades();
-		await CargarUniversidadesPeruanas();
+		// paisesFiltrados = paises; // Inicialmente todos, pero se ajusta más abajo
+		// formData = MapPersonaToFormData(persona);
+		// editContext = new EditContext(formData);
+		// // editContext.OnFieldChanged += async (_, __) => await VerificarFormularioValido();
+		// // await VerificarFormularioValido();
+
+		// await CargarUniversidades();
+		// await CargarUniversidadesPeruanas();
 	}
-
-	// private async Task VerificarFormularioValido()
-	// {
-	// 	formularioEsValido = editContext.Validate();
-	// 	await InvokeAsync(StateHasChanged);
-	// }
 
 	async Task OnTipoSeleccionado(string valorseleccionado)
 	{
@@ -849,7 +909,7 @@
 		// ✅ Destruir y reiniciar select2
 		// await JS.InvokeVoidAsync("select2interop.refresh", "#pais_uni");
 		// await JS.InvokeVoidAsync("select2interop.refresh", "#nombre_uni");
-		
+
 	}
 
 	async Task OnPaisSeleccionado(ChangeEventArgs e)
@@ -894,40 +954,6 @@
 		formData.DepartamentoDomicilio = selected;
 		provinciasdm = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>($"api/MatUbigeo/provincias/{selected}");
 	}
-	// async Task OnLoadProvincias(ChangeEventArgs e)
-	// {
-	// 	selectedDepartamento = e.Value?.ToString();
-	// 	formData.DepartamentoDomicilio = selectedDepartamento;
-
-	// 	if (!string.IsNullOrEmpty(selectedDepartamento))
-	// 	{
-	// 		provincias = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>($"api/Ubigeo/provincias/{selectedDepartamento}");
-	// 		selectedProvincia = null;
-	// 		distritos.Clear();
-	// 	}
-	// 	else
-	// 	{
-	// 		provincias.Clear();
-	// 		distritos.Clear();
-	// 	}
-	// }
-
-	// async Task LoadDistritos(ChangeEventArgs e)
-	// {
-	// 	selectedProvincia = e.Value?.ToString();
-	// 	formData.ProvinciaDomicilio = selectedProvincia;
-
-	// 	if (!string.IsNullOrEmpty(selectedDepartamento) && !string.IsNullOrEmpty(selectedProvincia))
-	// 	{
-	// 		distritos = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>(
-	// 			$"api/Ubigeo/distritos/{selectedDepartamento}/{selectedProvincia}");
-	// 	}
-	// 	else
-	// 	{
-	// 		distritos.Clear();
-	// 	}
-	// }
-
 	private async Task OnLoadDistritos(string selected)
 	{
 		formData.ProvinciaNacimiento = selected;
@@ -938,11 +964,104 @@
 		formData.ProvinciaDomicilio = selected;
 		distritosdm = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>($"api/MatUbigeo/distritos/{formData.DepartamentoDomicilio}/{selected}");
 	}
-	 public class SelectListItem
-    {
-        public string Value { get; set; }
-        public string Text { get; set; }
-    }
+	public class SelectListItem
+	{
+		public string Value { get; set; }
+		public string Text { get; set; }
+	}
+
+	private async Task<FormData> MapPersonaToFormDataAsync(Persona persona)
+	{
+		var form = new FormData
+		{
+			PersonaId	=	persona.Id,
+			ConsejoRegional = persona.ConsejoRegionalId,
+			Nombres = persona.Nombres,
+			ApellidoPaterno = persona.ApellidoPaterno,
+			ApellidoMaterno = persona.ApellidoMaterno,
+			EstadoCivil = persona.EstadoCivilId,
+			TipoDocumento = persona.TipoDocumentoId,
+			NumeroDocumento = persona.NumeroDocumento,
+			GrupoSanguineo = persona.GrupoSanguineoId,
+			FechaNacimiento = persona.FechaNacimiento.GetValueOrDefault(),
+			PaisNacimiento = string.IsNullOrEmpty(persona.PaisNacimientoId) ? "173" : persona.PaisNacimientoId,
+			DepartamentoNacimiento = persona.DepartamentoNacimientoId,
+			ProvinciaNacimiento = persona.ProvinciaNacimientoId,
+			DistritoNacimiento = persona.DistritoNacimientoId,
+			Telefono = persona.Telefono,
+			Celular = persona.Celular,
+			Email = persona.Email,
+			ZonaDomicilio = persona.ZonaDomicilioId,
+			DescripcionZona = persona.DescripcionZona,
+			ViaDomicilio = persona.ViaDomicilioId,
+			DescripcionVia = persona.DescripcionVia,
+			DepartamentoDomicilio = persona.DepartamentoDomicilioId,
+			ProvinciaDomicilio = persona.ProvinciaDomicilioId,
+			DistritoDomicilio = persona.DistritoDomicilioId,
+			AceptaPoliticas = persona.AceptaPoliticas,
+			FotoMedico = persona.FotoMedico
+		};
+
+		// Cargar combos relacionados
+		if (!string.IsNullOrEmpty(persona.DepartamentoNacimientoId))
+			await OnLoadProvincias(persona.DepartamentoNacimientoId);
+
+		if (!string.IsNullOrEmpty(persona.ProvinciaNacimientoId))
+			await OnLoadDistritos(persona.ProvinciaNacimientoId);
+
+		if (!string.IsNullOrEmpty(persona.DepartamentoDomicilioId))
+			await OnLoadProvinciasdm(persona.DepartamentoDomicilioId);
+
+		if (!string.IsNullOrEmpty(persona.ProvinciaDomicilioId))
+			await OnLoadDistritosdm(persona.ProvinciaDomicilioId);
+
+		if (persona.FechaNacimiento != null)
+		{
+			formData.FechaNacimiento = persona.FechaNacimiento.Value;
+		}
+		else
+		{
+			var fechaPorDefecto = new DateTime(1990, 1, 1);
+			formData.FechaNacimiento =  MaxFechaNacimiento;
+		}
+		
+		return form;
+	}
+
+
+	private Persona MapFormDataToPersona(FormData formData)
+	{
+		return new Persona
+		{
+			Id = int.Parse(PersonaId),
+			ConsejoRegionalId = formData.ConsejoRegional,
+			Nombres = formData.Nombres?.Trim(),
+			ApellidoPaterno = formData.ApellidoPaterno?.Trim(),
+			ApellidoMaterno = formData.ApellidoMaterno?.Trim(),
+			EstadoCivilId = formData.EstadoCivil,
+			TipoDocumentoId = formData.TipoDocumento,
+			NumeroDocumento = formData.NumeroDocumento?.Trim(),
+			GrupoSanguineoId = formData.GrupoSanguineo,
+			PaisNacimientoId = formData.PaisNacimiento,
+			DepartamentoNacimientoId = formData.DepartamentoNacimiento,
+			ProvinciaNacimientoId = formData.ProvinciaNacimiento,
+			DistritoNacimientoId = formData.DistritoNacimiento,
+			FechaNacimiento = formData.FechaNacimiento, // Nullable a Nullable: correcto
+			ZonaDomicilioId = formData.ZonaDomicilio,
+			DescripcionZona = formData.DescripcionZona?.Trim(),
+			ViaDomicilioId = formData.ViaDomicilio,
+			DescripcionVia = formData.DescripcionVia?.Trim(),
+			DepartamentoDomicilioId = formData.DepartamentoDomicilio,
+			ProvinciaDomicilioId = formData.ProvinciaDomicilio,
+			DistritoDomicilioId = formData.DistritoDomicilio,
+			Telefono = formData.Telefono?.Trim(),
+			Celular = formData.Celular?.Trim(),
+			Email = formData.Email?.Trim().ToLower(),
+			AceptaPoliticas = formData.AceptaPoliticas,
+			FotoMedico = formData.FotoMedico
+		};
+	}
+
 
 	private async Task HandleValidSubmit()
 	{
@@ -956,43 +1075,37 @@
 				return;
 			}
 
-			// Validación de campos obligatorios
-			// var validationErrors = ValidateForm();
-			// if (validationErrors.Any())
-			// {
-			// 	mensajeError = string.Join("<br>", validationErrors);
-			// 	return;
-			// }
-
+			
 			// Mapeo a modelos
-			var persona = new Persona
-				{
-					ConsejoRegionalId = formData.ConsejoRegional,
-					Nombres = formData.Nombres?.Trim(),
-					ApellidoPaterno = formData.ApellidoPaterno?.Trim(),
-					ApellidoMaterno = formData.ApellidoMaterno?.Trim(),
-					EstadoCivilId = formData.EstadoCivil,
-					TipoDocumentoId = formData.TipoDocumento,
-					NumeroDocumento = formData.NumeroDocumento?.Trim(),
-					GrupoSanguineoId = formData.GrupoSanguineo,
-					PaisNacimientoId = formData.PaisNacimiento,
-					DepartamentoNacimientoId = formData.DepartamentoNacimiento,
-					ProvinciaNacimientoId = formData.ProvinciaNacimiento,
-					DistritoNacimientoId = formData.DistritoNacimiento,
-					FechaNacimiento = formData.FechaNacimiento,
-					ZonaDomicilioId = formData.ZonaDomicilio,
-					DescripcionZona = formData.DescripcionZona?.Trim(),
-					ViaDomicilioId = formData.ViaDomicilio,
-					DescripcionVia = formData.DescripcionVia?.Trim(),
-					DepartamentoDomicilioId = formData.DepartamentoDomicilio,
-					ProvinciaDomicilioId = formData.ProvinciaDomicilio,
-					DistritoDomicilioId = formData.DistritoDomicilio,
-					Telefono = formData.Telefono?.Trim(),
-					Celular = formData.Celular?.Trim(),
-					Email = formData.Email?.Trim().ToLower(),
-					AceptaPoliticas = formData.AceptaPoliticas,
-					FotoMedico=formData.FotoMedico
-				};
+			var persona = MapFormDataToPersona(formData);
+			// var persona = new Persona
+			// {
+			// 	ConsejoRegionalId = formData.ConsejoRegional,
+			// 	Nombres = formData.Nombres?.Trim(),
+			// 	ApellidoPaterno = formData.ApellidoPaterno?.Trim(),
+			// 	ApellidoMaterno = formData.ApellidoMaterno?.Trim(),
+			// 	EstadoCivilId = formData.EstadoCivil,
+			// 	TipoDocumentoId = formData.TipoDocumento,
+			// 	NumeroDocumento = formData.NumeroDocumento?.Trim(),
+			// 	GrupoSanguineoId = formData.GrupoSanguineo,
+			// 	PaisNacimientoId = formData.PaisNacimiento,
+			// 	DepartamentoNacimientoId = formData.DepartamentoNacimiento,
+			// 	ProvinciaNacimientoId = formData.ProvinciaNacimiento,
+			// 	DistritoNacimientoId = formData.DistritoNacimiento,
+			// 	FechaNacimiento = formData.FechaNacimiento,
+			// 	ZonaDomicilioId = formData.ZonaDomicilio,
+			// 	DescripcionZona = formData.DescripcionZona?.Trim(),
+			// 	ViaDomicilioId = formData.ViaDomicilio,
+			// 	DescripcionVia = formData.DescripcionVia?.Trim(),
+			// 	DepartamentoDomicilioId = formData.DepartamentoDomicilio,
+			// 	ProvinciaDomicilioId = formData.ProvinciaDomicilio,
+			// 	DistritoDomicilioId = formData.DistritoDomicilio,
+			// 	Telefono = formData.Telefono?.Trim(),
+			// 	Celular = formData.Celular?.Trim(),
+			// 	Email = formData.Email?.Trim().ToLower(),
+			// 	AceptaPoliticas = formData.AceptaPoliticas,
+			// 	FotoMedico=formData.FotoMedico
+			// };
 
 			var educacion = new Educacion
 				{
@@ -1135,6 +1248,19 @@
 	private string GetImageUrl(string imageName)
 	{
 		return $"/api/fotovalidator/reference-image/{imageName}";
+	}
+
+	private void ValidarFechaNacimiento()
+	{
+		if (formData.FechaNacimiento > MaxFechaNacimiento)
+		{
+			fechaInvalida = true;
+			formData.FechaNacimiento = MaxFechaNacimiento; // Opcional: Corregir automáticamente
+		}
+		else
+		{
+			fechaInvalida = false;
+		}
 	}
 }
 

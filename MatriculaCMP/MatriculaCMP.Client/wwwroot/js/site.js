@@ -23,17 +23,21 @@ window.ocultarModal = (id) => {
 };
 
 window.inicializarDataTable = (tableId) => {
+    const selector = tableId;
+
+    // Verifica si ya está inicializado
+    if ($.fn.DataTable.isDataTable(selector)) {
+        $(selector).DataTable().clear().destroy();
+    }
+
     setTimeout(() => {
-        if (typeof $ !== 'undefined' && $.fn.DataTable) {
-            if ($.fn.DataTable.isDataTable(tableId)) {
-                $(tableId).DataTable().destroy(); // Destruye la instancia anterior
+        $(selector).DataTable({
+            responsive: true,
+            destroy: true,
+            autoWidth: false,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
             }
-            $(tableId).DataTable({ // Crea una nueva instancia
-                responsive: true,
-                language: {
-                    url: "//cdn.datatables.net/plug-ins/1.13.6/i18n/es-ES.json"
-                }
-            });
-        }
+        });
     }, 100);
 };

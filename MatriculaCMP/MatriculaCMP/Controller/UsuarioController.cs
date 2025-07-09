@@ -138,10 +138,11 @@ namespace MatriculaCMP.Controller
 		{
             List<Claim> claims = new List<Claim>
  			{
-				 new Claim(ClaimTypes.Name, user.Correo),
-				 //new Claim(ClaimTypes.Role,user.Rol),
-                 new Claim(ClaimTypes.Name, user.NombreUsuario),
-				new Claim("PerfilId", user.PerfilId.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), // Para userId
+                new Claim("Correo", user.Correo),
+                new Claim("Usuario", user.NombreUsuario),
+                new Claim("PersonaId", user.PersonaId.ToString()),
+                new Claim("PerfilId", user.PerfilId.ToString()),
                 new Claim("PerfilNombre", user.Perfil.Nombre),
                 new Claim("NombresCompletos", user.Persona.NombresCompletos),
              };

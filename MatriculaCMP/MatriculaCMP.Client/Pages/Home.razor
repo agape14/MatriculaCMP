@@ -107,17 +107,10 @@
 }
 else
 {
-    <div class="alert alert-info">Cargando...</div>
+    <div class="alert alert-info d-flex align-items-center" role="alert">
+        <div class="spinner-border text-info me-2" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        Cargando...
+    </div>
 }
-
-
-
-
-@* <Microsoft.AspNetCore.Components.Authorization.AuthorizeView>
-	<Authorized>
-		<p>Bienvenido @context.User.Identity?.Name!</p>
-	</Authorized>
-	<NotAuthorized>
-		Sin autorizacion
-	</NotAuthorized>
-</Microsoft.AspNetCore.Components.Authorization.AuthorizeView> *@

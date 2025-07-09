@@ -1,6 +1,8 @@
 ﻿using MatriculaCMP.Server.Data;
 using MatriculaCMP.Shared;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 using System.Text;
 
 namespace MatriculaCMP.Services
@@ -9,12 +11,11 @@ namespace MatriculaCMP.Services
 	{
 		private readonly ApplicationDbContext _context;
 		private readonly IWebHostEnvironment _env;
-
-		public MatriculaService(ApplicationDbContext context, IWebHostEnvironment env)
+        public MatriculaService(ApplicationDbContext context, IWebHostEnvironment env)
 		{
 			_context = context;
 			_env = env;
-		}
+        }
 
 		public async Task<(bool Success, string Message)> GuardarMatriculaAsync(
 			Persona persona,
@@ -60,9 +61,10 @@ namespace MatriculaCMP.Services
 
 			try
 			{
-				// Guardar persona para obtener ID
-				await _context.Personas.AddAsync(persona);
-				await _context.SaveChangesAsync();
+                // Guardar persona para obtener ID
+                //await _context.Personas.AddAsync(persona);
+                //_context.Personas.Update(persona);
+                //await _context.SaveChangesAsync();
 
 				// Asociar educación con persona
 				educacion.PersonaId = persona.Id;
@@ -106,7 +108,51 @@ namespace MatriculaCMP.Services
 				}
 				await _context.SaveChangesAsync();
 
-				await transaction.CommitAsync();
+                // 🔢 Obtener o crear correlativo
+                var correlativo = await _context.Correlativos.FirstOrDefaultAsync();
+                if (correlativo == null)
+                {
+                    correlativo = new Correlativos { UltimoNumero = 1 };
+                    await _context.Correlativos.AddAsync(correlativo);
+                }
+                else
+                {
+                    correlativo.UltimoNumero++;
+                    _context.Correlativos.Update(correlativo);
+                }
+                await _context.SaveChangesAsync();
+
+                var solicitud = new Solicitud
+                {
+                    PersonaId = persona.Id,
+                    TipoSolicitud = "REGISTRO",
+                    EstadoSolicitudId = 1, // Por ejemplo: Pendiente
+                    FechaSolicitud = DateTime.Now,
+                    AreaId = null, // o algún área por defecto
+                    Observaciones = "Registro desde el formulario del médico",
+                    NumeroSolicitud = correlativo.UltimoNumero
+                };
+
+                await _context.Solicitudes.AddAsync(solicitud);
+                await _context.SaveChangesAsync();
+
+				//var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("UsuarioId")?.Value
+				//?? _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
+				//?? "Sistema"; // Fallback si no hay usuario
+				// 📋 Guardar historial de estado
+                var historial = new SolicitudHistorialEstado
+                {
+                    SolicitudId = solicitud.Id,
+                    EstadoAnteriorId = null,
+                    EstadoNuevoId = solicitud.EstadoSolicitudId,
+                    FechaCambio = DateTime.Now,
+                    Observacion = "Registro inicial de solicitud",
+                    UsuarioCambio = "17"
+                };
+                await _context.SolicitudHistorialEstados.AddAsync(historial);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
 
 				return (true, "Matrícula registrada exitosamente");
 			}

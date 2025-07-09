@@ -21,15 +21,33 @@
 </style>
 
 <div class="login-container">
-    <button class="btn btn-danger  waves-effect waves-light" @onclick="IniciarSesion">INICIAR SESIÓN DESDE SGD</button> | 
-    <button class="btn btn-primary  waves-effect waves-light" @onclick="IniciarSesionUsuarioContraseña">INICIAR CON USUARIO Y CONTRASEÑA</button>
+    <div class="row p-4">
+        <div class="col-sm-2">
+            <div class="form-group mb-3">
+                <label for="numeroDocumento" class="mb-1">DNI</label>
+                <input type="text"
+                       id="numeroDocumento"
+                       class="form-control"
+                       @bind="NumeroDocumento"
+                       maxlength="8"
+                       placeholder="Ingrese su DNI" />
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <button class="btn btn-danger  waves-effect waves-light mt-4" @onclick="IniciarSesion">INICIAR SESIÓN DESDE SGD</button>
+        </div>
+        <div class="col-sm-6">
+            <button class="btn btn-primary  waves-effect waves-light mt-4" @onclick="IniciarSesionUsuarioContraseña">INICIAR CON USUARIO Y CONTRASEÑA</button>
+        </div>
+    </div>
+    
 </div>
 
 
 @code {
     private string mensaje;
     // Valores por defecto 41342572
-    private string TipoDocumento = "2";
+    private string TipoDocumento = "62";
     private string NumeroDocumento = "10102695";
 
     protected override async Task OnInitializedAsync()

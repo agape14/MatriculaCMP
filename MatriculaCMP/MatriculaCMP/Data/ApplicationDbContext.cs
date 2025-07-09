@@ -37,6 +37,8 @@ namespace MatriculaCMP.Server.Data
         public DbSet<Solicitud> Solicitudes { get; set; }
         public DbSet<EstadoSolicitud> EstadoSolicitudes { get; set; }
         public DbSet<Area> Areas { get; set; }
+        public DbSet<Correlativos> Correlativos { get; set; }
+        public DbSet<SolicitudHistorialEstado> SolicitudHistorialEstados { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Educacion>()
