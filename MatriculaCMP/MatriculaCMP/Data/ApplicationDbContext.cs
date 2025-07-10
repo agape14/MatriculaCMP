@@ -39,6 +39,7 @@ namespace MatriculaCMP.Server.Data
         public DbSet<Area> Areas { get; set; }
         public DbSet<Correlativos> Correlativos { get; set; }
         public DbSet<SolicitudHistorialEstado> SolicitudHistorialEstados { get; set; }
+        public DbSet<EducacionDocumento> EducacionDocumentos { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Educacion>()
@@ -83,6 +84,18 @@ namespace MatriculaCMP.Server.Data
                 .WithMany(a => a.Solicitudes)
                 .HasForeignKey(s => s.AreaId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Persona>()
+                .HasOne(p => p.GrupoSanguineo)
+                .WithMany()
+                .HasForeignKey(p => p.GrupoSanguineoId)
+                .HasPrincipalKey(m => m.MaestroRegistro_Key);
+
+            modelBuilder.Entity<Educacion>()
+                .HasOne(e => e.Documento)
+                .WithOne(d => d.Educacion)
+                .HasForeignKey<EducacionDocumento>(d => d.EducacionId);
+
         }
     }
 }

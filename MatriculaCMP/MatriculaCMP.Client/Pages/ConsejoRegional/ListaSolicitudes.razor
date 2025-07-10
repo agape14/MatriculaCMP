@@ -1,7 +1,12 @@
 ﻿@page "/consejoregional/lista"
 @using MatriculaCMP.Shared
-@inject IJSRuntime JS
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using MatriculaCMP.Client.Helpers
 
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <div class="container-fluid">
     <!-- start page title -->
@@ -55,51 +60,59 @@
                             <table class="table table-centered datatable">
                                 <thead class="thead-light">
                                     <tr>
-                                        <th>
-                                            <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
-                                        </th>
-                                        <th>DNI</th>
-                                        <th>Nombres Completos</th>
-                                        <th>Fecha Nac.</th>
-                                        <th>Lugar Nac.</th>
+                                        <th>#</th>
+                                        <th>Nombres <br /> Completos</th>
+                                        <th>Nro. <br /> Solicitud</th>
+                                        <th>Fecha <br /> Solicitud</th>
                                         <th>Estado</th>
-                                        <th>Acción</th>
+                                        <th>Área <br /> Encargada</th>
+                                        <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var alumno in alumnos)
+                                    @if (solicitudes != null && solicitudes.Count > 0)
                                     {
-                                        <tr @onclick="() => alumno.Seleccionado = !alumno.Seleccionado" style="cursor: pointer;">
-                                            <td>
-                                                <input type="checkbox" class="form-check-input" @bind="alumno.Seleccionado" @onclick:stopPropagation="true" />
-                                            </td>
-                                            <td>@alumno.Numero</td>
-                                            <td>@alumno.NombreCompleto</td>
-                                            <td>@alumno.FechaNacimiento</td>
-                                            <td>@alumno.LugarNacimiento</td>
-                                            <td>
-                                                @if (alumno.Estado == "Registrado")
-                                                {
-                                                    <div class="badge bg-info">Registrado</div>
-                                                }
-                                                else if (alumno.Estado == "Por Subsanar")
-                                                {
-                                                    <div class="badge bg-warning">Por Subsanar</div>
-                                                }
-                                                else if (alumno.Estado == "Rechazado")
-                                                {
-                                                    <div class="badge bg-danger">Rechazado</div>
-                                                }
-                                                else if (alumno.Estado == "Aprobado")
-                                                {
-                                                    <div class="badge bg-success">Aprobado</div>
-                                                }
-                                            </td>
-                                            <td>
-                                                <a href="/solicitudes/prematricula" class="me-3 text-warning" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Sub sanar Pre Matricula">
-                                                    <i class="ri-error-warning-line font-size-18"></i>
-                                                </a>
-                                            </td>
+                                        int index = 1;
+                                        foreach (var s in solicitudes)
+                                        {
+                                            <tr>
+                                                <td>@index</td>
+                                                <td>@s.PersonaNombre</td>
+                                                <td>@s.NumeroSolicitud.ToString("D8")</td>
+                                                <td>@s.FechaSolicitud.ToString("dd/MM/yyyy")</td>
+                                                <td>
+                                                   @*  <span class="badge bg-@EstadoHelper.GetBadgeColor(s.EstadoId)">
+                                                        @s.Estado
+                                                    </span> *@
+                                                    <div class="badge badge-soft-@s.EstadoColor font-size-12">@s.Estado</div>
+                                                </td>
+                                                <td>@(s.AreaNombre ?? "")</td>
+                                                <td>
+                                                    <button class="btn btn-outline-primary btn-sm" @onclick="@(() => VerDetalle(s))">
+                                                        <i class="ri-eye-line"></i> Ver
+                                                    </button>
+                                                   @*  <button class="btn btn-outline-success btn-sm ms-1" >
+                                                        <i class="ri-check-line"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-danger btn-sm ms-1">
+                                                        <i class="ri-close-line"></i>
+                                                    </button> *@
+
+                                                    <button class="btn btn-outline-success btn-sm ms-1" @onclick="() => CambiarEstado(s.Id, 2)">
+                                                        <i class="ri-check-line"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-danger btn-sm ms-1" @onclick="() => CambiarEstado(s.Id, 3)">
+                                                        <i class="ri-close-line"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            index++;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="7" class="text-center">No se encontraron solicitudes</td>
                                         </tr>
                                     }
                                 </tbody>
@@ -197,13 +210,75 @@
         </div>
     </div>
 
+    @if (solicitudSeleccionada != null)
+    {
+        <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5)" id="detalleModal">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Detalle de Solicitud #@solicitudSeleccionada.NumeroSolicitud.ToString("D8")</h5>
+                        <button type="button" class="btn-close" @onclick="() => solicitudSeleccionada = null"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Datos Personales</h6>
+                                <p><strong>Nombres:</strong> @solicitudSeleccionada.Persona.NombresCompletos</p>
+                                <p><strong>Documento:</strong> @solicitudSeleccionada.Persona.NumeroDocumento</p>
+                                <p><strong>Fecha Nacimiento:</strong> @solicitudSeleccionada.Persona.FechaNacimiento?.ToString("dd/MM/yyyy")</p>
+                                <p><strong>Grupo Sanguíneo:</strong> @solicitudSeleccionada.Persona.GrupoSanguineo.Nombre</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Contacto</h6>
+                                <p><strong>Email:</strong> @solicitudSeleccionada.Persona.Email</p>
+                                <p><strong>Celular:</strong> @solicitudSeleccionada.Persona.Celular</p>
+                                <p><strong>Dirección:</strong> @solicitudSeleccionada.Persona.DescripcionZona</p>
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <h6>Educación</h6>
+                                <p><strong>Universidad:</strong> @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.Universidad?.Nombre </p>
+                                <p><strong>Fecha Título:</strong>  @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.FechaEmisionTitulo.ToString("dd/MM/yyyy") </p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Foto</h6>
+                                @if (!string.IsNullOrEmpty(solicitudSeleccionada.Persona.FotoPath))
+                                {
+                                    <img src="/api/personaseducacion/fotos-medicos/@solicitudSeleccionada.Persona.FotoPath" class="img-thumbnail" style="max-width: 200px;" alt="Foto del médico" />
+                                }
+                                else
+                                {
+                                    <p>Sin foto disponible</p>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <h6>Estado</h6>
+                                @* <p><span class="badge bg-primary">@solicitudSeleccionada.EstadoSolicitud.Nombre</span></p> *@
+                                <div class="badge badge-soft-@solicitudSeleccionada.EstadoSolicitud.Color font-size-12">@solicitudSeleccionada.EstadoSolicitud.Nombre</div>
+                                <p><strong>Observaciones:</strong> @solicitudSeleccionada.Observaciones</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="() => solicitudSeleccionada = null">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 
 @code {
     private bool seleccionarTodos = false;
     private string tabActiva = "nacionales";
-
+    private List<SolicitudSeguimientoDto> solicitudes = new();
+    private Solicitud? solicitudSeleccionada = null;
     private List<ListadoPrematricula> alumnos = new()
     {
         new ListadoPrematricula {Id=1,  Numero = "89451501", NombreCompleto = "Frank Dean",         FechaNacimiento = "28/03/2020", LugarNacimiento = "Lima", Estado = "Registrado" },
@@ -229,6 +304,33 @@
         new ListadoPrematricula {Id=4,  Numero = "000189451517", NombreCompleto = "Jennifer Aniston",   FechaNacimiento = "01/01/1999", LugarNacimiento = "Tacna", Estado = "Rechazado" },
         new ListadoPrematricula {Id=5,  Numero = "000189451518", NombreCompleto = "Gina Nuñez",         FechaNacimiento = "04/11/1998", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
     };
+    private string usuarioId = "";
+
+     protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            usuarioId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0";
+        }
+        await CargarSolicitudes();
+    }
+
+    private async Task CargarSolicitudes()
+    {
+        try
+        {
+            solicitudes = await Http.GetFromJsonAsync<List<SolicitudSeguimientoDto>>("api/personaseducacion/solicitudesdets");
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Error en solicitud HTTP: {ex.Message}");
+            // Puedes mostrar un mensaje de error con JS si lo deseas
+        }
+    }
+
 
     private async Task ConfirmarEliminacion(int id)
     {
@@ -311,6 +413,68 @@
     private void CambiarTab(string tab)
     {
         tabActiva = tab;
+    }
+
+    private async Task  VerDetalle(SolicitudSeguimientoDto solicitud)
+    {
+        solicitudSeleccionada = await Http.GetFromJsonAsync<Solicitud>($"api/personaseducacion/solicituddet/{solicitud.Id}");
+    }
+
+    async Task CambiarEstado(int solicitudId, int nuevoEstadoId)
+    {
+        string accion = nuevoEstadoId == 2 ? "aprobar" : "observar"; // 2 = aprobado, 3 = rechazado/anulado
+
+        if (nuevoEstadoId == 2)
+        {
+            // Confirmación para aprobación
+            var confirmar = await JS.InvokeAsync<bool>("confirmarSweet",
+                $"¿Estás seguro de {accion} esta solicitud?",
+                "Esta acción no se puede deshacer");
+
+            if (!confirmar) return;
+
+            var dto = new SolicitudCambioEstadoDto
+                {
+                    SolicitudId = solicitudId,
+                    NuevoEstadoId = nuevoEstadoId,
+                    Observacion = $"Aprobado por el usuario {usuarioId}",
+                    UsuarioCambio = usuarioId
+                };
+
+            await EnviarCambioEstado(dto);
+        }
+        else
+        {
+            var observacion = await JS.InvokeAsync<string>("solicitarObservacion");
+
+            if (!string.IsNullOrWhiteSpace(observacion))
+            {
+                var dto = new SolicitudCambioEstadoDto
+                    {
+                        SolicitudId = solicitudId,
+                        NuevoEstadoId = nuevoEstadoId,
+                        Observacion = observacion,
+                        UsuarioCambio = usuarioId
+                    };
+
+                await EnviarCambioEstado(dto);
+            }
+        }
+    }
+    private async Task EnviarCambioEstado(SolicitudCambioEstadoDto dto)
+    {
+        var resp = await Http.PostAsJsonAsync("/api/personaseducacion/cambiar-estado", dto);
+
+        if (resp.IsSuccessStatusCode)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Éxito", "Estado actualizado correctamente", "success");
+            await CargarSolicitudes();
+        }
+        else
+        {
+            var msg = await resp.Content.ReadAsStringAsync();
+            await JS.InvokeVoidAsync("Swal.fire", "Error", msg, "error");
+        }
     }
 }
 

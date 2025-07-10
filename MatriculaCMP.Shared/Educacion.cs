@@ -23,15 +23,20 @@ namespace MatriculaCMP.Shared
 
 		[Required(ErrorMessage = "La universidad es requerida")]
 		public int UniversidadId { get; set; }
-		
-		[Required(ErrorMessage = "La fecha de emisión del título es requerida")]
+        // 🆕 Propiedad de navegación hacia Universidad
+        public Universidad Universidad { get; set; }
+
+        [Required(ErrorMessage = "La fecha de emisión del título es requerida")]
 		public DateTime FechaEmisionTitulo { get; set; }
 
-		//[RequiredIf(nameof(TipoValidacion), "reconocimiento", ErrorMessage = "Resolución es requerida")]
-		public string? TipoValidacion { get; set; } // "reconocimiento", "revalidacion"
+        //[RequiredIf(nameof(TipoValidacion), "reconocimiento", ErrorMessage = "Resolución es requerida")]
 
-		public string? NumeroResolucion { get; set; }
-		public string? ResolucionPath { get; set; }
-		public int? UniversidadPeruanaId { get; set; } // Solo para revalidación
-	}
+        public string? TipoValidacion { get; set; } // "reconocimiento", "revalidacion"
+        public int? UniversidadPeruanaId { get; set; } // Solo para revalidación
+        public string? NumeroResolucion { get; set; }
+        public string? ResolucionPath { get; set; }
+
+        public EducacionDocumento? Documento { get; set; }
+
+    }
 }

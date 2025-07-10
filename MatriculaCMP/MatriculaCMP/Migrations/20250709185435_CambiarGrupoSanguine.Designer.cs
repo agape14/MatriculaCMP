@@ -4,6 +4,7 @@ using MatriculaCMP.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MatriculaCMP.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250709185435_CambiarGrupoSanguine")]
+    partial class CambiarGrupoSanguine
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -126,49 +129,6 @@ namespace MatriculaCMP.Migrations
                     b.ToTable("Educaciones");
                 });
 
-            modelBuilder.Entity("MatriculaCMP.Shared.EducacionDocumento", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("CarnetExtranjeriaPath")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CertificadoAntecedentesPenalesPath")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ConstanciaInscripcionReconocimientoSuneduPath")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ConstanciaInscripcionRevalidacionUniversidadNacionalPath")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ConstanciaInscripcionSuneduPath")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("EducacionId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ReconocimientoSuneduPath")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("RevalidacionUniversidadNacionalPath")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TituloMedicoCirujanoPath")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EducacionId")
-                        .IsUnique();
-
-                    b.ToTable("EducacionDocumentos");
-                });
-
             modelBuilder.Entity("MatriculaCMP.Shared.EstadoCivil", b =>
                 {
                     b.Property<int>("Id")
@@ -193,10 +153,6 @@ namespace MatriculaCMP.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Color")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Nombre")
                         .IsRequired()
@@ -812,17 +768,6 @@ namespace MatriculaCMP.Migrations
                     b.Navigation("Universidad");
                 });
 
-            modelBuilder.Entity("MatriculaCMP.Shared.EducacionDocumento", b =>
-                {
-                    b.HasOne("MatriculaCMP.Shared.Educacion", "Educacion")
-                        .WithOne("Documento")
-                        .HasForeignKey("MatriculaCMP.Shared.EducacionDocumento", "EducacionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Educacion");
-                });
-
             modelBuilder.Entity("MatriculaCMP.Shared.PerfilMenu", b =>
                 {
                     b.HasOne("MatriculaCMP.Shared.Menu", "Menu")
@@ -935,11 +880,6 @@ namespace MatriculaCMP.Migrations
             modelBuilder.Entity("MatriculaCMP.Shared.Area", b =>
                 {
                     b.Navigation("Solicitudes");
-                });
-
-            modelBuilder.Entity("MatriculaCMP.Shared.Educacion", b =>
-                {
-                    b.Navigation("Documento");
                 });
 
             modelBuilder.Entity("MatriculaCMP.Shared.EstadoSolicitud", b =>

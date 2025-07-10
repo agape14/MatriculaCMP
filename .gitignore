@@ -362,3 +362,5 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 /MatriculaCMP/MatriculaCMP/wwwroot/fotos_medicos
+/MatriculaCMP/MatriculaCMP/Resources/FotosMedicos
+/MatriculaCMP/MatriculaCMP/Resources/EducacionDocumentos

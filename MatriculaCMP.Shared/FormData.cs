@@ -122,5 +122,15 @@ namespace MatriculaCMP.Shared
 
 		[Required(ErrorMessage = "La foto del médico es requerida y que este validada")]
 		public IBrowserFile FotoMedico { get; set; }
-	}
+
+
+        public string? TituloMedicoCirujanoPath { get; set; }
+        public string? ConstanciaInscripcionSuneduPath { get; set; }
+        public string? CertificadoAntecedentesPenalesPath { get; set; }
+        public string? CarnetExtranjeriaPath { get; set; }
+        public string? ConstanciaInscripcionReconocimientoSuneduPath { get; set; }
+        public string? ConstanciaInscripcionRevalidacionUniversidadNacionalPath { get; set; }
+        public string? ReconocimientoSuneduPath { get; set; }
+        public string? RevalidacionUniversidadNacionalPath { get; set; }
+    }
 }

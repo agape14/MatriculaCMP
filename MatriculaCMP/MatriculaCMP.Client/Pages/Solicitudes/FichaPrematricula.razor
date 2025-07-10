@@ -1,4 +1,5 @@
 ﻿@page "/solicitudes/prematricula"
+@page "/solicitudes/prematricula/{SolicitudId:int}"
 @using MatriculaCMP.Client.Services
 @using System.Net.Http.Headers;
 @using System.ComponentModel.DataAnnotations
@@ -506,9 +507,15 @@
 																<InputFile OnChange="@OnFotoSelected" @bind-Value="formData.FotoMedico" class="custom-file-input form-control" accept=".jpg,.jpeg,.png" id="customFile" />
 																<label class="custom-file-label form-control" for="customFile">@(fotoFile != null ? fotoFile.Name : "Seleccione foto")</label>
 															</div>
-															<button type="button" class="btn btn-outline-primary" @onclick="() => mostrarEjemplos = true" style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
+															@* <button type="button" class="btn btn-outline-primary" @onclick="() => mostrarEjemplos = true" style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
 																<i class="fas fa-question-circle"></i> Ver ejemplos
+															</button> *@
+
+															<button type="button" class="btn btn-outline-primary" @onclick="() => mostrarEjemplos = true" style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
+																<i class="fas fa-question-circle"></i>
+																<span class="d-none d-sm-inline"> Ver ejemplos</span>
 															</button>
+
 														</div>
 														@if (mostrarEjemplos)
 														{
@@ -633,6 +640,9 @@
 </div>
 
 @code {
+	[Parameter]
+	public int SolicitudId { get; set; }
+
 	string tipoSeleccionado = "1"; // Nacional por defecto
 	int paisId;
 	bool paisBloqueado = true;
@@ -820,8 +830,18 @@
 			}
 
 			paisesFiltrados = paises;
-			formData = await MapPersonaToFormDataAsync(persona);
-			editContext = new EditContext(formData);
+			
+
+			if (SolicitudId > 0)
+			{
+				await CargarSolicitudExistente(SolicitudId);
+			}
+			else
+			{
+				// Cargar datos iniciales para nuevo registro
+				formData = await MapPersonaToFormDataAsync(persona);
+				editContext = new EditContext(formData);
+			}
 
 			await CargarUniversidades();
 			await CargarUniversidadesPeruanas();
@@ -870,6 +890,34 @@
 		// await CargarUniversidades();
 		// await CargarUniversidadesPeruanas();
 	}
+
+	 private async Task CargarSolicitudExistente(int solicitudId)
+    {
+        try
+        {
+			var solicitud = await Http.GetFromJsonAsync<FormData>($"api/matricula/{solicitudId}");
+            if (solicitud != null)
+            {
+                formData = new FormData
+                {
+                    // Mapear todas las propiedades desde la solicitud
+                    ConsejoRegional = solicitud.ConsejoRegional,
+                    Nombres = solicitud.Nombres,
+                    ApellidoPaterno = solicitud.ApellidoPaterno,
+                    // ... resto de propiedades ...
+                    FotoMedico = solicitud.FotoMedico // O manejar la foto existente
+                };
+                
+                // Cargar combos dependientes
+                await OnTipoSeleccionado(solicitud.UniversidadOrigen);
+                // ... otras inicializaciones necesarias ...
+            }
+        }
+        catch (Exception ex)
+        {
+            mensajeError = $"Error al cargar solicitud: {ex.Message}";
+        }
+    }
 
 	async Task OnTipoSeleccionado(string valorseleccionado)
 	{
@@ -982,7 +1030,7 @@
 			EstadoCivil = persona.EstadoCivilId,
 			TipoDocumento = persona.TipoDocumentoId,
 			NumeroDocumento = persona.NumeroDocumento,
-			GrupoSanguineo = persona.GrupoSanguineoId,
+			GrupoSanguineo = persona.GrupoSanguineoId.ToString(),
 			FechaNacimiento = persona.FechaNacimiento.GetValueOrDefault(),
 			PaisNacimiento = string.IsNullOrEmpty(persona.PaisNacimientoId) ? "173" : persona.PaisNacimientoId,
 			DepartamentoNacimiento = persona.DepartamentoNacimientoId,
@@ -1041,7 +1089,7 @@
 			EstadoCivilId = formData.EstadoCivil,
 			TipoDocumentoId = formData.TipoDocumento,
 			NumeroDocumento = formData.NumeroDocumento?.Trim(),
-			GrupoSanguineoId = formData.GrupoSanguineo,
+			GrupoSanguineoId = int.Parse(formData.GrupoSanguineo),
 			PaisNacimientoId = formData.PaisNacimiento,
 			DepartamentoNacimientoId = formData.DepartamentoNacimiento,
 			ProvinciaNacimientoId = formData.ProvinciaNacimiento,

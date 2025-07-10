@@ -176,8 +176,16 @@ namespace MatriculaCMP.Controller
                 string tipoDoc = DecryptBase64(request.TipoDocumentoEncrypted);
                 string numDoc = DecryptBase64(request.NumeroDocumentoEncrypted);
 
+                var catalogoDni = await _sgdContext.CatalogoSGD
+                    .Where(c => c.Descripcion == "DNI")
+                    .Select(c => new { c.IdCatalogo })
+                    .FirstOrDefaultAsync();
+                if (catalogoDni == null)
+                {
+                    return NotFound($"No se encontró el tipo de documento {tipoDoc} en el catálogo.");
+                }
                 var persona = _sgdContext.Persona
-                    .FirstOrDefault(p => p.IdCatalogoTipoDocumentoPersonal.ToString() == tipoDoc &&
+                    .FirstOrDefault(p => p.IdCatalogoTipoDocumentoPersonal.ToString() == catalogoDni.IdCatalogo.ToString() &&
                             p.NumeroDocumento == numDoc);
                 if (persona == null)
                 {

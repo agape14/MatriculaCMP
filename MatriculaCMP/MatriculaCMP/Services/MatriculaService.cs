@@ -72,21 +72,23 @@ namespace MatriculaCMP.Services
 				await _context.SaveChangesAsync();
 
 				// Configurar rutas de almacenamiento
-				var fotosMedicosPath = Path.Combine(_env.WebRootPath, "fotos_medicos");
-				var resolucionesPath = Path.Combine(_env.WebRootPath, "resoluciones");
+				//var fotosMedicosPath = Path.Combine(_env.WebRootPath, "fotos_medicos");
+                var fotosMedicosPath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "FotosMedicos");
+                var resolucionesPath = Path.Combine(_env.WebRootPath, "resoluciones");
 
 				// Crear directorios si no existen
 				Directory.CreateDirectory(fotosMedicosPath);
 				Directory.CreateDirectory(resolucionesPath);
 
-				// Guardar foto del médico
-				var fotoFileName = $"foto_{persona.Id}{Path.GetExtension(foto.FileName)}";
+                // Guardar foto del médico
+                var uniqueSuffix = Guid.NewGuid().ToString("N");
+                var fotoFileName = $"foto_{persona.Id}_{uniqueSuffix}{Path.GetExtension(foto.FileName)}";
 				var fotoPath = Path.Combine(fotosMedicosPath, fotoFileName);
 				await using (var stream = new FileStream(fotoPath, FileMode.Create))
 				{
 					await foto.CopyToAsync(stream);
 				}
-				persona.FotoPath = $"/fotos_medicos/{fotoFileName}";
+				persona.FotoPath = fotoFileName;
 
 				// Guardar resolución si existe
 				if (resolucionFile != null)
@@ -128,7 +130,7 @@ namespace MatriculaCMP.Services
                     TipoSolicitud = "REGISTRO",
                     EstadoSolicitudId = 1, // Por ejemplo: Pendiente
                     FechaSolicitud = DateTime.Now,
-                    AreaId = null, // o algún área por defecto
+                    AreaId = 1, // o algún área por defecto
                     Observaciones = "Registro desde el formulario del médico",
                     NumeroSolicitud = correlativo.UltimoNumero
                 };

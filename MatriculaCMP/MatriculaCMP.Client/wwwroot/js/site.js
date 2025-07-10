@@ -4,7 +4,7 @@
         text: texto,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'Sí, eliminar',
+        confirmButtonText: 'Sí, proceder',
         cancelButtonText: 'Cancelar'
     });
     return result.isConfirmed;

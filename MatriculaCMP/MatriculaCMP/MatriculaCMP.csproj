@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Resources\EducacionDocumentos\" />
     <Folder Include="Resources\ReferenceImages\" />
   </ItemGroup>
 

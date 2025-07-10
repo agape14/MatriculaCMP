@@ -2,6 +2,7 @@
 @using MatriculaCMP.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
+@using MatriculaCMP.Client.Helpers
 
 @inject HttpClient Http
 @inject IJSRuntime JS
@@ -32,132 +33,80 @@
                 <div class="card-body  pt-0">
                     <ul class="nav nav-tabs nav-tabs-custom mb-4">
                         <li class="nav-item">
-                            <a class="nav-link fw-bold p-3 active" href="#">Todos los Trámites</a>
+                            <a class="nav-link fw-bold p-3 active" href="#">Todos mis Trámites</a>
                         </li>
-                        @* <li class="nav-item">
-                            <a class="nav-link p-3 fw-bold" href="#">Observados</a>
-                        </li>    *@
                     </ul>
                     <div class="alert alert-primary mb-2 mt-2" role="alert">
                         <div class="button-items">
-                            @* <button type="button" class="btn btn-primary waves-effect waves-light">
-                                Primary <i class="ri-arrow-right-line align-middle ms-2"></i>
-                            </button> *@
+                            @*
                             <button class="btn btn-primary waves-effect waves-light" @onclick="FirmarDigitalmente" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Firmar Documento Digitalmente">
                                 <i class="ri-fingerprint-fill align-middle me-2"></i> Firmar Digitalmente
                             </button>
                             <button type="button" class="btn btn-warning waves-effect waves-light" disabled>
                                 <i class="ri-error-warning-line align-middle me-2"></i> Sub sanar
                             </button>
-                            @* <button type="button" class="btn btn-danger waves-effect waves-light">
-                                <i class="ri-close-line align-middle me-2"></i> Danger
-                            </button> *@
+                             *@
                         </div>
                     </div>
-                    
-                    <div class="col-sm-12">
-                       <table id="tblListadoSolicitante" class="table table-centered datatable dt-responsive nowrap dataTable no-footer dtr-inline ml-2 w-100">
-                            <thead class="thead-light">
-                              @*   <tr>
-                                    <th>Nombres Completos</th>
-                                    <th>Documento</th>
-                                    <th>Celular</th>
-                                    <th>Estado</th>
-                                    <th>Universidad</th>
-                                    <th>Tipo Validación</th>
-                                    <th>Fecha Título</th>
-                                    <th>Acción</th>
-                                </tr> *@
-
-                                <tr>
-                                    <th>#</th>
-                                    <th>Tipo Solicitud</th>
-                                    <th>Fecha Solicitud</th>
-                                    <th>Estado</th>
-                                    <th>Área Encargada</th>
-                                    <th>Observaciones</th>
-                                    <th>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                               @*  @foreach (var persona in personas)
-                                {
-                                    <tr>
-                                        <td>@persona.NombresCompletos</td>
-                                        <td>@persona.Documento</td>
-                                        <td>@persona.Celular</td>
-                                        <td>
-                                            @if (persona.Estado == "Registrado")
-                                            {
-                                                <div class="badge bg-success text-white font-size-12">Registrado</div>
-                                            }
-                                            else if (persona.Estado == "Por Subsanar")
-                                            {
-                                                <div class="badge bg-warning text-white font-size-12">Por Subsanar</div>
-                                            }
-                                            else if (persona.Estado == "Rechazado")
-                                            {
-                                                <div class="badge bg-danger text-white font-size-12">Rechazado</div>
-                                            }
-                                            else
-                                            {
-                                                <div class="badge bg-success text-white font-size-12">Registrado</div>
-                                            }
-                                        </td>
-                                        <td>@(persona.Educaciones.FirstOrDefault()?.UniversidadId ?? 0)</td>
-                                        <td></td>
-                                        <td>
-                                            @(persona.Educaciones.FirstOrDefault()?.FechaEmision) <br />
-                                            <button class="btn btn-light btn-rounded" @onclick="DescargarFormato">
-                                                Descargar <i class="mdi mdi-download ms-2"></i>
-                                            </button>
-                                        </td>
-                                        <td>
-                                            <a href="/solicitudes/prematricula" class="me-3 text-warning" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Sub sanar Pre Matricula">
-                                                <i class="ri-error-warning-line font-size-18"></i>
-                                            </a>
-                                            <a href="javascript:void(0);" class="text-danger" @onclick="() => ConfirmarEliminacion(persona.PersonaId)" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Eliminar registro">
-                                                <i class="mdi mdi-trash-can font-size-18"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                } *@
-
-                                @if (solicitudes != null && solicitudes.Count > 0)
-                                {
-                                    int index = 1;
-                                    foreach (var s in solicitudes)
-                                    {
-                                        <tr>
-                                            <td>@index</td>
-                                            <td>@s.TipoSolicitud</td>
-                                            <td>@s.FechaSolicitud.ToString("dd/MM/yyyy")</td>
-                                            <td>
-                                                <span class="badge bg-primary">@s.Estado</span>
-                                                @*<span class="badge bg-@GetBadgeColor(s.Estado)">
-                                                    @s.Estado
-                                                </span> *@
-                                            </td>
-                                            <td>@(s.AreaNombre ?? "")</td>
-                                            <td>@(s.Observaciones ?? "")</td>
-                                            <td>
-                                                <button class="btn btn-outline-primary btn-sm" @onclick="@(() => VerDetalle(s.Id))">
-                                                    <i class="ri-eye-line"></i> Ver
-                                                </button>
-                                            </td>
+                    <div class="table-responsive">
+                        <div class="row">
+                            <div class="col-sm-12">
+                                <table id="tblListadoSolicitante" class="table table-centered datatable dt-responsive nowrap dataTable no-footer dtr-inline collapsed" data-page-length="5" style="border-collapse: collapse; border-spacing: 0px; width: 100%;" role="grid">
+                                    <thead class="thead-light">
+                                        <tr role="row">
+                                            <th>#</th>
+                                            <th>Nombres <br /> Completos</th>
+                                            <th>Nro. <br /> Solicitud</th>
+                                            <th>Fecha <br /> Solicitud</th>
+                                            <th>Estado</th>
+                                            <th>Área <br /> Encargada</th>
+                                            <th>Observaciones</th>
+                                            <th>Acciones</th>
                                         </tr>
-                                        index++;
-                                    }
-                                }
-                                else
-                                {
-                                    <tr>
-                                        <td colspan="7" class="text-center">No se encontraron solicitudes</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                                    </thead>
+                                    <tbody>
+                                        @if (solicitudes != null && solicitudes.Count > 0)
+                                        {
+                                            int index = 1;
+                                            foreach (var s in solicitudes)
+                                            {
+                                                <tr role="row" class="odd">
+                                                    <td>@index</td>
+                                                    <td>@s.PersonaNombre</td>
+                                                    <td>@s.NumeroSolicitud.ToString("D8")</td>
+                                                    <td>@s.FechaSolicitud.ToString("dd/MM/yyyy")</td>
+                                                    <td>
+                                                       @*  <span class="badge bg-@EstadoHelper.GetBadgeColor(s.EstadoId)">
+                                                            @s.Estado
+                                                        </span> *@
+                                                        <div class="badge badge-soft-@s.EstadoColor font-size-12">@s.Estado</div>
+                                                    </td>
+                                                    <td>@(s.AreaNombre ?? "")</td>
+                                                    <td>@(s.Observaciones ?? "")</td>
+                                                    <td>
+                                                        <button class="btn btn-outline-primary btn-sm" @onclick="@(() => VerDetalle(s))">
+                                                            <i class="ri-eye-line"></i> Ver
+                                                        </button>
+                                                        @* <button class="btn btn-outline-warning btn-sm ms-1" @onclick="@(() => EditarSolicitud(s.Id))">
+                                                <i class="ri-edit-line"></i> Editar
+                                                </button> *@
+                                                    </td>
+                                                </tr>
+                                                index++;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <tr>
+                                                <td colspan="7" class="text-center">No se encontraron solicitudes</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
+                   
                     <!-- Modal Loading -->
                     <div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
                         <div class="modal-dialog modal-dialog-centered">
@@ -175,6 +124,67 @@
         </div>
     </div>
 
+@if (solicitudSeleccionada != null)
+{
+    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5)" id="detalleModal">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalle de Solicitud #@solicitudSeleccionada.NumeroSolicitud.ToString("D8")</h5>
+                    <button type="button" class="btn-close" @onclick="() => solicitudSeleccionada = null"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Datos Personales</h6>
+                            <p><strong>Nombres:</strong> @solicitudSeleccionada.Persona.NombresCompletos</p>
+                            <p><strong>Documento:</strong> @solicitudSeleccionada.Persona.NumeroDocumento</p>
+                                <p><strong>Fecha Nacimiento:</strong> @solicitudSeleccionada.Persona.FechaNacimiento?.ToString("dd/MM/yyyy")</p>
+                                <p><strong>Grupo Sanguíneo:</strong> @solicitudSeleccionada.Persona.GrupoSanguineo.Nombre</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Contacto</h6>
+                            <p><strong>Email:</strong> @solicitudSeleccionada.Persona.Email</p>
+                                <p><strong>Celular:</strong> @solicitudSeleccionada.Persona.Celular</p>
+                                <p><strong>Dirección:</strong> @solicitudSeleccionada.Persona.DescripcionZona</p>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <h6>Educación</h6>
+                                <p><strong>Universidad:</strong> @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.Universidad?.Nombre </p>
+                                <p><strong>Fecha Título:</strong>  @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.FechaEmisionTitulo.ToString("dd/MM/yyyy") </p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Foto</h6>
+                            @if (!string.IsNullOrEmpty(solicitudSeleccionada.Persona.FotoPath))
+                            {
+                                    <img src="/api/personaseducacion/fotos-medicos/@solicitudSeleccionada.Persona.FotoPath" class="img-thumbnail" style="max-width: 200px;" alt="Foto del médico" />
+                            }
+                            else
+                            {
+                                <p>Sin foto disponible</p>
+                            }
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6>Estado</h6>
+                               @*  <p><span class="badge bg-@EstadoHelper.GetBadgeColor(solicitudSeleccionada.EstadoSolicitud.Id)">@solicitudSeleccionada.EstadoSolicitud.Nombre</span></p> *@
+                                <div class="badge badge-soft-@solicitudSeleccionada.EstadoSolicitud.Color font-size-12">@solicitudSeleccionada.EstadoSolicitud.Nombre</div>
+                            <p><strong>Observaciones:</strong> @solicitudSeleccionada.Observaciones</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="() => solicitudSeleccionada = null">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 </div>
 
 
@@ -182,6 +192,7 @@
     private bool seleccionarTodos = false;
     private List<PersonaConEducacionDto> personas = new();
     private List<SolicitudSeguimientoDto> solicitudes = new();
+    private Solicitud? solicitudSeleccionada = null;
     private string personaId = "";
 
     protected override async Task OnInitializedAsync()
@@ -191,19 +202,45 @@
 
         if (user.Identity?.IsAuthenticated ?? false)
         {
-            personaId = user.FindFirst("PersonaId")?.Value ?? "1";
+            personaId = user.FindFirst("PersonaId").Value ?? "0";
         }
 
         // personas = await Http.GetFromJsonAsync<List<PersonaConEducacionDto>>("api/personaseducacion/con-educacion");
-        solicitudes = await Http.GetFromJsonAsync<List<SolicitudSeguimientoDto>>($"api/personaseducacion/mis-solicitudes/{personaId}");
-        await InvokeAsync(StateHasChanged); // Forzar un re-renderizado
+        // solicitudes = await Http.GetFromJsonAsync<List<SolicitudSeguimientoDto>>($"api/personaseducacion/mis-solicitudes/{personaId}");
+        // await InvokeAsync(StateHasChanged); // Forzar un re-renderizado
+
+        if (!int.TryParse(personaId, out int personaIdInt))
+        {
+            Console.WriteLine("PersonaId inválido en claims aa.");
+            return;
+        }
+
+        await CargarSolicitudes(personaIdInt);
     }
 
-    private void VerDetalle(int solicitudId)
+    
+    private async Task CargarSolicitudes(int personaIdInt)
     {
-        Nav.NavigateTo($"/solicitudes/detalle/{solicitudId}");
+        try
+        {
+            solicitudes = await Http.GetFromJsonAsync<List<SolicitudSeguimientoDto>>(
+                $"api/personaseducacion/mis-solicitudes/{personaIdInt}");
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Error en solicitud HTTP: {ex.Message}");
+            // Aquí puedes manejar el error o mostrar mensaje en pantalla
+        }
     }
 
+    private async Task  VerDetalle(SolicitudSeguimientoDto solicitud)
+    {
+        solicitudSeleccionada = await Http.GetFromJsonAsync<Solicitud>($"api/personaseducacion/solicituddet/{solicitud.Id}");
+    }
+    private void EditarSolicitud(int solicitudId)
+    {
+        Nav.NavigateTo($"/solicitudes/prematricula/{solicitudId}");
+    }
     private string GetBadgeColor(string estado)
     {
         return estado switch

@@ -53,26 +53,148 @@ namespace MatriculaCMP.Controller
             return Ok(persona);
         }
 
-        [HttpGet("mis-solicitudes/{persona_id}")]
-        public async Task<IActionResult> ObtenerSolicitudesUsuario(string persona_id)
+        [HttpGet("mis-solicitudes/{personaId:int}")]
+        public async Task<IActionResult> ObtenerSolicitudesUsuario(int personaId)
         {
             var solicitudes = await _context.Solicitudes
-                .Where(s => s.PersonaId.ToString() == persona_id)
-                .Include(s => s.Area)
-                .Include(s => s.EstadoSolicitud)
-                .OrderByDescending(s => s.FechaSolicitud)
-                .Select(s => new SolicitudSeguimientoDto
-                {
-                    Id = s.Id,
-                    TipoSolicitud = s.TipoSolicitud,
-                    FechaSolicitud = s.FechaSolicitud,
-                    Estado = s.EstadoSolicitud.Nombre,
-                    AreaNombre = s.Area != null ? s.Area.Nombre : "No asignado",
-                    Observaciones = s.Observaciones
-                })
-                .ToListAsync();
+            .Where(s => s.PersonaId == personaId)
+            .Include(s => s.Persona)
+                .ThenInclude(p => p.Educaciones)
+                    .ThenInclude(e => e.Universidad)
+            .Include(s => s.Area)
+            .Include(s => s.EstadoSolicitud)
+            .OrderByDescending(s => s.FechaSolicitud)
+            .ToListAsync(); // <-- fuerza la ejecución en memoria
 
-            return Ok(solicitudes);
+            var resultado = solicitudes.Select(s => new SolicitudSeguimientoDto
+            {
+                Id = s.Id,
+                NumeroSolicitud = s.NumeroSolicitud,
+                TipoSolicitud = s.TipoSolicitud,
+                FechaSolicitud = s.FechaSolicitud,
+                Estado = s.EstadoSolicitud.Nombre,
+                EstadoId = s.EstadoSolicitud.Id,
+                EstadoColor = s.EstadoSolicitud.Color,
+                AreaNombre = s.Area != null ? s.Area.Nombre : "No asignado",
+                PersonaNombre = s.Persona?.NombresCompletos ?? "-",
+                UniversidadNombre = s.Persona?.Educaciones.FirstOrDefault()?.Universidad?.Nombre ?? "-"
+            }).ToList();
+
+            return Ok(resultado);
+        }
+
+        [HttpGet("solicituddet/{id}")]
+        public async Task<ActionResult<Solicitud>> GetDetalleSolicitud(int id)
+        {
+            var solicitud = await _context.Solicitudes
+                .Include(s => s.Persona)
+                    .ThenInclude(p => p.Educaciones)
+                        .ThenInclude(e => e.Universidad)
+                .Include(s => s.Persona)
+                    .ThenInclude(p => p.GrupoSanguineo) // 👈 aquí se incluye el grupo sanguíneo
+                .Include(s => s.EstadoSolicitud)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (solicitud == null)
+                return NotFound();
+
+            return Ok(solicitud);
+        }
+
+        [HttpGet("fotos-medicos/{fileName}")]
+        public IActionResult GetFotoMedico(string fileName)
+        {
+            var imagePath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "FotosMedicos", fileName);
+
+            if (!System.IO.File.Exists(imagePath))
+                return NotFound();
+
+            return PhysicalFile(imagePath, "image/jpeg");
+        }
+
+        [HttpGet("solicitudesdets")]
+        public async Task<ActionResult<SolicitudSeguimientoDto>> GetDetallesSolicitudes()
+        {
+            //var solicitud = await _context.Solicitudes
+            //    .Include(s => s.Persona)
+            //        .ThenInclude(p => p.Educaciones)
+            //            .ThenInclude(e => e.Universidad)
+            //    .Include(s => s.Persona)
+            //        .ThenInclude(p => p.GrupoSanguineo) // 👈 aquí se incluye el grupo sanguíneo
+            //    .Include(s => s.EstadoSolicitud)
+            //    .ToListAsync();
+
+            //if (solicitud == null)
+            //    return NotFound();
+
+
+
+            var solicitudes = await _context.Solicitudes
+            .Include(s => s.Persona)
+                .ThenInclude(p => p.Educaciones)
+                    .ThenInclude(e => e.Universidad)
+            .Include(s => s.Area)
+            .Include(s => s.EstadoSolicitud)
+            .OrderByDescending(s => s.FechaSolicitud)
+            .ToListAsync(); // <-- fuerza la ejecución en memoria
+
+            var resultado = solicitudes.Select(s => new SolicitudSeguimientoDto
+            {
+                Id = s.Id,
+                NumeroSolicitud = s.NumeroSolicitud,
+                TipoSolicitud = s.TipoSolicitud,
+                FechaSolicitud = s.FechaSolicitud,
+                Estado = s.EstadoSolicitud.Nombre,
+				EstadoId = s.EstadoSolicitud.Id,
+                EstadoColor = s.EstadoSolicitud.Color,
+				AreaNombre = s.Area != null ? s.Area.Nombre : "No asignado",
+                PersonaNombre = s.Persona?.NombresCompletos ?? "-",
+                UniversidadNombre = s.Persona?.Educaciones.FirstOrDefault()?.Universidad?.Nombre ?? "-"
+            }).ToList();
+
+            if (resultado == null || !resultado.Any())
+                return NotFound(new { message = "No se encontraron solicitudes." });
+            return Ok(resultado);
+        }
+
+
+        [HttpPost("cambiar-estado")]
+        public async Task<IActionResult> CambiarEstado([FromBody] SolicitudCambioEstadoDto dto)
+        {
+            try
+            {
+                var solicitud = await _context.Solicitudes
+                    .AsTracking()
+                    .FirstOrDefaultAsync(s => s.Id == dto.SolicitudId);
+
+                if (solicitud is null)
+                    return NotFound("Solicitud no encontrada");
+
+                var estadoAnterior = solicitud.EstadoSolicitudId;
+
+                // Cambiar estado
+                solicitud.EstadoSolicitudId = dto.NuevoEstadoId;
+
+                // Guardar en historial
+                var historial = new SolicitudHistorialEstado
+                {
+                    SolicitudId = dto.SolicitudId,
+                    EstadoAnteriorId = estadoAnterior,
+                    EstadoNuevoId = dto.NuevoEstadoId,
+                    FechaCambio = DateTime.UtcNow,
+                    Observacion = dto.Observacion,
+                    UsuarioCambio = dto.UsuarioCambio
+                };
+
+                _context.SolicitudHistorialEstados.Add(historial);
+                await _context.SaveChangesAsync();
+
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "Ocurrió un error al cambiar el estado");
+            }
         }
 
     }

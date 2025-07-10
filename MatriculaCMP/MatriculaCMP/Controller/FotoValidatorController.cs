@@ -368,5 +368,6 @@ namespace MatriculaCMP.Controller
 
 			return PhysicalFile(imagePath, "image/jpeg");
 		}
+
 	}
 }
