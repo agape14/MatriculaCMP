@@ -7,12 +7,165 @@
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
+@if (!string.IsNullOrEmpty(perfilUsuario) && totalesPorPerfil.ContainsKey(perfilUsuario))
+{
+    <h3 class="mb-4">Panel de Control - @perfilNombre</h3>
+
+    <div class="row">
+        @if( perfilUsuario != "2" )
+        {
+            @foreach (var item in totalesPorPerfil[perfilUsuario])
+            {
+                <div class="col-md-3 mb-4">
+                    <div class="card text-@(item.colortexto ?? "dark") bg-@item.color shadow">
+                        <div class="card-body d-flex align-items-center justify-content-between">
+                            <div>
+                                <h6 class="card-title text-@(item.colortexto ?? "dark")">@item.titulo</h6>
+                                <h3 class="fw-bold text-@(item.colortexto ?? "dark")">@item.valor</h3>
+                            </div>
+                            <i class="@item.icono text-@(item.colortexto ?? "dark") display-4 opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        
+    </div>
+    @if (perfilUsuario == "2")
+    {
+        <div class="row">
+            <div class="col-xl-8">
+
+                <div class="card">
+                    <div class="card-body">
+                        <div class="float-right d-none d-md-inline-block">
+                            <div class="btn-group mb-2">
+                                <button type="button" class="btn btn-sm btn-light">Today</button>
+                                <button type="button" class="btn btn-sm btn-light active">Weekly</button>
+                                <button type="button" class="btn btn-sm btn-light">Monthly</button>
+                            </div>
+                        </div>
+                        <h4 class="card-title mb-4">Revenue Analytics</h4>
+                        <div>
+                            <div class="table-responsive">
+                                <table class="table mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Column heading</th>
+                                            <th>Column heading</th>
+                                            <th>Column heading</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr class="table-light">
+                                            <th scope="row">1</th>
+                                            <td>Column content</td>
+                                            <td>Column content</td>
+                                            <td>Column content</td>
+                                        </tr>
+
+                                        <tr class="table-success">
+                                            <th scope="row">2</th>
+                                            <td>Column content</td>
+                                            <td>Column content</td>
+                                            <td>Column content</td>
+                                        </tr>
+
+                                        <tr class="table-info">
+                                            <th scope="row">3</th>
+                                            <td>Column content</td>
+                                            <td>Column content</td>
+                                            <td>Column content</td>
+                                        </tr>
+
+                                        <tr class="table-warning">
+                                            <th scope="row">4</th>
+                                            <td>Column content</td>
+                                            <td>Column content</td>
+                                            <td>Column content</td>
+                                        </tr>
+
+                                        <tr class="table-danger">
+                                            <th scope="row">5</th>
+                                            <td>Column content</td>
+                                            <td>Column content</td>
+                                            <td>Column content</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-4">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="float-right">
+                            <select class="custom-select custom-select-sm">
+                                <option selected>Apr</option>
+                                <option value="1">Mar</option>
+                                <option value="2">Feb</option>
+                                <option value="3">Jan</option>
+                            </select>
+                        </div>
+                        <h4 class="card-title mb-4">Sales Analytics</h4>
+
+                        <div id="donut-chart" class="apex-charts"></div>
+
+                        <div class="row">
+                            <div class="col-4">
+                                <div class="text-center mt-4">
+                                    <p class="mb-2 text-truncate"><i class="mdi mdi-circle text-primary font-size-10 mr-1"></i> Product A</p>
+                                    <h5>42 %</h5>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center mt-4">
+                                    <p class="mb-2 text-truncate"><i class="mdi mdi-circle text-success font-size-10 mr-1"></i> Product B</p>
+                                    <h5>26 %</h5>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center mt-4">
+                                    <p class="mb-2 text-truncate"><i class="mdi mdi-circle text-warning font-size-10 mr-1"></i> Product C</p>
+                                    <h5>42 %</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- end row -->
+    }
+   
+}
+else
+{
+    <div class="alert alert-info d-flex align-items-center" role="alert">
+        <div class="spinner-border text-info me-2" role="status">
+            <span class="visually-hidden">Cargando...</span>
+        </div>
+        Cargando...
+    </div>
+}
+
 @code {
     private string perfilUsuario = "";
     private string perfilNombre = "";
 
     // Simulando totales por perfil
     private Dictionary<string, List<(string titulo, int valor, string color, string icono, string? colortexto)>> totalesPorPerfil = new();
+
+    private List<int> ventasMensuales = new() { 15, 30, 45, 25 };
+    private List<string> meses = new() { "Ene", "Feb", "Mar", "Abr" };
+
+    private List<int> productos = new() { 42, 26, 15 };
+    private List<string> productosLabels = new() { "Producto A", "Producto B", "Producto C" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -81,36 +234,12 @@
             }
             };
     }
-}
-
-@if (!string.IsNullOrEmpty(perfilUsuario) && totalesPorPerfil.ContainsKey(perfilUsuario))
-{
-    <h3 class="mb-4">Panel de Control - @perfilNombre</h3>
-
-    <div class="row">
-    @foreach (var item in totalesPorPerfil[perfilUsuario])
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
         {
-            <div class="col-md-3 mb-4">
-                <div class="card text-@(item.colortexto ?? "dark") bg-@item.color shadow">
-                    <div class="card-body d-flex align-items-center justify-content-between">
-                        <div>
-                            <h6 class="card-title text-@(item.colortexto ?? "dark")">@item.titulo</h6>
-                            <h3 class="fw-bold text-@(item.colortexto ?? "dark")">@item.valor</h3>
-                        </div>
-                        <i class="@item.icono text-@(item.colortexto ?? "dark") display-4 opacity-50"></i>
-                    </div>
-                </div>
-            </div>
+            await JS.InvokeVoidAsync("renderApexChart", ventasMensuales, meses, productos, productosLabels);
         }
-    </div>
-    
+    }
 }
-else
-{
-    <div class="alert alert-info d-flex align-items-center" role="alert">
-        <div class="spinner-border text-info me-2" role="status">
-            <span class="visually-hidden">Cargando...</span>
-        </div>
-        Cargando...
-    </div>
-}
+
