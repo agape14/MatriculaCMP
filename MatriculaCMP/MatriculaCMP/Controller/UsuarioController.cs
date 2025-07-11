@@ -172,91 +172,100 @@ namespace MatriculaCMP.Controller
         {
             try
             {
-                // Desencriptar Base64
+                // 🔓 Desencriptar Base64
                 string tipoDoc = DecryptBase64(request.TipoDocumentoEncrypted);
                 string numDoc = DecryptBase64(request.NumeroDocumentoEncrypted);
 
+                // Buscar tipo documento 'DNI' en catálogo SGD
                 var catalogoDni = await _sgdContext.CatalogoSGD
                     .Where(c => c.Descripcion == "DNI")
-                    .Select(c => new { c.IdCatalogo })
+                    .Select(c => c.IdCatalogo)
                     .FirstOrDefaultAsync();
-                if (catalogoDni == null)
-                {
+
+                if (catalogoDni == 0)
                     return NotFound($"No se encontró el tipo de documento {tipoDoc} en el catálogo.");
-                }
-                var persona = _sgdContext.Persona
-                    .FirstOrDefault(p => p.IdCatalogoTipoDocumentoPersonal.ToString() == catalogoDni.IdCatalogo.ToString() &&
-                            p.NumeroDocumento == numDoc);
+
+                // Buscar persona en SGD
+                var persona = await _sgdContext.Persona
+                    .FirstOrDefaultAsync(p => p.IdCatalogoTipoDocumentoPersonal == catalogoDni && p.NumeroDocumento == numDoc);
+
                 if (persona == null)
-                {
                     return NotFound("No se encontró el usuario. Comuníquese con el administrador.");
-                }
-                var token="";
+
+                var token = "";
                 var idPersona = 0;
-                var persona_prem = _context.Personas.FirstOrDefault(x => x.NumeroDocumento == numDoc);
-               
-                if (persona_prem == null )
+
+                // ¿Ya existe la persona en BD local?
+                var persona_prem = await _context.Personas.FirstOrDefaultAsync(x => x.NumeroDocumento == numDoc);
+
+                if (persona_prem == null)
                 {
-                    if (persona_prem == null)
-                    {
-                        var nuevaPersona = new Persona
-                        {
-                            Nombres = persona.Nombres,
-                            ApellidoPaterno = persona.ApellidoPaterno,
-                            ApellidoMaterno = persona.ApellidoMaterno,
-                            TipoDocumentoId = persona.IdCatalogoTipoDocumentoPersonal.ToString(),
-                            NumeroDocumento = persona.NumeroDocumento
-                        };
+                    // Buscar usuario SGD (activo, no bloqueado)
+                    var usuario_prem = await _sgdContext.UsuariosSGD
+                        .FirstOrDefaultAsync(x => x.IdPersona == persona.IdPersona && x.Bloqueado == false);
 
-                        _context.Personas.Add(nuevaPersona);
-                        await _context.SaveChangesAsync();
-                        idPersona = nuevaPersona.Id;
-                    }
-                    else
-                    {
-                        idPersona = persona_prem.Id;
-                    }
-                    var usuario_prem = _sgdContext.UsuariosSGD.FirstOrDefault(x => x.IdPersona == persona.IdPersona && x.Bloqueado == false);
-                    if (usuario_prem != null)
-                    {
-                        // Crear hash + salt (si quieres clave genérica)
-                        var password = numDoc; // ⚠️ Opcional: puedes generar o encriptar una
-                        CreatePasswordHash(password, out byte[] hash, out byte[] salt);
+                    if (usuario_prem == null)
+                        return NotFound("No se encontró el usuario en el sistema de gestión de documentos.");
 
-                        var nuevoUsuario = new Usuario
-                        {
-                            Correo = usuario_prem.Email ?? "", // o cualquier otro valor por defecto
-                            NombreUsuario = usuario_prem.Logueo, // o algo único
-                            PasswordHash = hash,
-                            PasswordSalt = salt,
-                            PerfilId = 2, // Medico
-                            PersonaId = idPersona
-                        };
+                    // Buscar código de tipo documento local
+                    var codmatchDni = await _context.MaestroRegistro
+                        .Where(c => c.Nombre.Trim() == "DNI")
+                        .Select(c => c.MaestroRegistro_Key)
+                        .FirstOrDefaultAsync();
 
-                        _context.Usuarios.Add(nuevoUsuario);
-                        await _context.SaveChangesAsync();
-                        var usuarioCompleto = _context.Usuarios
+                    // Crear Persona local
+                    var nuevaPersona = new Persona
+                    {
+                        Nombres = persona.Nombres,
+                        ApellidoPaterno = persona.ApellidoPaterno,
+                        ApellidoMaterno = persona.ApellidoMaterno,
+                        TipoDocumentoId = codmatchDni.ToString(),
+                        NumeroDocumento = persona.NumeroDocumento,
+                        Email = usuario_prem.Email ?? ""
+                    };
+
+                    _context.Personas.Add(nuevaPersona);
+                    await _context.SaveChangesAsync();
+
+                    idPersona = nuevaPersona.Id;
+
+                    // Crear Usuario local
+                    var password = numDoc;
+                    CreatePasswordHash(password, out byte[] hash, out byte[] salt);
+
+                    var nuevoUsuario = new Usuario
+                    {
+                        Correo = usuario_prem.Email ?? "",
+                        NombreUsuario = usuario_prem.Logueo,
+                        PasswordHash = hash,
+                        PasswordSalt = salt,
+                        PerfilId = 2, // Médico
+                        PersonaId = idPersona
+                    };
+
+                    _context.Usuarios.Add(nuevoUsuario);
+                    await _context.SaveChangesAsync();
+
+                    // Cargar usuario completo para token
+                    var usuarioCompleto = await _context.Usuarios
                         .Include(u => u.Persona)
                         .Include(u => u.Perfil)
-                        .FirstOrDefault(u => u.Id == nuevoUsuario.Id);
+                        .FirstOrDefaultAsync(u => u.Id == nuevoUsuario.Id);
 
-                        token = CreateToken(usuarioCompleto);
-                    }
-
+                    token = CreateToken(usuarioCompleto);
                 }
                 else
                 {
-                    var usuariotoken = _context.Usuarios
-                       .Include(u => u.Persona)
-                       .Include(u => u.Perfil)
-                       .FirstOrDefault(u => u.PersonaId == persona_prem.Id);
+                    idPersona = persona_prem.Id;
+
+                    var usuariotoken = await _context.Usuarios
+                        .Include(u => u.Persona)
+                        .Include(u => u.Perfil)
+                        .FirstOrDefaultAsync(u => u.PersonaId == idPersona);
+
                     token = CreateToken(usuariotoken);
                 }
-                // Generar token de autenticación (ejemplo simplificado)
-                //var token = GenerateJwtToken(persona);
 
-                // Redirigir a la aplicación con el token de autenticación
-                //return Redirect($"{_config["FrontendUrl"]}/autologin?token={token}");
                 return Ok(new { token });
             }
             catch (Exception ex)
@@ -264,6 +273,7 @@ namespace MatriculaCMP.Controller
                 return StatusCode(500, $"Error al procesar la solicitud: {ex.Message}");
             }
         }
+
 
         private static string DecryptBase64(string base64String)
         {
@@ -367,7 +377,7 @@ namespace MatriculaCMP.Controller
                                   u.Id,
                                   u.NombreUsuario,
                                   u.Correo,
-                                  Persona = new { u.Persona.Id, u.Persona.Nombres, u.Persona.ApellidoPaterno, u.Persona.ApellidoMaterno, u.Persona.NombresCompletos },
+                                  Persona = new { u.Persona.Id, u.Persona.Nombres, u.Persona.ApellidoPaterno, u.Persona.ApellidoMaterno, u.Persona.NombresCompletos,u.Persona.ConsejoRegionalId },
                                   Perfil = new { u.Perfil.Id, u.Perfil.Nombre }
                               })
                               .ToListAsync();
@@ -406,7 +416,8 @@ namespace MatriculaCMP.Controller
                     PerfilId = usuario.PerfilId,
                     Perfil = usuario.Perfil,
                     PersonaId = usuario.PersonaId,
-                    Persona = usuario.Persona
+                    Persona = usuario.Persona,
+                    ConsejoRegionalId = usuario.Persona?.ConsejoRegionalId ?? ""
                 };
 
                 return Ok(model);
@@ -432,6 +443,7 @@ namespace MatriculaCMP.Controller
                     ApellidoMaterno = model.ApellidoMaterno.ToUpper().Trim(),
                     NumeroDocumento = model.NumeroDocumento,
                     Email = model.Correo,
+                    ConsejoRegionalId = model.ConsejoRegionalId,
                 };
 
                 _context.Personas.Add(persona);
@@ -484,6 +496,7 @@ namespace MatriculaCMP.Controller
                     usuario.Persona.ApellidoMaterno = model.ApellidoMaterno.ToUpper().Trim();
                     usuario.Persona.NumeroDocumento = model.NumeroDocumento;
                     usuario.Persona.Email = model.Correo;
+                    usuario.Persona.ConsejoRegionalId = model.ConsejoRegionalId;
                 }
 
                 // Actualizar datos de Usuario

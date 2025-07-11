@@ -109,11 +109,14 @@ namespace MatriculaCMP.Shared
 		[Required(ErrorMessage = "La universidad es requerida")]
 		public string Universidad { get; set; }
 
+		public string? NombreUniversidadExtranjera { get; set; }
+
 		[Required(ErrorMessage = "La fecha de emisión del título es requerida")]
 		public DateTime FechaEmisionTitulo { get; set; } = DateTime.Today;
 
 		public string TipoValidacion { get; set; } // Solo para extranjeras
 		public string NumeroResolucion { get; set; } // Solo para extranjeras
+		public string? ResolucionPath { get; set; }
 		public string UniversidadPeruana { get; set; } // Solo para revalidación
 
 		// Términos y condiciones
@@ -124,13 +127,14 @@ namespace MatriculaCMP.Shared
 		public IBrowserFile FotoMedico { get; set; }
 
 
-        public string? TituloMedicoCirujanoPath { get; set; }
-        public string? ConstanciaInscripcionSuneduPath { get; set; }
-        public string? CertificadoAntecedentesPenalesPath { get; set; }
-        public string? CarnetExtranjeriaPath { get; set; }
-        public string? ConstanciaInscripcionReconocimientoSuneduPath { get; set; }
-        public string? ConstanciaInscripcionRevalidacionUniversidadNacionalPath { get; set; }
-        public string? ReconocimientoSuneduPath { get; set; }
-        public string? RevalidacionUniversidadNacionalPath { get; set; }
-    }
+        public IBrowserFile? TituloMedicoCirujanoPath { get; set; }
+        public IBrowserFile? ConstanciaInscripcionSuneduPath { get; set; }
+        public IBrowserFile? CertificadoAntecedentesPenalesPath { get; set; }
+        public IBrowserFile? CarnetExtranjeriaPath { get; set; }
+        public IBrowserFile? ConstanciaInscripcionReconocimientoSuneduPath { get; set; }
+        public IBrowserFile? ConstanciaInscripcionRevalidacionUniversidadNacionalPath { get; set; }
+        public IBrowserFile? ReconocimientoSuneduPath { get; set; }
+        public IBrowserFile? RevalidacionUniversidadNacionalPath { get; set; }
+
+	}
 }

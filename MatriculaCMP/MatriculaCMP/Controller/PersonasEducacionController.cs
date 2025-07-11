@@ -41,17 +41,23 @@ namespace MatriculaCMP.Controller
         [HttpGet("{id}")]
         public async Task<ActionResult<Persona>> GetPersona(int id)
         {
-            var persona = await _context.Personas
-                .Include(p => p.Educaciones)
-                .Include(p => p.Usuarios)
-                //.Include(p => p.Solicitudes)
-                .FirstOrDefaultAsync(p => p.Id == id);
+			try
+			{
+				var persona = await _context.Personas
+					.Include(p => p.Educaciones)
+					.Include(p => p.Usuarios)
+					.FirstOrDefaultAsync(p => p.Id == id);
 
-            if (persona == null)
-                return NotFound(new { message = $"No se encontró la persona con ID {id}" });
+				if (persona == null)
+					return NotFound(new { message = $"No se encontró la persona con ID {id}" });
 
-            return Ok(persona);
-        }
+				return Ok(persona);
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new { message = "Error interno", detalle = ex.Message });
+			}
+		}
 
         [HttpGet("mis-solicitudes/{personaId:int}")]
         public async Task<IActionResult> ObtenerSolicitudesUsuario(int personaId)

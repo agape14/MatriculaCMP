@@ -17,7 +17,7 @@ namespace MatriculaCMP.Shared
 
         [Required(ErrorMessage = "El origen de universidad es requerido")]
 		public string UniversidadOrigen { get; set; } = "1"; // Valor por defecto Nacional
-
+		public string? NombreUniversidadExtranjera { get; set; }
 		public bool EsExtranjera { get; set; }
 		public int PaisUniversidadId { get; set; }
 

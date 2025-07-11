@@ -21,7 +21,15 @@ namespace MatriculaCMP.Controller
 			[FromForm] string Persona,
 			[FromForm] string Educacion,
 			[FromForm] IFormFile Foto,
-			[FromForm] IFormFile? ResolucionFile = null)
+			[FromForm] IFormFile? ResolucionFile = null,
+			[FromForm] IFormFile? TituloMedicoCirujano = null,
+			[FromForm] IFormFile? ConstanciaInscripcionSunedu = null,
+			[FromForm] IFormFile? CertificadoAntecedentesPenales = null,
+			[FromForm] IFormFile? CarnetExtranjeria = null,
+			[FromForm] IFormFile? ConstanciaInscripcionReconocimientoSunedu = null,
+			[FromForm] IFormFile? ConstanciaInscripcionRevalidacionUniversidadNacional = null,
+			[FromForm] IFormFile? ReconocimientoSunedu = null,
+			[FromForm] IFormFile? RevalidacionUniversidadNacional = null)
 		{
 			try
 			{
@@ -53,7 +61,18 @@ namespace MatriculaCMP.Controller
 					persona,
 					educacion,
 					Foto, // Pasamos el IFormFile directamente
-					ResolucionFile);
+					ResolucionFile,
+					new Dictionary<string, IFormFile?>
+					{
+						["TituloMedicoCirujano"] = TituloMedicoCirujano,
+						["ConstanciaInscripcionSunedu"] = ConstanciaInscripcionSunedu,
+						["CertificadoAntecedentesPenales"] = CertificadoAntecedentesPenales,
+						["CarnetExtranjeria"] = CarnetExtranjeria,
+						["ConstanciaInscripcionReconocimientoSunedu"] = ConstanciaInscripcionReconocimientoSunedu,
+						["ConstanciaInscripcionRevalidacionUniversidadNacional"] = ConstanciaInscripcionRevalidacionUniversidadNacional,
+						["ReconocimientoSunedu"] = ReconocimientoSunedu,
+						["RevalidacionUniversidadNacional"] = RevalidacionUniversidadNacional
+					});
 
 				return success ? Ok(new { success = true, message = message }) : BadRequest(new { success = false, message = message });
 			}

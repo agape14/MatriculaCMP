@@ -41,5 +41,7 @@ namespace MatriculaCMP.Shared
         public int? PersonaId { get; set; }
         [JsonIgnore]
         public Persona? Persona { get; set; }
+
+        public string? ConsejoRegionalId { get; set; } = string.Empty;
     }
 }

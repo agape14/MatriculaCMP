@@ -1,6 +1,7 @@
 ﻿@page "/admin/usuarios/new"
 @page "/admin/usuarios/{Id:int?}"
 @using MatriculaCMP.Shared
+
 @inject HttpClient Http
 @inject NavigationManager Nav
 @inject IJSRuntime Js
@@ -112,6 +113,19 @@ else if (!string.IsNullOrEmpty(_error))
                                     </InputSelect>
                                 </div>
                             </div>
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label for="lblConsejoRegional">Consejo Regional *</label>
+                                    <InputSelect @bind-Value="_model.ConsejoRegionalId" class="form-control" id="cbxConsejoRegional" requiered>
+                                        <option value="">Seleccione...</option>
+                                        @foreach (var consejo in consejos)
+                                        {
+                                            <option value="@consejo.ConsejoRegional_Key">@consejo.Nombre</option>
+                                        }
+                                    </InputSelect>
+                                    <ValidationMessage For="@(() => _model.ConsejoRegionalId)" />
+                                </div>
+                            </div>
                         </div>
 
                         <button class="btn btn-primary waves-effect waves-light" type="submit" disabled="@_guardando">
@@ -136,11 +150,24 @@ else if (!string.IsNullOrEmpty(_error))
     private int? _id;                 // se copia en OnParametersSetAsync
     private UsuarioInsert _model = new();
     private List<Perfil> _perfiles = new();
+    private List<Mat_ConsejoRegional> consejos = new();
 
     private bool _cargando = true;
     private bool _guardando = false;
     private string? _error;
+    private string PersonaId;
 
+    protected override async Task OnInitializedAsync()
+	{
+		try
+		{
+			consejos = await Http.GetFromJsonAsync<List<Mat_ConsejoRegional>>("api/consejoregional");
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error al cargar los consejos regionales: {ex.Message}";
+        }
+    }
     // ------------------ ciclo de vida ------------------
     protected override async Task OnParametersSetAsync()
     {

@@ -57,6 +57,7 @@
                                             <th>Nombres Completos</th>
                                             <th>Correo</th>
                                             <th>Rol</th>
+                                            <th>Consejo Regional</th>
                                             <th></th>
                                         </tr>
                                     </thead>
@@ -69,6 +70,18 @@
                                                 <td>@u.Persona?.NombresCompletos</td>
                                                 <td>@u.Correo</td>
                                                 <td>@u.Perfil?.Nombre</td>
+                                                @* <td>@u.Persona?.ConsejoRegionalId</td>
+                                                <td>@(consejosMap.TryGetValue(int.Parse(u.Persona.ConsejoRegionalId), out var nombre) ? nombre : "-")</td> *@
+                                                <td>
+                                                    @(
+                                                        int.TryParse(u.Persona?.ConsejoRegionalId, out var crId) &&
+                                                        consejosMap.TryGetValue(crId, out var nombre)
+                                                        ? nombre
+                                                        : "-"
+                                                        )
+                                                </td>
+
+
                                                 <td class="text-end">
                                                     <button class="btn btn-sm btn-secondary me-1"
                                                             @onclick="() => Editar(u.Id)">
@@ -100,8 +113,15 @@
     List<Usuario>? usuarios;
     Estado estado = Estado.Cargando;
     string? mensajeError;
+    private Dictionary<int, string> consejosMap = new();
+
     protected override async Task OnInitializedAsync()
     {
+        var consejos = await Http.GetFromJsonAsync<List<Mat_ConsejoRegional>>("api/consejoregional");
+        if (consejos != null)
+        {
+            consejosMap = consejos.ToDictionary(c => c.ConsejoRegional_Key, c => c.Nombre);
+        }
         await CargarDatos();
     }
 

@@ -294,11 +294,6 @@
 											<div class="col-md-4">
 												<div class="form-group">
 													<label for="departamento_id">Departamento  *</label>
-													@* <InputSelect @bind-Value="formData.DepartamentoDomicilio" class="form-control" id="departamento_id">
-														<option value="">Seleccione Departamento Domicilio</option>
-														<option value="14" selected>LIMA</option>
-													</InputSelect> *@
-
 													<InputSelect TValue="string"
 																 Value="@formData.DepartamentoDomicilio"
 																 ValueChanged="@((string val) => OnLoadProvinciasdm(val))"
@@ -318,11 +313,6 @@
 											<div class="col-md-4">
 												<div class="form-group">
 													<label for="provincia_id">Provincia *</label>
-													@* <InputSelect @bind-Value="formData.ProvinciaDomicilio" class="form-control" id="provincia_id">
-														<option value="">Seleccione Provincia Domicilio</option>
-														<option value="1" selected>LIMA</option>
-													</InputSelect> *@
-
 													<InputSelect TValue="string"
 																 Value="@formData.ProvinciaDomicilio"
 																 ValueChanged="@((string prov) => OnLoadDistritosdm(prov))"
@@ -340,11 +330,6 @@
 											<div class="col-md-4">
 												<div class="form-group">
 													<label for="distrito_id">Distrito *</label>
-													@* <InputSelect @bind-Value="formData.DistritoDomicilio" class="form-control" id="distrito_id">
-														<option value="">Seleccione Provincia Domicilio</option>
-														<option value="1" selected>LIMA</option>
-													</InputSelect> *@
-
 													<InputSelect @bind-Value="formData.DistritoDomicilio" class="form-control" id="distrito">
 														<option value="">Seleccione Distrito Domicilio</option>
 														@foreach (var distdn in distritosdm)
@@ -364,7 +349,7 @@
 											</div>
 											<div class="col-md-4">
 												<div class="form-group">
-													<label for="celular">Teléfono celular</label>
+													<label for="celular">Teléfono celular *</label>
 													<InputText @bind-Value="formData.Celular" class="form-control" id="celular" />
 													<ValidationMessage For="@(() => formData.Celular)" />
 												</div>
@@ -387,12 +372,6 @@
 											<div class="col-md-6">
 												<div class="form-group">
 													<label for="uniori">Origen de Universidad *</label>
-													@* <InputSelect @bind-Value="formData.UniversidadOrigen" class="form-control" @onchange="OnTipoSeleccionado" id="uniori">
-														<option value="">Seleccione Universidad</option>
-														<option value="1">Nacional</option>
-														<option value="0">Extranjera</option>
-													</InputSelect> *@
-
 													<InputSelect TValue="string"
 																 Value="@formData.UniversidadOrigen"
 																 ValueChanged="@((string val) => OnTipoSeleccionado(val))"
@@ -421,21 +400,36 @@
 													<ValidationMessage For="@(() => formData.PaisUniversidad)" />
 												</div>
 											</div>
-
-											<div class="col-md-6">
-												<div class="form-group">
-													<label for="nombre_uni">Nombre de Universidad*</label>
-													<InputSelect @bind-Value="formData.Universidad" class="form-control" id="nombre_uni">
-														<option value="">Seleccione Universidad</option>
-														@foreach (var uni in universidades)
-														{
-															<option value="@uni.Id">@uni.Nombre</option>
-														}
-													</InputSelect>
-													<ValidationMessage For="@(() => formData.Universidad)" />
+											<!-- CAMBIO PRINCIPAL: Campo condicional para nombre de universidad -->
+											@if (tipoSeleccionado == "1")
+											{
+												<!-- Nacional: Mostrar selector de universidades -->
+												<div class="col-md-6">
+													<div class="form-group">
+														<label for="nombre_uni">Nombre de Universidad*</label>
+														<InputSelect @bind-Value="formData.Universidad" class="form-control" id="nombre_uni">
+															<option value="">Seleccione Universidad</option>
+															@foreach (var uni in universidades)
+															{
+																<option value="@uni.Id">@uni.Nombre</option>
+															}
+														</InputSelect>
+														<ValidationMessage For="@(() => formData.Universidad)" />
+													</div>
 												</div>
-											</div>
-
+											}
+											else
+											{
+												<!-- Extranjera: Mostrar campo de texto -->
+												<div class="col-md-6">
+													<div class="form-group">
+														<label for="nombre_uni_ext">Nombre de Universidad*</label>
+														<InputText @bind-Value="formData.NombreUniversidadExtranjera"
+																   class="form-control" id="nombre_uni_ext" />
+														<ValidationMessage For="@(() => formData.NombreUniversidadExtranjera)" />
+													</div>
+												</div>
+											}
 											<div class="col-md-6">
 												<div class="form-group">
 													<label for="fegreso">Fecha de emisón del Título</label>
@@ -448,8 +442,12 @@
 												<div class="col-md-6">
 													<div class="form-group">
 														<label for="tipo_validacion">Tipo de validación *</label>
-														<InputSelect @bind-Value="formData.TipoValidacion" class="form-control" id="tipo_validacion">
-															<option value="">Seleccione opción</option>
+														<InputSelect TValue="string"
+																	 Value="@formData.TipoValidacion"
+																	 ValueChanged="@((string val) => OnTipoValidacionSeleccionado(val))"
+																	 ValueExpression="@(() => formData.TipoValidacion)"
+																	 class="form-control">
+															<option value="">Seleccione Tipo de validación</option>
 															<option value="reconocimiento">Reconocimiento de Sunedu</option>
 															<option value="revalidacion">Revalidación</option>
 														</InputSelect>
@@ -507,10 +505,6 @@
 																<InputFile OnChange="@OnFotoSelected" @bind-Value="formData.FotoMedico" class="custom-file-input form-control" accept=".jpg,.jpeg,.png" id="customFile" />
 																<label class="custom-file-label form-control" for="customFile">@(fotoFile != null ? fotoFile.Name : "Seleccione foto")</label>
 															</div>
-															@* <button type="button" class="btn btn-outline-primary" @onclick="() => mostrarEjemplos = true" style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
-																<i class="fas fa-question-circle"></i> Ver ejemplos
-															</button> *@
-
 															<button type="button" class="btn btn-outline-primary" @onclick="() => mostrarEjemplos = true" style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
 																<i class="fas fa-question-circle"></i>
 																<span class="d-none d-sm-inline"> Ver ejemplos</span>
@@ -594,7 +588,7 @@
 													</div>
 												</div>
 											</div>
-											<div class="col-md-12">
+											@* <div class="col-md-12">
 												<div class="form-group">
 													<div class="custom-control custom-switch mb-2" dir="ltr">
 														<InputCheckbox @bind-Value="formData.AceptaPoliticas" class="custom-control-input" id="customSwitch1" />
@@ -602,12 +596,144 @@
 														<ValidationMessage For="@(() => formData.AceptaPoliticas)" />
 													</div>
 												</div>
-											</div>
-
+											</div> *@
+											
 										</div>
 									</div>
 								</div>
-							
+								<div class="card">
+									<h5 class="card-header card-title">Documentos Ajuntos</h5>
+									<div class="card-body">
+										<div class="row">
+											@* Para los nacionales y extranjeros*@
+											<div class="col-md-6">
+												<div class="form-group">
+													<h4 class="card-title">Titulo Medico Cirujano</h4>
+													<div class="custom-file">
+														<div class="input-group">
+															<div class="custom-file" style="flex-grow: 1;">
+																<InputFile @bind-Value="formData.TituloMedicoCirujanoPath" OnChange="@(args => OnFileSelected(args, nameof(formData.TituloMedicoCirujanoPath)))" class="custom-file-input form-control" accept=".pdf" />
+																<label class="custom-file-label form-control" for="customFile">@(pdfTituloMedicoCirujano != null ? pdfTituloMedicoCirujano.Name : "Seleccione Titulo Medico Cirujano")</label>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-6">
+												<div class="form-group">
+													<h4 class="card-title">Constancia Inscripcion Sunedu</h4>
+													<div class="custom-file">
+														<div class="input-group">
+															<div class="custom-file" style="flex-grow: 1;">
+																<InputFile @bind-Value="formData.ConstanciaInscripcionSuneduPath" OnChange="@(args => OnFileSelected(args, nameof(formData.ConstanciaInscripcionSuneduPath)))" class="custom-file-input form-control" accept=".pdf" />
+																<label class="custom-file-label form-control" for="customFile">@(pdfConstanciaInscripcionSunedu != null ? pdfConstanciaInscripcionSunedu.Name : "Seleccione Constancia Inscripcion Sunedu")</label>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+											<div class="col-md-6">
+												<div class="form-group">
+													<h4 class="card-title">Certificado Antecedentes Penales</h4>
+													<div class="custom-file">
+														<div class="input-group">
+															<div class="custom-file" style="flex-grow: 1;">
+																<InputFile @bind-Value="formData.CertificadoAntecedentesPenalesPath" OnChange="@(args => OnFileSelected(args, nameof(formData.CertificadoAntecedentesPenalesPath)))" class="custom-file-input form-control" accept=".pdf" />
+																<label class="custom-file-label form-control" for="customFile">@(pdfCertificadoAntecedentesPenales != null ? pdfCertificadoAntecedentesPenales.Name : "Seleccione Certificado Antecedentes Penales")</label>
+															</div>
+														</div>
+													</div>
+												</div>
+											</div>
+											@* Solo para extranjeros*@
+											@if (tipoSeleccionado == "0")
+											{
+												<div class="col-md-6">
+													<div class="form-group">
+														<h4 class="card-title">Carnet Extranjeria</h4>
+														<div class="custom-file">
+															<div class="input-group">
+																<div class="custom-file" style="flex-grow: 1;">
+																	<InputFile @bind-Value="formData.CarnetExtranjeriaPath" OnChange="@(args => OnFileSelected(args, nameof(formData.CarnetExtranjeriaPath)))" class="custom-file-input form-control" accept=".pdf" />
+																	<label class="custom-file-label form-control" for="customFile">@(pdfCarnetExtranjeria != null ? pdfCarnetExtranjeria.Name : "Seleccione Carnet Extranjeria")</label>
+																</div>
+															</div>
+														</div>
+													</div>
+												</div>
+												@if (tipoValidacionExtranjera == "reconocimiento")
+												{
+													<div class="col-md-6">
+														<div class="form-group">
+															<h4 class="card-title">Constancia Inscripcion Reconocimiento Sunedu</h4>
+															<div class="custom-file">
+																<div class="input-group">
+																	<div class="custom-file" style="flex-grow: 1;">
+																		<InputFile @bind-Value="formData.ConstanciaInscripcionReconocimientoSuneduPath" OnChange="@(args => OnFileSelected(args, nameof(formData.ConstanciaInscripcionReconocimientoSuneduPath)))" class="custom-file-input form-control" accept=".pdf" />
+																		<label class="custom-file-label form-control" for="customFile">@(pdfConstanciaInscripcionReconocimientoSunedu != null ? pdfConstanciaInscripcionReconocimientoSunedu.Name : "Seleccione Constancia Inscripcion Reconocimiento Sunedu")</label>
+																	</div>
+																</div>
+															</div>
+														</div>
+													</div>
+													<div class="col-md-6">
+														<div class="form-group">
+															<h4 class="card-title">Reconocimiento Sunedu</h4>
+															<div class="custom-file">
+																<div class="input-group">
+																	<div class="custom-file" style="flex-grow: 1;">
+																		<InputFile @bind-Value="formData.ReconocimientoSuneduPath" OnChange="@(args => OnFileSelected(args, nameof(formData.ReconocimientoSuneduPath)))" class="custom-file-input form-control" accept=".pdf" />
+																		<label class="custom-file-label form-control" for="customFile">@(pdfReconocimientoSunedu != null ? pdfReconocimientoSunedu.Name : "Seleccione Reconocimiento Sunedu")</label>
+																	</div>
+																</div>
+															</div>
+														</div>
+													</div>
+												}
+												else if (tipoValidacionExtranjera == "revalidacion")
+												{
+													<div class="col-md-6">
+														<div class="form-group">
+															<h4 class="card-title">Constancia Inscripcion Revalidacion Universidad Nacional</h4>
+															<div class="custom-file">
+																<div class="input-group">
+																	<div class="custom-file" style="flex-grow: 1;">
+																		<InputFile @bind-Value="formData.ConstanciaInscripcionRevalidacionUniversidadNacionalPath" OnChange="@(args => OnFileSelected(args, nameof(formData.ConstanciaInscripcionRevalidacionUniversidadNacionalPath)))" class="custom-file-input form-control" accept=".pdf" />
+																		<label class="custom-file-label form-control" for="customFile">@(pdfConstanciaInscripcionRevalidacionUniversidadNacional != null ? pdfConstanciaInscripcionRevalidacionUniversidadNacional.Name : "Seleccione Constancia Inscripcion Revalidacion Universidad Nacional")</label>
+																	</div>
+																</div>
+															</div>
+														</div>
+													</div>
+													<div class="col-md-6">
+														<div class="form-group">
+															<h4 class="card-title">Revalidacion Universidad Nacional</h4>
+															<div class="custom-file">
+																<div class="input-group">
+																	<div class="custom-file" style="flex-grow: 1;">
+																		<InputFile @bind-Value="formData.RevalidacionUniversidadNacionalPath" OnChange="@(args => OnFileSelected(args, nameof(formData.RevalidacionUniversidadNacionalPath)))" class="custom-file-input form-control" accept=".pdf" />
+																		<label class="custom-file-label form-control" for="customFile">@(pdfRevalidacionUniversidadNacional != null ? pdfRevalidacionUniversidadNacional.Name : "Seleccione Revalidacion Universidad Nacional")</label>
+																	</div>
+																</div>
+															</div>
+														</div>
+													</div>
+												}
+											}
+										</div>
+									</div>
+								</div>
+							<div class="row">
+								<div class="col-md-12">
+									<div class="form-group">
+										<div class="custom-control custom-switch mb-2" dir="ltr">
+											<InputCheckbox @bind-Value="formData.AceptaPoliticas" class="custom-control-input" id="customSwitch1" />
+											<label class="custom-control-label" for="customSwitch1">Acepto las <a href="/Politicas_de_privacidad">Políticas de Privacidad</a> de este sitio</label>
+											<ValidationMessage For="@(() => formData.AceptaPoliticas)" />
+										</div>
+									</div>
+								</div>
+							</div>
 								<DataAnnotationsValidator />
 								<ValidationSummary />
 								<!-- Mostrar mensajes de error -->
@@ -666,8 +792,17 @@
 	private List<Mat_Pais> matpaises = new();
 
 	private IBrowserFile fotoFile;
-	private string? imagePreviewUrl;
+	private IBrowserFile pdfTituloMedicoCirujano;
+	private IBrowserFile pdfConstanciaInscripcionSunedu;
+	private IBrowserFile pdfCertificadoAntecedentesPenales;
+	private IBrowserFile pdfCarnetExtranjeria;
+	private IBrowserFile pdfConstanciaInscripcionReconocimientoSunedu;
+	private IBrowserFile pdfConstanciaInscripcionRevalidacionUniversidadNacional;
+	private IBrowserFile pdfReconocimientoSunedu;
+	private IBrowserFile pdfRevalidacionUniversidadNacional;
 	private IBrowserFile resolucionFile;
+
+	private string? imagePreviewUrl;
 	private string mensajeError;
 	private bool enviando = false;
 	private bool mostrarErrorFoto = false;
@@ -921,9 +1056,8 @@
 
 	async Task OnTipoSeleccionado(string valorseleccionado)
 	{
+		formData.UniversidadOrigen = valorseleccionado;
 		tipoSeleccionado = valorseleccionado ?? "1";
-		// tipoSeleccionado = e.Value?.ToString() ?? "1";
-
 		if (tipoSeleccionado == "1") // Nacional
 		{
 			paisBloqueado = true;
@@ -959,7 +1093,19 @@
 		// await JS.InvokeVoidAsync("select2interop.refresh", "#nombre_uni");
 
 	}
+	async Task OnTipoValidacionSeleccionado(string valorseleccionado)
+	{
+		formData.TipoValidacion = valorseleccionado;
+		tipoValidacionExtranjera = valorseleccionado ?? "";
+		// tipoSeleccionado = e.Value?.ToString() ?? "1";
 
+		//await CargarUniversidades();
+		// 🔄 Forzar re-render
+		StateHasChanged();
+
+		// 🕒 Esperar a que se actualice el DOM
+		await Task.Delay(1);
+	}
 	async Task OnPaisSeleccionado(ChangeEventArgs e)
 	{
 		if (int.TryParse(e.Value?.ToString(), out int id))
@@ -1163,7 +1309,8 @@
 					PaisUniversidadId = int.TryParse(formData.PaisUniversidad, out var paisId) ? paisId : 0,
 					TipoValidacion = formData.TipoValidacion,
 					NumeroResolucion = formData.NumeroResolucion?.Trim(),
-					UniversidadPeruanaId = int.TryParse(formData.UniversidadPeruana, out var uniId) ? uniId : null
+					UniversidadPeruanaId = int.TryParse(formData.UniversidadPeruana, out var uniId) ? uniId : null,
+					NombreUniversidadExtranjera= formData.NombreUniversidadExtranjera?.Trim()
 				};
 			// Serializar objetos a JSON
 			string personaJson = JsonSerializer.Serialize(persona);
@@ -1181,13 +1328,34 @@
 			fotoContent.Headers.ContentType = new MediaTypeHeaderValue(fotoFile.ContentType); // Usa 'new' aquí
 			content.Add(fotoContent, "Foto", fotoFile.Name);
 
-			// Agregar resolución si es necesario
-			if (formData.UniversidadOrigen == "0" && resolucionFile != null)
-			{
-				var resolucionContent = new StreamContent(resolucionFile.OpenReadStream());
-				resolucionContent.Headers.ContentType = new MediaTypeHeaderValue(resolucionFile.ContentType);
-				content.Add(resolucionContent, "ResolucionFile", resolucionFile.Name);
+			// 3.3 PDF comunes (nacionales y extranjeros)
+			AddPdfIfNotNull(content, pdfTituloMedicoCirujano, "TituloMedicoCirujano");
+			AddPdfIfNotNull(content, pdfConstanciaInscripcionSunedu, "ConstanciaInscripcionSunedu");
+            AddPdfIfNotNull(content, pdfCertificadoAntecedentesPenales, "CertificadoAntecedentesPenales");
+
+			// 3.4 PDF solo‑extranjeros
+			if (formData.UniversidadOrigen == "0") {
+				AddPdfIfNotNull(content, pdfCarnetExtranjeria, "CarnetExtranjeria");
+
+				if (formData.TipoValidacion == "reconocimiento") {
+					AddPdfIfNotNull(content, pdfConstanciaInscripcionReconocimientoSunedu, "ConstanciaInscripcionReconocimientoSunedu");
+					AddPdfIfNotNull(content, pdfReconocimientoSunedu, "ReconocimientoSunedu");
+				}
+				else if (formData.TipoValidacion == "revalidacion") {
+					AddPdfIfNotNull(content, pdfConstanciaInscripcionRevalidacionUniversidadNacional, "ConstanciaInscripcionRevalidacionUniversidadNacional");
+					AddPdfIfNotNull(content, pdfRevalidacionUniversidadNacional, "RevalidacionUniversidadNacional");
+				}
+				// resolución PDF sigue igual
+				AddPdfIfNotNull(content, resolucionFile, "ResolucionFile");
 			}
+
+			// Agregar resolución si es necesario
+			// if (formData.UniversidadOrigen == "0" && resolucionFile != null)
+			// {
+			// 	var resolucionContent = new StreamContent(resolucionFile.OpenReadStream());
+			// 	resolucionContent.Headers.ContentType = new MediaTypeHeaderValue(resolucionFile.ContentType);
+			// 	content.Add(resolucionContent, "ResolucionFile", resolucionFile.Name);
+			// }
 
 			// Realizar petición HTTP
 			var response = await Http.PostAsync("api/matricula/guardar", content);
@@ -1260,6 +1428,15 @@
 		}
 	}
 
+	void AddPdfIfNotNull(MultipartFormDataContent content, IBrowserFile? file, string formFieldName)
+	{
+		if (file == null) return;
+
+		var streamContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024));
+		streamContent.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+		content.Add(streamContent, formFieldName, file.Name);
+	}
+
 	private void LimpiarFormulario()
 	{
 		formData = new FormData();
@@ -1309,6 +1486,43 @@
 		{
 			fechaInvalida = false;
 		}
+	}
+
+	// Manejador genérico para archivos
+	private void OnFileSelected(InputFileChangeEventArgs e, string propertyName)
+	{
+		var file = e.File;
+
+		typeof(FormData).GetProperty(propertyName)?.SetValue(formData, file);
+
+		// guarda en variable auxiliar para mostrar en UI
+		switch (propertyName)
+		{
+			case nameof(formData.TituloMedicoCirujanoPath):
+				pdfTituloMedicoCirujano = file; break;
+
+			case nameof(formData.ConstanciaInscripcionSuneduPath):
+				pdfConstanciaInscripcionSunedu = file; break;
+
+			case nameof(formData.CertificadoAntecedentesPenalesPath):
+				pdfCertificadoAntecedentesPenales = file; break;
+
+			case nameof(formData.CarnetExtranjeriaPath):
+				pdfCarnetExtranjeria = file; break;
+
+				case nameof(formData.ConstanciaInscripcionReconocimientoSuneduPath):
+				pdfConstanciaInscripcionReconocimientoSunedu = file; break;
+
+			case nameof(formData.ConstanciaInscripcionRevalidacionUniversidadNacionalPath):
+				pdfConstanciaInscripcionRevalidacionUniversidadNacional = file; break;
+
+				case nameof(formData.ReconocimientoSuneduPath):
+				pdfReconocimientoSunedu = file; break;
+
+			case nameof(formData.RevalidacionUniversidadNacionalPath):
+				pdfRevalidacionUniversidadNacional = file; break;
+		}
+		StateHasChanged();
 	}
 }
 

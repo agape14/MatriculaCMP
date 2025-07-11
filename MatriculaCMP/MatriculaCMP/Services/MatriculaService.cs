@@ -21,7 +21,8 @@ namespace MatriculaCMP.Services
 			Persona persona,
 			Educacion educacion,
 			IFormFile foto,
-			IFormFile? resolucionFile = null)
+			IFormFile? resolucionFile = null,
+			IDictionary<string, IFormFile?> docsPdf = null)
 		{
 			// Validar campos requeridos
 			var validationResults = new List<ValidationResult>();
@@ -74,7 +75,8 @@ namespace MatriculaCMP.Services
 				// Configurar rutas de almacenamiento
 				//var fotosMedicosPath = Path.Combine(_env.WebRootPath, "fotos_medicos");
                 var fotosMedicosPath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "FotosMedicos");
-                var resolucionesPath = Path.Combine(_env.WebRootPath, "resoluciones");
+				var eucacionDocumentossPath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "EducacionDocumentos");
+				var resolucionesPath = Path.Combine(_env.WebRootPath, "resoluciones");
 
 				// Crear directorios si no existen
 				Directory.CreateDirectory(fotosMedicosPath);
@@ -154,7 +156,39 @@ namespace MatriculaCMP.Services
                 await _context.SolicitudHistorialEstados.AddAsync(historial);
                 await _context.SaveChangesAsync();
 
-                await transaction.CommitAsync();
+
+
+
+
+				// Guardar documentos PDF si existen
+				var docEntity = new EducacionDocumento { EducacionId = educacion.Id };
+
+				foreach (var kv in docsPdf)
+				{
+					if (kv.Value == null) continue;
+
+					var original = kv.Value;
+					//var folder = Path.Combine(_env.WebRootPath, "documentos");
+					Directory.CreateDirectory(eucacionDocumentossPath);
+
+					var unique = $"{kv.Key}_{persona.Id}_{Guid.NewGuid():N}{Path.GetExtension(original.FileName)}";
+					var savePath = Path.Combine(eucacionDocumentossPath, unique);
+
+					await using var stream = new FileStream(savePath, FileMode.Create);
+					await original.CopyToAsync(stream);
+
+					// ↪  usa reflexión o switch para asignar la propiedad correcta
+					typeof(EducacionDocumento)
+						.GetProperty($"{kv.Key}Path")?
+						.SetValue(docEntity, $"/documentos/{unique}");
+				}
+
+				await _context.EducacionDocumentos.AddAsync(docEntity);
+				await _context.SaveChangesAsync();
+
+
+
+				await transaction.CommitAsync();
 
 				return (true, "Matrícula registrada exitosamente");
 			}
