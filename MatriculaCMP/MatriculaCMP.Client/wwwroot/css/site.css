@@ -1,0 +1,9 @@
+﻿.bg-morado {
+    background-color: #681E5B !important;
+    color: #fff !important; /* blanco automático si lo deseas */
+}
+
+.bg-morado-alpha {
+    background-color: rgba(104, 30, 91, 0.8) !important;
+    color: #fff !important;
+}

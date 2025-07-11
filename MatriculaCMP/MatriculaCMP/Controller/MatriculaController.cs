@@ -74,7 +74,7 @@ namespace MatriculaCMP.Controller
 						["RevalidacionUniversidadNacional"] = RevalidacionUniversidadNacional
 					});
 
-				return success ? Ok(new { success = true, message = message }) : BadRequest(new { success = false, message = message });
+				return success ? Ok(new { success = true, message = message }) : Ok(new { success = false, message = message });
 			}
 			catch (Exception ex)
 			{

@@ -36,8 +36,17 @@ namespace MatriculaCMP.Services
 				return (false, string.Join(", ", validationResults.Select(v => v.ErrorMessage)));
 			}
 
-			// Validar foto (unificado aquí)
-			if (foto == null || foto.Length == 0)
+            // Validar si tiene solicitudes activas
+            var tieneSolicitudesPendientes = await _context.Solicitudes
+                .AnyAsync(s => s.PersonaId == persona.Id && s.EstadoSolicitudId != 13);
+
+            if (tieneSolicitudesPendientes)
+            {
+                return (false, "Ya tiene una solicitud registrada en trámite. No puede registrar una nueva.");
+            }
+
+            // Validar foto (unificado aquí)
+            if (foto == null || foto.Length == 0)
 			{
 				return (false, "Debe subir una foto");
 			}
@@ -76,7 +85,7 @@ namespace MatriculaCMP.Services
 				//var fotosMedicosPath = Path.Combine(_env.WebRootPath, "fotos_medicos");
                 var fotosMedicosPath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "FotosMedicos");
 				var eucacionDocumentossPath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "EducacionDocumentos");
-				var resolucionesPath = Path.Combine(_env.WebRootPath, "resoluciones");
+				var resolucionesPath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "EducacionDocumentos");
 
 				// Crear directorios si no existen
 				Directory.CreateDirectory(fotosMedicosPath);
@@ -140,9 +149,6 @@ namespace MatriculaCMP.Services
                 await _context.Solicitudes.AddAsync(solicitud);
                 await _context.SaveChangesAsync();
 
-				//var userId = _httpContextAccessor.HttpContext?.User?.FindFirst("UsuarioId")?.Value
-				//?? _httpContextAccessor.HttpContext?.User?.FindFirst(ClaimTypes.NameIdentifier)?.Value
-				//?? "Sistema"; // Fallback si no hay usuario
 				// 📋 Guardar historial de estado
                 var historial = new SolicitudHistorialEstado
                 {
@@ -155,10 +161,6 @@ namespace MatriculaCMP.Services
                 };
                 await _context.SolicitudHistorialEstados.AddAsync(historial);
                 await _context.SaveChangesAsync();
-
-
-
-
 
 				// Guardar documentos PDF si existen
 				var docEntity = new EducacionDocumento { EducacionId = educacion.Id };
