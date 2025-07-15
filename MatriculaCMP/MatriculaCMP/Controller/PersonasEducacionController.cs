@@ -203,5 +203,40 @@ namespace MatriculaCMP.Controller
             }
         }
 
+        [HttpGet("EstadosConCheck/{personaId}")]
+        public async Task<IActionResult> GetEstadosConCheck(int personaId)
+        {
+            // Obtener los estados con verReporte = true
+            var estados = await _context.EstadoSolicitudes
+                .Where(ed => ed.VerReporte)
+                .Select(ed => new EstadoSolicitudConCheckDto
+                {
+                    Id = ed.Id,
+                    Nombre = ed.Nombre,
+                    Color = ed.Color,
+                    TieneCheck = _context.Solicitudes
+                        .Where(s => s.PersonaId == personaId)
+                        .Join(_context.SolicitudHistorialEstados,
+                            s => s.Id,
+                            sd => sd.SolicitudId,
+                            (s, sd) => sd)
+                        .Any(sd => sd.EstadoNuevoId == ed.Id)
+                })
+                .ToListAsync();
+
+            // Calcular el porcentaje
+            var totalEstados = estados.Count;
+            var estadosCompletados = estados.Count(e => e.TieneCheck);
+            var porcentaje = totalEstados > 0 ? (estadosCompletados * 100.0 / totalEstados) : 0;
+
+            // Construir la respuesta
+            var response = new EstadoSolicitudConCheckResponse
+            {
+                PorcentajeCompletado = Math.Round(porcentaje, 2), // Redondea a 2 decimales
+                Estados = estados
+            };
+
+            return Ok(response);
+        }
     }
 }

@@ -1,126 +1,125 @@
-﻿//window.renderApexChart = () => {
-//    setTimeout(() => {
-//        if (typeof ApexCharts !== "undefined") {
-//            console.log("✅ ApexCharts está cargado correctamente");
-
-//            //var options = {
-//            //    chart: {
-//            //        type: 'bar',
-//            //        height: 350
-//            //    },
-//            //    series: [{
-//            //        name: 'Ventas',
-//            //        data: [10, 20, 30, 40]
-//            //    }],
-//            //    xaxis: {
-//            //        categories: ['Ene', 'Feb', 'Mar', 'Abr']
-//            //    }
-//            //};
-
-//            //const chartElement = document.querySelector("#chart");
-//            //if (!chartElement) {
-//            //    console.error("❌ No se encontró el elemento #chart.");
-//            //    return;
-//            //}
-
-//            //var chart = new ApexCharts(chartElement, options);
-//            //chart.render();
-
-//            var options = {
-//                series: [42, 26, 15],
-//                chart: {
-//                    height: 230,
-//                    type: 'donut',
-//                },
-//                labels: ["Product A", "Product B", "Product C"],
-//                plotOptions: {
-//                    pie: {
-//                        donut: {
-//                            size: '75%'
-//                        }
-//                    }
-//                },
-//                dataLabels: {
-//                    enabled: false
-//                },
-//                legend: {
-//                    show: false,
-//                },
-//                colors: ['#5664d2', '#1cbb8c', '#eeb902'],
-
-//            };
-
-//            var chart = new ApexCharts(document.querySelector("#donut-chart"), options);
-//            chart.render();
-//        } else {
-//            console.error("❌ ApexCharts no se cargó correctamente.");
-//        }
-//    }, 0); // retrasa a la próxima iteración del event loop
-//};
-
-
-
-window.renderApexChart = (barData, barCategories, donutData, donutLabels) => {
+﻿window.renderApexChart = (barData, barCategories, radialData, radialLabels) => {
     setTimeout(() => {
         if (typeof ApexCharts !== "undefined") {
             console.log("✅ ApexCharts está cargado correctamente");
 
-            // 🔹 Gráfico de barras
-            const barOptions = {
+            // 🔹 Gráfico radial (donut-chart) con nuevos colores
+            var radialOptions = {
+                series: radialData,
                 chart: {
-                    type: 'bar',
-                    height: 350
+                    height: 350,
+                    type: 'radialBar',
+                    animations: {
+                        enabled: true,
+                        easing: 'easeOutCubic',
+                        speed: 800
+                    }
                 },
-                series: [{
-                    name: 'Ventas',
-                    data: barData
-                }],
-                xaxis: {
-                    categories: barCategories
-                }
-            };
-
-            const barElement = document.querySelector("#chart");
-            if (barElement) {
-                const barChart = new ApexCharts(barElement, barOptions);
-                barChart.render();
-            } else {
-                console.error("❌ No se encontró el elemento #chart.");
-            }
-
-            // 🔹 Gráfico de dona
-            const donutOptions = {
-                series: donutData,
-                chart: {
-                    height: 230,
-                    type: 'donut',
-                },
-                labels: donutLabels,
                 plotOptions: {
-                    pie: {
-                        donut: {
-                            size: '75%'
+                    radialBar: {
+                        startAngle: -135,
+                        endAngle: 225,
+                        hollow: {
+                            size: '65%',
+                            background: 'transparent',
+                            image: undefined,
+                            imageOffsetX: 0,
+                            imageOffsetY: 0,
+                            position: 'front',
+                        },
+                        track: {
+                            show: true,
+                            startAngle: undefined,
+                            endAngle: undefined,
+                            background: '#f8f9fa',
+                            strokeWidth: '97%',
+                            opacity: 1,
+                            margin: 5,
+                            dropShadow: {
+                                enabled: false,
+                                top: 0,
+                                left: 0,
+                                blur: 3,
+                                opacity: 0.5
+                            }
+                        },
+                        dataLabels: {
+                            name: {
+                                fontSize: '16px',
+                                color: '#6c757d',
+                                fontWeight: 600,
+                                offsetY: -10
+                            },
+                            value: {
+                                fontSize: '36px',
+                                color: '#343a40',
+                                fontWeight: 700,
+                                formatter: function (val) {
+                                    return val + '%';
+                                },
+                                offsetY: 5
+                            },
+                            total: {
+                                show: false
+                            }
                         }
                     }
                 },
-                dataLabels: {
-                    enabled: false
+                fill: {
+                    type: 'gradient',
+                    gradient: {
+                        shade: 'dark',
+                        type: 'horizontal',
+                        shadeIntensity: 0.5,
+                        gradientToColors: ['#20c997', '#0d6efd'], // Verde a Azul
+                        inverseColors: false,
+                        opacityFrom: 1,
+                        opacityTo: 1,
+                        stops: [0, 100]
+                    }
                 },
-                legend: {
-                    show: false
+                stroke: {
+                    lineCap: 'round',
+                    dashArray: 0
                 },
-                colors: ['#5664d2', '#1cbb8c', '#eeb902']
+                colors: ['#681E5B'], // Color base púrpura
+                labels: radialLabels,
+                responsive: [{
+                    breakpoint: 480,
+                    options: {
+                        chart: {
+                            height: 300
+                        },
+                        plotOptions: {
+                            radialBar: {
+                                hollow: {
+                                    size: '60%'
+                                }
+                            }
+                        }
+                    }
+                }]
             };
 
-            const donutElement = document.querySelector("#donut-chart");
-            if (donutElement) {
-                const donutChart = new ApexCharts(donutElement, donutOptions);
-                donutChart.render();
-            } else {
-                console.error("❌ No se encontró el elemento #donut-chart.");
+            const radialElement = document.querySelector("#donut-chart");
+            if (radialElement) {
+                // Destruir gráfico existente si hay uno
+                if (window.radialChart) {
+                    try {
+                        window.radialChart.destroy();
+                    } catch (e) {
+                        console.log("Error al limpiar gráfico anterior:", e);
+                    }
+                }
+
+                // Crear nuevo gráfico
+                window.radialChart = new ApexCharts(radialElement, radialOptions);
+                window.radialChart.render()
+                    .then(() => console.log("Gráfico radial renderizado con éxito"))
+                    .catch(err => console.error("Error al renderizar gráfico:", err));
             }
         } else {
-            console.error("❌ ApexCharts no se cargó correctamente.");
+            console.error("❌ ApexCharts no se cargó correctamente");
         }
-    }, 0);
+    }, 100); // Pequeño retardo para asegurar que el DOM esté listo
 };

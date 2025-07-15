@@ -6,6 +6,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject HttpClient Http
 
 @if (!string.IsNullOrEmpty(perfilUsuario) && totalesPorPerfil.ContainsKey(perfilUsuario))
 {
@@ -50,47 +51,64 @@
                         <h4 class="card-title mb-4">Estados de la colegiatura</h4>
                         <div>
                             <div class="table-responsive">
-                                <table class="table mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th>#</th>
-                                            <th>Estado</th>
-                                            <th>....</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr class="table-success">
-                                            <th scope="row">1</th>
-                                            <td>Column content</td>
-                                            <td>Column content</td>
-                                        </tr>
-
-                                        <tr class="table-success">
-                                            <th scope="row">2</th>
-                                            <td>Column content</td>
-                                            <td>Column content</td>
-                                        </tr>
-
-                                        <tr class="table-info">
-                                            <th scope="row">3</th>
-                                            <td>Column content</td>
-                                            <td>Column content</td>
-                                        </tr>
-
-                                        <tr class="table-warning">
-                                            <th scope="row">4</th>
-                                            <td>Column content</td>
-                                            <td>Column content</td>
-                                        </tr>
-
-                                        <tr class="table-danger">
-                                            <th scope="row">5</th>
-                                            <td>Column content</td>
-                                            <td>Column content</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-
+                                @if (isLoading)
+                                {
+                                    <div class="text-center">
+                                        <div class="spinner-border" role="status">
+                                            <span class="visually-hidden">Loading as...</span>
+                                        </div>
+                                    </div>
+                                }
+                                else if (!string.IsNullOrEmpty(errorMessage))
+                                {
+                                    <div class="alert alert-danger">@errorMessage</div>
+                                }
+                                else
+                                {
+                                    <table class="table mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Estado</th>
+                                                <th>Estado</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @if (estadosResponse.Estados != null && estadosResponse.Estados.Count > 0)
+                                            {
+                                                int index = 1;
+                                                @foreach (var estado in estadosResponse.Estados)
+                                                {
+                                                    <tr class="table-@estado.Color">
+                                                        <th scope="row">@index</th>
+                                                        <td>@estado.Nombre</td>
+                                                        <td>
+                                                            @if (@estado.TieneCheck)
+                                                            {
+                                                                <input type="checkbox" id="chk_@estado.Id"
+                                                                       class="form-check-input"
+                                                                disabled checked />
+                                                            }
+                                                            else
+                                                            {
+                                                                <input type="checkbox" id="chk_@estado.Id"
+                                                                       class="form-check-input"
+                                                                       disabled />
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                    index++;
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <tr>
+                                                    <td colspan="7" class="text-center">No se encontraron solicitudes</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
                             </div>
                         </div>
                     </div>
@@ -139,14 +157,14 @@ else
         <div class="spinner-border text-info me-2" role="status">
             <span class="visually-hidden">Cargando...</span>
         </div>
-        Cargando...
+        Cargando 5...
     </div>
 }
 
 @code {
     private string perfilUsuario = "";
     private string perfilNombre = "";
-
+    private string PersonaId;
     // Simulando totales por perfil
     private Dictionary<string, List<(string titulo, int valor, string color, string icono, string? colortexto)>> totalesPorPerfil = new();
 
@@ -155,22 +173,74 @@ else
 
     private List<int> productos = new() { 30, 50, 20 };
     private List<string> productosLabels = new() { "Estado A", "Estado B", "Estado C" };
+    private List<EstadoSolicitudConCheckDto> estados = new();
+    private bool isLoading = true;
+    private string errorMessage = string.Empty;
+    private EstadoSolicitudConCheckResponse? estadosResponse;
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        if (user.Identity?.IsAuthenticated ?? false)
+        try
         {
-            // Aquí deberías obtener el perfil real del usuario desde tus claims o base de datos
-            perfilUsuario = user.FindFirst("PerfilId")?.Value ?? "1"; // Valor de ejemplo
-            perfilNombre = user.FindFirst("PerfilNombre")?.Value ?? ""; // Valor de ejemplo
-        }
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
 
-        CargarTotales();
+            if (user.Identity?.IsAuthenticated ?? false)
+            {
+                perfilUsuario = user.FindFirst("PerfilId")?.Value ?? "1";
+                perfilNombre = user.FindFirst("PerfilNombre")?.Value ?? "";
+                PersonaId = user.FindFirst("PersonaId")?.Value ?? "-";
+
+                CargarTotales(); // Este método es síncrono
+
+                if (perfilUsuario == "2")
+                {
+                    await cargartabla(); // Añadido await aquí
+                    StateHasChanged();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error inicial: {ex.Message}";
+            Console.WriteLine($"Error en OnInitializedAsync: {ex}");
+        }
     }
 
+    protected async Task cargartabla()
+    {
+        try
+        {
+            isLoading = true;
+            StateHasChanged();
+
+            if (int.TryParse(PersonaId, out int personaId))
+            {
+                estadosResponse = await Http.GetFromJsonAsync<EstadoSolicitudConCheckResponse>(
+                    $"api/personaseducacion/EstadosConCheck/{personaId}");
+
+                // Renderizar el gráfico después de cargar los datos
+                if (estadosResponse != null)
+                {
+                    await RenderizarGrafico();
+                }
+            }
+            else
+            {
+                errorMessage = "ID de persona no válido";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error al cargar los estados: {ex.Message}";
+            Console.WriteLine($"Error en cargartabla: {ex}");
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
     private void CargarTotales()
     {
         totalesPorPerfil = new()
@@ -223,11 +293,23 @@ else
             }
             };
     }
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    private async Task RenderizarGrafico()
     {
-        if (firstRender)
+        try
         {
-            await JS.InvokeVoidAsync("renderApexChart", ventasMensuales, meses, productos, productosLabels);
+            var porcentajeArray = new[] { (int)Math.Round(estadosResponse!.PorcentajeCompletado) };
+
+            await JS.InvokeVoidAsync(
+                "renderApexChart",
+                ventasMensuales,
+                meses,
+                porcentajeArray,
+                new[] { "Progreso" }
+            );
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al renderizar gráfico: {ex.Message}");
         }
     }
 }

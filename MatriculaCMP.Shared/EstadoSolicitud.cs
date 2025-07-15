@@ -14,7 +14,7 @@ namespace MatriculaCMP.Shared
         [Required]
         public string Nombre { get; set; } = string.Empty; // Ej. "Registrado", "En revisión por CR", etc.
         public string Color { get; set; } = string.Empty;
-
+        public bool VerReporte { get; set; } = true;
         public List<Solicitud> Solicitudes { get; set; } = new();
     }
 }
