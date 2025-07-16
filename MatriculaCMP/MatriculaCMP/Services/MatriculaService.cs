@@ -110,7 +110,7 @@ namespace MatriculaCMP.Services
 					{
 						await resolucionFile.CopyToAsync(stream);
 					}
-					educacion.ResolucionPath = $"/resoluciones/{resolucionFileName}";
+					educacion.ResolucionPath = $"{resolucionFileName}";
 				}
 
 				// Actualizar entidades con rutas de archivos
@@ -182,7 +182,7 @@ namespace MatriculaCMP.Services
 					// ↪  usa reflexión o switch para asignar la propiedad correcta
 					typeof(EducacionDocumento)
 						.GetProperty($"{kv.Key}Path")?
-						.SetValue(docEntity, $"/documentos/{unique}");
+						.SetValue(docEntity, $"{unique}");
 				}
 
 				await _context.EducacionDocumentos.AddAsync(docEntity);

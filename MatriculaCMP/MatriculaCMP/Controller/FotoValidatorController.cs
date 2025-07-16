@@ -23,7 +23,7 @@ namespace MatriculaCMP.Controller
 		{
 			_httpClient = httpClientFactory.CreateClient();
 			_logger = logger;
-			_httpClient.Timeout = TimeSpan.FromSeconds(50); // Timeout de 30 segundos
+			_httpClient.Timeout = TimeSpan.FromSeconds(60); // Timeout de 30 segundos
             _config = config;
             
         }

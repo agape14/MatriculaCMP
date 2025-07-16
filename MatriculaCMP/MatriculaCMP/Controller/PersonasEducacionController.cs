@@ -95,10 +95,13 @@ namespace MatriculaCMP.Controller
             var solicitud = await _context.Solicitudes
                 .Include(s => s.Persona)
                     .ThenInclude(p => p.Educaciones)
-                        .ThenInclude(e => e.Universidad)
+                        .ThenInclude(e => e.Universidad)       
                 .Include(s => s.Persona)
-                    .ThenInclude(p => p.GrupoSanguineo) // 👈 aquí se incluye el grupo sanguíneo
+                    .ThenInclude(p => p.GrupoSanguineo)
                 .Include(s => s.EstadoSolicitud)
+                .Include(s => s.Persona)
+                    .ThenInclude(e => e.Educaciones)
+                    .ThenInclude(d => d.Documento)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (solicitud == null)
@@ -118,23 +121,20 @@ namespace MatriculaCMP.Controller
             return PhysicalFile(imagePath, "image/jpeg");
         }
 
+        [HttpGet("documentos-educacion/{fileName}")]
+        public IActionResult GetDocumentosEducacion(string fileName)
+        {
+            var documentoPath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "EducacionDocumentos", fileName);
+
+            if (!System.IO.File.Exists(documentoPath))
+                return NotFound();
+
+            return PhysicalFile(documentoPath, "application/pdf");
+        }
+
         [HttpGet("solicitudesdets")]
         public async Task<ActionResult<SolicitudSeguimientoDto>> GetDetallesSolicitudes()
         {
-            //var solicitud = await _context.Solicitudes
-            //    .Include(s => s.Persona)
-            //        .ThenInclude(p => p.Educaciones)
-            //            .ThenInclude(e => e.Universidad)
-            //    .Include(s => s.Persona)
-            //        .ThenInclude(p => p.GrupoSanguineo) // 👈 aquí se incluye el grupo sanguíneo
-            //    .Include(s => s.EstadoSolicitud)
-            //    .ToListAsync();
-
-            //if (solicitud == null)
-            //    return NotFound();
-
-
-
             var solicitudes = await _context.Solicitudes
             .Include(s => s.Persona)
                 .ThenInclude(p => p.Educaciones)

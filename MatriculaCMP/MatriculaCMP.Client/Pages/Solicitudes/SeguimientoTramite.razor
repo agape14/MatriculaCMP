@@ -177,6 +177,38 @@
                             <p><strong>Observaciones:</strong> @solicitudSeleccionada.Observaciones</p>
                         </div>
                     </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6>Título Médico Cirujano</h6>
+
+                            @if (solicitudSeleccionada?.Persona?.Educaciones?.Any() == true)
+                            {
+                                var edu = solicitudSeleccionada.Persona.Educaciones
+                                    .FirstOrDefault(e => !string.IsNullOrEmpty(e.Documento?.TituloMedicoCirujanoPath));
+
+                                if (edu != null)
+                                {
+                                    var pdfUrl = $"/api/personaseducacion/documentos-educacion/{edu.Documento.TituloMedicoCirujanoPath}";
+
+
+                                    <div class="mt-2">
+                                        <a href="@pdfUrl" target="_blank" class="btn btn-primary">
+                                            Abrir PDF en nueva pestaña
+                                        </a>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <p>Sin documento disponible</p>
+                                }
+                            }
+                            else
+                            {
+                                <p>Sin documento disponible</p>
+                            }
+                        </div>
+                    </div>
+
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" @onclick="() => solicitudSeleccionada = null">Cerrar</button>
