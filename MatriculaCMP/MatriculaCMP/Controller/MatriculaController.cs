@@ -81,5 +81,56 @@ namespace MatriculaCMP.Controller
 				return StatusCode(500, new { success = false, message = $"Error interno del servidor: {ex.Message}" });
 			}
 		}
-	}
+
+        [HttpPost("editar/{solicitudId}")]
+        public async Task<IActionResult> EditarMatricula(
+			int solicitudId,
+			[FromForm] string Persona,
+			[FromForm] string Educacion,
+			[FromForm] IFormFile? Foto = null, // Hacer opcional para edición
+			[FromForm] IFormFile? ResolucionFile = null,
+			[FromForm] IFormFile? TituloMedicoCirujano = null,
+            [FromForm] IFormFile? ConstanciaInscripcionSunedu = null,
+            [FromForm] IFormFile? CertificadoAntecedentesPenales = null,
+            [FromForm] IFormFile? CarnetExtranjeria = null,
+            [FromForm] IFormFile? ConstanciaInscripcionReconocimientoSunedu = null,
+            [FromForm] IFormFile? ConstanciaInscripcionRevalidacionUniversidadNacional = null,
+            [FromForm] IFormFile? ReconocimientoSunedu = null,
+            [FromForm] IFormFile? RevalidacionUniversidadNacional = null)
+        {
+            try
+            {
+                // Deserializar objetos
+                var persona = JsonSerializer.Deserialize<Persona>(Persona);
+                var educacion = JsonSerializer.Deserialize<Educacion>(Educacion);
+
+                // Preparar diccionario de documentos
+                var docsPdf = new Dictionary<string, IFormFile?>
+                {
+                    ["TituloMedicoCirujano"] = TituloMedicoCirujano,
+                    ["ConstanciaInscripcionSunedu"] = ConstanciaInscripcionSunedu,
+                    ["CertificadoAntecedentesPenales"] = CertificadoAntecedentesPenales,
+                    ["CarnetExtranjeria"] = CarnetExtranjeria,
+                    ["ConstanciaInscripcionReconocimientoSunedu"] = ConstanciaInscripcionReconocimientoSunedu,
+                    ["ConstanciaInscripcionRevalidacionUniversidadNacional"] = ConstanciaInscripcionRevalidacionUniversidadNacional,
+                    ["ReconocimientoSunedu"] = ReconocimientoSunedu,
+                    ["RevalidacionUniversidadNacional"] = RevalidacionUniversidadNacional
+                };
+
+                var (success, message) = await _matriculaService.GuardarMatriculaAsync(
+                    persona,
+                    educacion,
+                    Foto,
+                    ResolucionFile,
+                    docsPdf,
+                    solicitudId); // Pasar el ID de solicitud existente
+
+                return success ? Ok(new { success = true, message = message }) : Ok(new { success = false, message = message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { success = false, message = $"Error interno del servidor: {ex.Message}" });
+            }
+        }
+    }
 }

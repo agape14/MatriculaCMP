@@ -87,9 +87,12 @@
                                                         <button class="btn btn-outline-primary btn-sm" @onclick="@(() => VerDetalle(s))">
                                                             <i class="ri-eye-line"></i> Ver
                                                         </button>
-                                                        @* <button class="btn btn-outline-warning btn-sm ms-1" @onclick="@(() => EditarSolicitud(s.Id))">
-                                                <i class="ri-edit-line"></i> Editar
-                                                </button> *@
+                                                        @if (s.EstadoId==3 || s.EstadoId==5 ||s.EstadoId==7 )
+                                                        {
+                                                            <button class="btn btn-outline-warning btn-sm ms-1" @onclick="@(() => EditarSolicitud(s.Id))">
+                                                                <i class="ri-edit-line"></i> Editar
+                                                            </button>
+                                                        }
                                                     </td>
                                                 </tr>
                                                 index++;

@@ -554,7 +554,7 @@
     {
         string accion = nuevoEstadoId == 2 ? "aprobar" : "observar"; // 2 = aprobado, 3 = rechazado/anulado
 
-        if (nuevoEstadoId != 6 && string.IsNullOrWhiteSpace(observacion))
+        if (nuevoEstadoId != 2 && string.IsNullOrWhiteSpace(observacion))
         {
             await JS.InvokeVoidAsync("Swal.fire", "Observación requerida", "Debes ingresar una observación antes de continuar.", "warning");
             return;

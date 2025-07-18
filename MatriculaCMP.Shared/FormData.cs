@@ -123,10 +123,8 @@ namespace MatriculaCMP.Shared
 		[Range(typeof(bool), "true", "true", ErrorMessage = "Debe aceptar las políticas de privacidad")]
 		public bool AceptaPoliticas { get; set; }
 
-		[Required(ErrorMessage = "La foto del médico es requerida y que este validada")]
+		//[Required(ErrorMessage = "La foto del médico es requerida y que este validada")]
 		public IBrowserFile FotoMedico { get; set; }
-
-
         public IBrowserFile? TituloMedicoCirujanoPath { get; set; }
         public IBrowserFile? ConstanciaInscripcionSuneduPath { get; set; }
         public IBrowserFile? CertificadoAntecedentesPenalesPath { get; set; }

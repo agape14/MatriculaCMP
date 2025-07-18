@@ -184,6 +184,8 @@ namespace MatriculaCMP.Controller
 
                 // Cambiar estado
                 solicitud.EstadoSolicitudId = dto.NuevoEstadoId;
+                var peruTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SA Pacific Standard Time");
+                var fechaCambio = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, peruTimeZone);
 
                 // Guardar en historial
                 var historial = new SolicitudHistorialEstado
@@ -191,7 +193,7 @@ namespace MatriculaCMP.Controller
                     SolicitudId = dto.SolicitudId,
                     EstadoAnteriorId = estadoAnterior,
                     EstadoNuevoId = dto.NuevoEstadoId,
-                    FechaCambio = DateTime.UtcNow,
+                    FechaCambio = fechaCambio,
                     Observacion = dto.Observacion,
                     UsuarioCambio = dto.UsuarioCambio
                 };

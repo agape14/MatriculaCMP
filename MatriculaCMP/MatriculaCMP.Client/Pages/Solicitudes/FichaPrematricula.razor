@@ -780,7 +780,14 @@
 									}
 									else
 									{
-										<span>Enviar Solicitud</span>
+										if (SolicitudId > 0)
+										{
+											<span>Actualizar Solicitud</span>
+										}
+										else
+										{
+											<span>Enviar Solicitud</span>
+										}
 										<i class="ri-arrow-right-line align-middle ml-2"></i>
 									}
 								</button>
@@ -988,7 +995,7 @@
 			departamentosdm = await Http.GetFromJsonAsync<List<Mat_Ubigeo>>("api/MatUbigeo/departamentos");
 			paises = await Http.GetFromJsonAsync<List<Pais>>("api/Pais");
 
-			var persona = await Http.GetFromJsonAsync<Persona>($"api/personaseducacion/{PersonaId}");
+			
 
 			var peru = paises.FirstOrDefault(p => p.Nombre.ToLower().Contains("perú"));
 			if (peru != null)
@@ -1005,6 +1012,7 @@
 			}
 			else
 			{
+				var persona = await Http.GetFromJsonAsync<Persona>($"api/personaseducacion/{PersonaId}");
 				// Cargar datos iniciales para nuevo registro
 				formData = await MapPersonaToFormDataAsync(persona);
 				editContext = new EditContext(formData);
@@ -1062,21 +1070,17 @@
 	{
 		try
 		{
-			var solicitud = await Http.GetFromJsonAsync<FormData>($"api/matricula/{solicitudId}");
+			var solicitud = await Http.GetFromJsonAsync<FormData>($"api/personaseducacion/solicituddet/{solicitudId}");
 			if (solicitud != null)
 			{
-				formData = new FormData
-                {
-					// Mapear todas las propiedades desde la solicitud
-                    ConsejoRegional = solicitud.ConsejoRegional,
-                    Nombres = solicitud.Nombres,
-                    ApellidoPaterno = solicitud.ApellidoPaterno,
-					// ... resto de propiedades ...
-                    FotoMedico = solicitud.FotoMedico // O manejar la foto existente
-                };
+				var personaedit = await Http.GetFromJsonAsync<Persona>($"api/personaseducacion/{solicitud.PersonaId}");
+				// Cargar datos iniciales para nuevo registro
+				formData = await MapPersonaToFormDataAsync(personaedit);
+				editContext = new EditContext(formData);
+				
 
 				// Cargar combos dependientes
-				await OnTipoSeleccionado(solicitud.UniversidadOrigen);
+				//await OnTipoSeleccionado(solicitud.UniversidadOrigen);
 				// ... otras inicializaciones necesarias ...
 			}
 		}
@@ -1298,7 +1302,7 @@
 		try
 		{
 			// Validación básica de archivos
-			if (fotoFile == null)
+			if (fotoFile == null && SolicitudId == 0)
 			{
 				mostrarErrorFoto = true;
 				mensajeError = "Debe seleccionar una foto válida";
@@ -1330,9 +1334,17 @@
 			content.Add(new StringContent(educacionJson), "Educacion");
 
 			// Agregar archivo de foto
-			var fotoContent = new StreamContent(fotoFile.OpenReadStream());
-			fotoContent.Headers.ContentType = new MediaTypeHeaderValue(fotoFile.ContentType); // Usa 'new' aquí
-			content.Add(fotoContent, "Foto", fotoFile.Name);
+			// var fotoContent = new StreamContent(fotoFile.OpenReadStream());
+			// fotoContent.Headers.ContentType = new MediaTypeHeaderValue(fotoFile.ContentType); // Usa 'new' aquí
+			// content.Add(fotoContent, "Foto", fotoFile.Name);
+
+			// Agregar archivos (solo si hay nuevos)
+			if (fotoFile != null)
+			{
+				var fotoContent = new StreamContent(fotoFile.OpenReadStream());
+				fotoContent.Headers.ContentType = new MediaTypeHeaderValue(fotoFile.ContentType);
+				content.Add(fotoContent, "Foto", fotoFile.Name);
+			}
 
 			// 3.3 PDF comunes (nacionales y extranjeros)
 			AddPdfIfNotNull(content, pdfTituloMedicoCirujano, "TituloMedicoCirujano");
@@ -1356,7 +1368,13 @@
 			}
 
 			// Realizar petición HTTP
-			var response = await Http.PostAsync("api/matricula/guardar", content);
+			// Determinar endpoint según sea creación o edición
+			var endpoint = SolicitudId > 0
+				? $"api/matricula/editar/{SolicitudId}"
+				: "api/matricula/guardar";
+
+			var response = await Http.PostAsync(endpoint, content);
+			//var response = await Http.PostAsync("api/matricula/guardar", content);
 
 			if (response.IsSuccessStatusCode)
 			{
