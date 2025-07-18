@@ -5,7 +5,7 @@
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Sí, proceder',
-        cancelButtonText: 'Cancelar'
+        cancelButtonText: 'Salir'
     });
     return result.isConfirmed;
 };

@@ -244,9 +244,84 @@
                             }
                         </div>
                     </div>
+                    <div class="row mt-3">
+                        <h5 class="font-size-14 mb-3">Categories</h5>
+
+                                        <div id="accordion" class="custom-accordion categories-accordion mb-3">
+                                            <div class="categories-group-card">
+                                                <a href="#collapseOne" class="categories-group-list collapsed" data-toggle="collapse" aria-expanded="false" aria-controls="collapseOne">
+                                                    <i class="mdi mdi-desktop-classic font-size-16 align-middle mr-2"></i> Electronic
+                                                    <i class="mdi mdi-minus float-right accor-plus-icon"></i>
+                                                </a>
+                        
+                                                <div id="collapseOne" class="collapse" data-parent="#accordion">
+                                                    <div>
+                                                        <ul class="list-unstyled categories-list mb-0">
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Mobile</a></li>
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Mobile accessories</a></li>
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Computers</a></li>
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Laptops</a></li>
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Speakers</a></li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="categories-group-card">
+                                                <a href="#collapseTwo" class="categories-group-list" data-toggle="collapse" aria-expanded="true" aria-controls="collapseTwo">
+                                                    <i class="mdi mdi-hanger font-size-16 align-middle mr-2"></i> Fashion
+                                                    <i class="mdi mdi-minus float-right accor-plus-icon"></i>
+                                                </a>
+                                                <div id="collapseTwo" class="collapse show" data-parent="#accordion">
+                                                    <div>
+                                                        <ul class="list-unstyled categories-list mb-0">
+                                                            <li class="active"><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Clothing</a></li>
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Footwear</a></li>
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Watches</a></li>
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Sportswear</a></li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="categories-group-card">
+                                                <a href="#collapseThree" class="categories-group-list collapsed" data-toggle="collapse" aria-expanded="false" aria-controls="collapseThree">
+                                                    <i class="mdi mdi-pinwheel-outline font-size-16 align-middle mr-2"></i> Baby & Kids
+                                                    <i class="mdi mdi-minus float-right accor-plus-icon"></i>
+                                                </a>
+                                                <div id="collapseThree" class="collapse" data-parent="#accordion">
+                                                    <div>
+                                                        <ul class="list-unstyled categories-list mb-0">
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Clothing</a></li>
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Footwear</a></li>
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Toys</a></li>
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Baby care</a></li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="categories-group-card">
+                                                <a href="#collapseFour" class="categories-group-list collapsed" data-toggle="collapse" aria-expanded="false" aria-controls="collapseFour">
+                                                    <i class="mdi mdi-dumbbell font-size-16 align-middle mr-2"></i> Fitness
+                                                    <i class="mdi mdi-minus float-right accor-plus-icon"></i>
+                                                </a>
+                                                <div id="collapseFour" class="collapse" data-parent="#accordion">
+                                                    <div>
+                                                        <ul class="list-unstyled categories-list mb-0">
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Gym equipment</a></li>
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Yoga mat</a></li>
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Dumbbells</a></li>
+                                                            <li><a href="#"><i class="mdi mdi-circle-medium mr-1"></i> Protein supplements</a></li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => solicitudSeleccionada = null"> <i class="ri-close-circle-line align-middle ml-2"></i> Cancelar</button>
+                    <button type="button" class="btn btn-secondary" @onclick="() => solicitudSeleccionada = null"> <i class="ri-close-circle-line align-middle ml-2"></i> Salir</button>
                 </div>
             </div>
         </div>
