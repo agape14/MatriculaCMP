@@ -1,4 +1,5 @@
 ﻿using MatriculaCMP.Server.Data;
+using MatriculaCMP.Services;
 using MatriculaCMP.Shared;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -99,6 +100,7 @@ namespace MatriculaCMP.Controller
                 .Include(s => s.Persona)
                     .ThenInclude(p => p.GrupoSanguineo)
                 .Include(s => s.EstadoSolicitud)
+                .Include(s => s.HistorialEstados)
                 .Include(s => s.Persona)
                     .ThenInclude(e => e.Educaciones)
                     .ThenInclude(d => d.Documento)
@@ -141,6 +143,7 @@ namespace MatriculaCMP.Controller
                     .ThenInclude(e => e.Universidad)
             .Include(s => s.Area)
             .Include(s => s.EstadoSolicitud)
+            .Where(s => s.EstadoSolicitudId ==1) // Asegurarse de que el estado no sea nulo
             .OrderByDescending(s => s.FechaSolicitud)
             .ToListAsync(); // <-- fuerza la ejecución en memoria
 
@@ -170,6 +173,7 @@ namespace MatriculaCMP.Controller
             try
             {
                 var solicitud = await _context.Solicitudes
+                    .Include(s => s.Persona) // Incluye para acceder a Email
                     .AsTracking()
                     .FirstOrDefaultAsync(s => s.Id == dto.SolicitudId);
 
@@ -195,11 +199,22 @@ namespace MatriculaCMP.Controller
                 _context.SolicitudHistorialEstados.Add(historial);
                 await _context.SaveChangesAsync();
 
+                var destinatario = solicitud.Persona?.Email ?? "adelacruzcarlos@gmail.com";
+                var nombre = solicitud.Persona?.Nombres ?? "Nombre";
+                var apellido = solicitud.Persona?.ApellidoPaterno ?? "Apellido";
+
+                var nombreEstado = await _context.EstadoSolicitudes
+                    .Where(e => e.Id == dto.NuevoEstadoId)
+                    .Select(e => e.Nombre)
+                    .FirstOrDefaultAsync();
+
+                await EmailHelper.EnviarCorreoCambioEstadoAsync(destinatario, nombre, apellido, nombreEstado ?? "Sin Estado");
+
                 return Ok();
             }
             catch (Exception ex)
             {
-                return StatusCode(500, "Ocurrió un error al cambiar el estado");
+                return StatusCode(500, $"Ocurrió un error al cambiar el estado: {ex.Message}");
             }
         }
 

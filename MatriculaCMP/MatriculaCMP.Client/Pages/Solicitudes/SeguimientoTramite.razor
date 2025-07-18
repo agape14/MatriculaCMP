@@ -127,7 +127,7 @@
 @if (solicitudSeleccionada != null)
 {
     <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5)" id="detalleModal">
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Detalle de Solicitud #@solicitudSeleccionada.NumeroSolicitud.ToString("D8")</h5>
@@ -168,50 +168,98 @@
                             }
                         </div>
                     </div>
-                    
                     <div class="row mt-3">
                         <div class="col-12">
-                            <h6>Estado</h6>
-                               @*  <p><span class="badge bg-@EstadoHelper.GetBadgeColor(solicitudSeleccionada.EstadoSolicitud.Id)">@solicitudSeleccionada.EstadoSolicitud.Nombre</span></p> *@
-                                <div class="badge badge-soft-@solicitudSeleccionada.EstadoSolicitud.Color font-size-12">@solicitudSeleccionada.EstadoSolicitud.Nombre</div>
-                            <p><strong>Observaciones:</strong> @solicitudSeleccionada.Observaciones</p>
-                        </div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <h6>Título Médico Cirujano</h6>
+                            <h6>Documentos Adjuntos:</h6>
 
-                            @if (solicitudSeleccionada?.Persona?.Educaciones?.Any() == true)
-                            {
-                                var edu = solicitudSeleccionada.Persona.Educaciones
-                                    .FirstOrDefault(e => !string.IsNullOrEmpty(e.Documento?.TituloMedicoCirujanoPath));
-
-                                if (edu != null)
+                                @if (solicitudSeleccionada?.Persona?.Educaciones?.Any() == true)
                                 {
-                                    var pdfUrl = $"/api/personaseducacion/documentos-educacion/{edu.Documento.TituloMedicoCirujanoPath}";
+                                    var edu = solicitudSeleccionada.Persona.Educaciones
+                                    .FirstOrDefault(e => e.Documento != null);
 
+                                    if (edu?.Documento != null)
+                                    {
+                                        var documentos = new Dictionary<string, string?>
+                                            {
+                                            { "Título Médico Cirujano", edu.Documento.TituloMedicoCirujanoPath },
+                                            { "Constancia SUNEDU", edu.Documento.ConstanciaInscripcionSuneduPath },
+                                            { "Antecedentes Penales", edu.Documento.CertificadoAntecedentesPenalesPath },
+                                            { "Carnet de Extranjería", edu.Documento.CarnetExtranjeriaPath },
+                                            { "Inscripción Reconocimiento SUNEDU", edu.Documento.ConstanciaInscripcionReconocimientoSuneduPath },
+                                            { "Inscripción Revalidación Universidad Nacional", edu.Documento.ConstanciaInscripcionRevalidacionUniversidadNacionalPath },
+                                            { "Reconocimiento SUNEDU", edu.Documento.ReconocimientoSuneduPath },
+                                            { "Revalidación Universidad Nacional", edu.Documento.RevalidacionUniversidadNacionalPath }
+                                            };
+                                        @foreach (var doc in documentos.Where(d => !string.IsNullOrEmpty(d.Value)))
+                                        {
+                                            var keyId = doc.Key.Replace(" ", "_");
 
-                                    <div class="mt-2">
-                                        <a href="@pdfUrl" target="_blank" class="btn btn-primary">
-                                            Abrir PDF en nueva pestaña
-                                        </a>
-                                    </div>
+                                            <button type="button" class="btn btn-sm btn-primary mb-2"
+                                                    @onclick="() => VerPdf(doc.Value,doc.Key)">
+                                                Ver @doc.Key
+                                            </button> <br />
+                                                     
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <p>No hay documentos registrados.</p>
+                                    }
                                 }
                                 else
                                 {
-                                    <p>Sin documento disponible</p>
+                                    <p>Sin información de educación registrada.</p>
                                 }
+
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            @* <h6>Estado</h6>
+                        <div class="badge badge-soft-@solicitudSeleccionada.EstadoSolicitud.Color font-size-12">@solicitudSeleccionada.EstadoSolicitud.Nombre</div>
+                        <p><strong>Observaciones:</strong> @solicitudSeleccionada.Observaciones</p> *@
+
+                            <h6>Historial de Estados</h6>
+                            @if (solicitudSeleccionada?.HistorialEstados != null && solicitudSeleccionada.HistorialEstados.Any())
+                            {
+                                <ul class="list-group">
+                                    @foreach (var historial in solicitudSeleccionada.HistorialEstados.OrderByDescending(h => h.FechaCambio))
+                                    {
+                                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>@historial.Observacion</strong>
+                                                <br />
+                                                <small class="text-muted">El @historial.FechaCambio.ToString("dd/MM/yyyy HH:mm")</small>
+                                            </div>
+                                        </li>
+                                    }
+                                </ul>
                             }
                             else
                             {
-                                <p>Sin documento disponible</p>
+                                <p class="text-muted">No hay historial disponible.</p>
                             }
                         </div>
                     </div>
-
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => solicitudSeleccionada = null">Cerrar</button>
+                    <button type="button" class="btn btn-secondary" @onclick="() => solicitudSeleccionada = null"> <i class="ri-close-circle-line align-middle ml-2"></i> Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+@if (mostrarVisorPdf && !string.IsNullOrEmpty(pdfUrl))
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.8); z-index: 1055;">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content" style="height: 100vh; border-radius: 0;">
+                <div class="modal-header bg-morado text-white">
+                    <h5 class="modal-title text-white ">@nombrePDF</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="CerrarVisorPdf"></button>
+                </div>
+                <div class="modal-body p-0" style="height: calc(100vh - 56px);">
+                    <iframe src="@pdfUrl" width="100%" height="100%" style="border: none;"></iframe>
                 </div>
             </div>
         </div>
@@ -226,6 +274,9 @@
     private List<SolicitudSeguimientoDto> solicitudes = new();
     private Solicitud? solicitudSeleccionada = null;
     private string personaId = "";
+    private string? pdfUrl;
+    private bool mostrarVisorPdf = false;
+    private string nombrePDF = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -264,7 +315,6 @@
             // Aquí puedes manejar el error o mostrar mensaje en pantalla
         }
     }
-
     private async Task  VerDetalle(SolicitudSeguimientoDto solicitud)
     {
         solicitudSeleccionada = await Http.GetFromJsonAsync<Solicitud>($"api/personaseducacion/solicituddet/{solicitud.Id}");
@@ -301,7 +351,6 @@
             Console.WriteLine($"Eliminado: {id}");
         }
     }
-
     private async Task DescargarFormato()
     {
         await JS.InvokeVoidAsync("mostrarModal", "#loadingModal");
@@ -313,8 +362,6 @@
 
         // Aquí puedes agregar la lógica real de descarga
     }
-
-
     private void SeleccionarTodasFilas(ChangeEventArgs e)
     {
         seleccionarTodos = (bool)e.Value;
@@ -323,7 +370,6 @@
             persona.Seleccionado = seleccionarTodos;
         }
     }
-
     private async Task FirmarDigitalmente()
     {
         var seleccionados = personas.Where(a => a.Seleccionado).ToList();
@@ -361,5 +407,18 @@
         // Aquí iría tu lógica real de firma
     }
 
+    private void VerPdf(string ruta, string nombre)
+    {
+        pdfUrl = $"/api/personaseducacion/documentos-educacion/{ruta}";
+        mostrarVisorPdf = true;
+        nombrePDF = nombre;
+    }
+
+    private void CerrarVisorPdf()
+    {
+        pdfUrl = null;
+        mostrarVisorPdf = false;
+        nombrePDF = "";
+    }
 }
 
