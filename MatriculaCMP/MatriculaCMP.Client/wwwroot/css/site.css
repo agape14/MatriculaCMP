@@ -3,6 +3,10 @@
     color: #fff !important; /* blanco automático si lo deseas */
 }
 
+.accordion-button.bg-morado::after {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
 .bg-morado-alpha {
     background-color: rgba(104, 30, 91, 0.8) !important;
     color: #fff !important;

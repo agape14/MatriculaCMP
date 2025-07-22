@@ -14,5 +14,6 @@ namespace MatriculaCMP.Shared
         public bool VerReporte { get; set; }
         
         public string Color { get; set; } = string.Empty;
+        public DateTime FechaSolicitud { get;set; }
     }
 }

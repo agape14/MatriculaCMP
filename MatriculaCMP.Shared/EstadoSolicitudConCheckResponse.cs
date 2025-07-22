@@ -9,6 +9,7 @@ namespace MatriculaCMP.Shared
     public class EstadoSolicitudConCheckResponse
     {
         public double PorcentajeCompletado { get; set; }
+        public string NombreUltimoEstado { get; set; }
         public List<EstadoSolicitudConCheckDto> Estados { get; set; } = new();
     }
 }

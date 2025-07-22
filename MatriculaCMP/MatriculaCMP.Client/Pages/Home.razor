@@ -124,22 +124,10 @@
                         <div id="donut-chart" class="apex-charts"></div>
 
                         <div class="row">
-                            <div class="col-4">
+                            <div class="col-12">
                                 <div class="text-center mt-4">
-                                    <p class="mb-2 text-truncate"><i class="mdi mdi-circle text-primary font-size-10 mr-1"></i> Estado A</p>
-                                    <h5>30 %</h5>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="text-center mt-4">
-                                    <p class="mb-2 text-truncate"><i class="mdi mdi-circle text-success font-size-10 mr-1"></i> Estado B</p>
-                                    <h5>50 %</h5>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="text-center mt-4">
-                                    <p class="mb-2 text-truncate"><i class="mdi mdi-circle text-warning font-size-10 mr-1"></i> Estado C</p>
-                                    <h5>20 %</h5>
+                                    <p class="mb-2 text-truncate"><i class="mdi mdi-circle text-primary font-size-10 mr-1"></i> Estado Actual</p>
+                                    <h5>@UltimoEstado</h5>
                                 </div>
                             </div>
                         </div>
@@ -165,6 +153,7 @@ else
     private string perfilUsuario = "";
     private string perfilNombre = "";
     private string PersonaId;
+    private string UltimoEstado;
     // Simulando totales por perfil
     private Dictionary<string, List<(string titulo, int valor, string color, string icono, string? colortexto)>> totalesPorPerfil = new();
 
@@ -222,6 +211,7 @@ else
                 // Renderizar el gráfico después de cargar los datos
                 if (estadosResponse != null)
                 {
+                    UltimoEstado = estadosResponse.NombreUltimoEstado;
                     await RenderizarGrafico();
                 }
             }

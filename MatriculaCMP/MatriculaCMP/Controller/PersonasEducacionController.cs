@@ -241,6 +241,20 @@ namespace MatriculaCMP.Controller
                 })
                 .ToListAsync();
 
+            var historial = await (
+                from s in _context.Solicitudes
+                where s.PersonaId == personaId
+                join e in _context.EstadoSolicitudes on s.EstadoSolicitudId equals e.Id
+                select new
+                {
+                    SolicitudId = s.Id,
+                    FechaSolicitud = s.FechaSolicitud,
+                    EstadoId = e.Id,
+                    EstadoNombre = e.Nombre,
+                    EstadoColor = e.Color
+                }
+            ).ToListAsync();
+
             // Calcular el porcentaje
             var totalEstados = estados.Count;
             var estadosCompletados = estados.Count(e => e.TieneCheck);
@@ -250,6 +264,7 @@ namespace MatriculaCMP.Controller
             var response = new EstadoSolicitudConCheckResponse
             {
                 PorcentajeCompletado = Math.Round(porcentaje, 2), // Redondea a 2 decimales
+                NombreUltimoEstado = historial.FirstOrDefault().EstadoNombre,
                 Estados = estados
             };
 
