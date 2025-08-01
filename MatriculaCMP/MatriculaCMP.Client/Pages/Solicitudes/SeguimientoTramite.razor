@@ -137,100 +137,23 @@
                     <button type="button" class="btn-close" @onclick="() => solicitudSeleccionada = null"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row mt-3">
-                        <div class="col-md-6">
-                            <h6>Educación</h6>
-                                <p><strong>Universidad:</strong> @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.Universidad?.Nombre </p>
-                                <p><strong>Fecha Título:</strong>  @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.FechaEmisionTitulo.ToString("dd/MM/yyyy") </p>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>Foto</h6>
-                            @if (!string.IsNullOrEmpty(solicitudSeleccionada.Persona.FotoPath))
-                            {
-                                    <img src="/api/personaseducacion/fotos-medicos/@solicitudSeleccionada.Persona.FotoPath" class="img-thumbnail" style="max-width: 200px;" alt="Foto del médico" />
-                            }
-                            else
-                            {
-                                <p>Sin foto disponible</p>
-                            }
-                        </div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <h6>Documentos Adjuntos:</h6>
-
-                                @if (solicitudSeleccionada?.Persona?.Educaciones?.Any() == true)
-                                {
-                                    var edu = solicitudSeleccionada.Persona.Educaciones
-                                    .FirstOrDefault(e => e.Documento != null);
-
-                                    if (edu?.Documento != null)
+                    <div class="row mt-1">
+                        <div class="row  mt-2 p-2">
+                            <div class="col-md-3">
+                                <p class="card-title-desc"><strong>Consejo Regional:</strong></p>
+                            </div>
+                            <div class="col-md-9">
+                                <select class="form-control" id="cbxConsejoRegional" disabled >
+                                    <option value="">Seleccione...</option>
+                                    @foreach (var consejo in consejos)
                                     {
-                                        var documentos = new Dictionary<string, string?>
-                                            {
-                                            { "Título Médico Cirujano", edu.Documento.TituloMedicoCirujanoPath },
-                                            { "Constancia SUNEDU", edu.Documento.ConstanciaInscripcionSuneduPath },
-                                            { "Antecedentes Penales", edu.Documento.CertificadoAntecedentesPenalesPath },
-                                            { "Carnet de Extranjería", edu.Documento.CarnetExtranjeriaPath },
-                                            { "Inscripción Reconocimiento SUNEDU", edu.Documento.ConstanciaInscripcionReconocimientoSuneduPath },
-                                            { "Inscripción Revalidación Universidad Nacional", edu.Documento.ConstanciaInscripcionRevalidacionUniversidadNacionalPath },
-                                            { "Reconocimiento SUNEDU", edu.Documento.ReconocimientoSuneduPath },
-                                            { "Revalidación Universidad Nacional", edu.Documento.RevalidacionUniversidadNacionalPath }
-                                            };
-                                        @foreach (var doc in documentos.Where(d => !string.IsNullOrEmpty(d.Value)))
-                                        {
-                                            var keyId = doc.Key.Replace(" ", "_");
-
-                                            <button type="button" class="btn btn-sm btn-primary mb-2"
-                                                    @onclick="() => VerPdf(doc.Value,doc.Key)">
-                                                Ver @doc.Key
-                                            </button> <br />
-                                                     
-                                        }
+                                        <option value="@consejo.ConsejoRegional_Key" selected="@(consejo.ConsejoRegional_Key.ToString() == solicitudSeleccionada.Persona.ConsejoRegionalId)">
+                                            @consejo.Nombre
+                                        </option>
                                     }
-                                    else
-                                    {
-                                        <p>No hay documentos registrados.</p>
-                                    }
-                                }
-                                else
-                                {
-                                    <p>Sin información de educación registrada.</p>
-                                }
-
+                                </select>
+                            </div>
                         </div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            @* <h6>Estado</h6>
-                        <div class="badge badge-soft-@solicitudSeleccionada.EstadoSolicitud.Color font-size-12">@solicitudSeleccionada.EstadoSolicitud.Nombre</div>
-                        <p><strong>Observaciones:</strong> @solicitudSeleccionada.Observaciones</p> *@
-
-                            <h6>Historial de Estados</h6>
-                            @if (solicitudSeleccionada?.HistorialEstados != null && solicitudSeleccionada.HistorialEstados.Any())
-                            {
-                                <ul class="list-group">
-                                    @foreach (var historial in solicitudSeleccionada.HistorialEstados.OrderByDescending(h => h.FechaCambio))
-                                    {
-                                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <strong>@historial.Observacion</strong>
-                                                <br />
-                                                <small class="text-muted">El @historial.FechaCambio.ToString("dd/MM/yyyy HH:mm")</small>
-                                            </div>
-                                        </li>
-                                    }
-                                </ul>
-                            }
-                            else
-                            {
-                                <p class="text-muted">No hay historial disponible.</p>
-                            }
-                        </div>
-                    </div>
-                    <div class="row mt-3">
-                        <h5 class="font-size-14 mb-3">Categories</h5>
-                        <p class="card-title-desc">Extend the default collapse behavior to create an accordion.</p>
                         <div class="accordion" id="accordionExample">
                           <div class="accordion-item">
                             <h2 class="accordion-header" id="headingOne">
@@ -248,10 +171,15 @@
                                         <p><strong>Grupo Sanguíneo:</strong> @solicitudSeleccionada.Persona.GrupoSanguineo.Nombre</p>
                                     </div>
                                     <div class="col-md-6">
-                                        <h6>Contacto</h6>
-                                        <p><strong>Email:</strong> @solicitudSeleccionada.Persona.Email</p>
-                                        <p><strong>Celular:</strong> @solicitudSeleccionada.Persona.Celular</p>
-                                        <p><strong>Dirección:</strong> @solicitudSeleccionada.Persona.DescripcionZona</p>
+                                        <h6>Foto</h6>
+                                        @if (!string.IsNullOrEmpty(solicitudSeleccionada.Persona.FotoPath))
+                                        {
+                                            <img src="/api/personaseducacion/fotos-medicos/@solicitudSeleccionada.Persona.FotoPath" class="img-thumbnail" style="max-width: 200px;" alt="Foto del médico" />
+                                        }
+                                        else
+                                        {
+                                            <p>Sin foto disponible</p>
+                                        }
                                     </div>
                                 </div>
                               </div>
@@ -260,17 +188,16 @@
                           <div class="accordion-item">
                             <h2 class="accordion-header" id="headingTwo">
                               <button class="accordion-button bg-morado text-white collapsed " type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                                Datos de nacimiento
+                                 Educación y Contacto
                               </button>
                             </h2>
                             <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#accordionExample">
                               <div class="accordion-body">
                                 <div class="row mt-2 p-2">
                                     <div class="col-md-6">
-                                        <p><strong>Nombres:</strong> @solicitudSeleccionada.Persona.NombresCompletos</p>
-                                        <p><strong>Documento:</strong> @solicitudSeleccionada.Persona.NumeroDocumento</p>
-                                        <p><strong>Fecha Nacimiento:</strong> @solicitudSeleccionada.Persona.FechaNacimiento?.ToString("dd/MM/yyyy")</p>
-                                        <p><strong>Grupo Sanguíneo:</strong> @solicitudSeleccionada.Persona.GrupoSanguineo.Nombre</p>
+                                        <h6>Educación</h6>
+                                        <p><strong>Universidad:</strong> @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.Universidad?.Nombre </p>
+                                        <p><strong>Fecha Título:</strong>  @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.FechaEmisionTitulo.ToString("dd/MM/yyyy") </p>
                                     </div>
                                     <div class="col-md-6">
                                         <h6>Contacto</h6>
@@ -285,15 +212,88 @@
                           <div class="accordion-item">
                             <h2 class="accordion-header" id="headingThree">
                               <button class="accordion-button bg-morado text-white collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                                Datos de domicilio
+                                Historial de Estados
                               </button>
                             </h2>
                             <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#accordionExample">
                               <div class="accordion-body">
-                                <strong>This is the third item's accordion body.</strong> It is hidden by default, until the collapse plugin adds the appropriate classes that we use to style each element. These classes control the overall appearance, as well as the showing and hiding via CSS transitions. You can modify any of this with custom CSS or overriding our default variables. It's also worth noting that just about any HTML can go within the <code>.accordion-body</code>, though the transition does limit overflow.
+                                @if (solicitudSeleccionada?.HistorialEstados != null && solicitudSeleccionada.HistorialEstados.Any())
+                                {
+                                    <ul class="list-group">
+                                        @foreach (var historial in solicitudSeleccionada.HistorialEstados.OrderByDescending(h => h.FechaCambio))
+                                        {
+                                            <li class="list-group-item">
+                                                <!-- Primera fila: nombre y fecha -->
+                                                <div class="d-flex justify-content-between">
+                                                    <button type="button" class="btn btn-@historial.EstadoNuevo?.Color waves-effect waves-light">@historial.EstadoNuevo?.Nombre</button>
+                                                    <small class="text-muted">El @historial.FechaCambio.ToString("dd/MM/yyyy HH:mm")</small>
+                                                </div>
+                                                <!-- Segunda fila: observación -->
+                                                <div class="mt-2">
+                                                    <strong>@historial.Observacion</strong>
+                                                </div>
+                                            </li>
+                                        }
+                                    </ul>
+
+                                }
+                                else
+                                {
+                                    <p class="text-muted">No hay historial disponible.</p>
+                                }
                               </div>
                             </div>
                           </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingFour">
+                            <button class="accordion-button bg-morado text-white collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                                Documentos Adjuntos
+                            </button>
+                            </h2>
+                                <div id="collapseFour" class="accordion-collapse collapse show" aria-labelledby="headingFour" data-bs-parent="#accordionExample">
+                                <div class="accordion-body">
+                                    <h6>Documentos Adjuntos:</h6>
+                                    @if (solicitudSeleccionada?.Persona?.Educaciones?.Any() == true)
+                                    {
+                                        var edu = solicitudSeleccionada.Persona.Educaciones
+                                        .FirstOrDefault(e => e.Documento != null);
+
+                                        if (edu?.Documento != null)
+                                        {
+                                            var documentos = new Dictionary<string, string?>
+                                        {
+                                        { "Título Médico Cirujano", edu.Documento.TituloMedicoCirujanoPath },
+                                        { "Constancia SUNEDU", edu.Documento.ConstanciaInscripcionSuneduPath },
+                                        { "Antecedentes Penales", edu.Documento.CertificadoAntecedentesPenalesPath },
+                                        { "Carnet de Extranjería", edu.Documento.CarnetExtranjeriaPath },
+                                        { "Inscripción Reconocimiento SUNEDU", edu.Documento.ConstanciaInscripcionReconocimientoSuneduPath },
+                                        { "Inscripción Revalidación Universidad Nacional", edu.Documento.ConstanciaInscripcionRevalidacionUniversidadNacionalPath },
+                                        { "Reconocimiento SUNEDU", edu.Documento.ReconocimientoSuneduPath },
+                                        { "Revalidación Universidad Nacional", edu.Documento.RevalidacionUniversidadNacionalPath }
+                                        };
+                                            @foreach (var doc in documentos.Where(d => !string.IsNullOrEmpty(d.Value)))
+                                            {
+                                                var keyId = doc.Key.Replace(" ", "_");
+
+                                                <button type="button" class="btn btn-sm btn-primary mb-2"
+                                                        @onclick="() => VerPdf(doc.Value,doc.Key)">
+                                                    Ver @doc.Key
+                                                </button> <br />
+
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <p>No hay documentos registrados.</p>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <p>Sin información de educación registrada.</p>
+                                    }
+                                </div>
+                            </div>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -332,6 +332,7 @@
     private string? pdfUrl;
     private bool mostrarVisorPdf = false;
     private string nombrePDF = "";
+    private List<Mat_ConsejoRegional> consejos = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -352,7 +353,7 @@
             Console.WriteLine("PersonaId inválido en claims aa.");
             return;
         }
-
+        consejos = await Http.GetFromJsonAsync<List<Mat_ConsejoRegional>>("api/consejoregional");
         await CargarSolicitudes(personaIdInt);
     }
 

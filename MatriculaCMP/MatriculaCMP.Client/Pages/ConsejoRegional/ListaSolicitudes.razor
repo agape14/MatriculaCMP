@@ -214,144 +214,215 @@
                         <button type="button" class="btn-close" @onclick="() => solicitudSeleccionada = null"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6>Datos Personales</h6>
-                                <p><strong>Nombres:</strong> @solicitudSeleccionada.Persona.NombresCompletos</p>
-                                <p><strong>Documento:</strong> @solicitudSeleccionada.Persona.NumeroDocumento</p>
-                                <p><strong>Fecha Nacimiento:</strong> @solicitudSeleccionada.Persona.FechaNacimiento?.ToString("dd/MM/yyyy")</p>
-                                <p><strong>Grupo Sanguíneo:</strong> @solicitudSeleccionada.Persona.GrupoSanguineo.Nombre</p>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>Contacto</h6>
-                                <p><strong>Email:</strong> @solicitudSeleccionada.Persona.Email</p>
-                                <p><strong>Celular:</strong> @solicitudSeleccionada.Persona.Celular</p>
-                                <p><strong>Dirección:</strong> @solicitudSeleccionada.Persona.DescripcionZona</p>
-                            </div>
-                        </div>
-
-                        <div class="row mt-3">
-                            <div class="col-md-6">
-                                <h6>Educación</h6>
-                                <p><strong>Universidad:</strong> @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.Universidad?.Nombre </p>
-                                <p><strong>Fecha Título:</strong>  @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.FechaEmisionTitulo.ToString("dd/MM/yyyy") </p>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>Foto</h6>
-                                @if (!string.IsNullOrEmpty(solicitudSeleccionada.Persona.FotoPath))
-                                {
-                                    <img src="/api/personaseducacion/fotos-medicos/@solicitudSeleccionada.Persona.FotoPath" class="img-thumbnail" style="max-width: 200px;" alt="Foto del médico" />
-                                }
-                                else
-                                {
-                                    <p>Sin foto disponible</p>
-                                }
-                            </div>
-                        </div>
-
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <h6>Estado</h6>
-                                @* <p><span class="badge bg-primary">@solicitudSeleccionada.EstadoSolicitud.Nombre</span></p> *@
-                                <div class="badge badge-soft-@solicitudSeleccionada.EstadoSolicitud.Color font-size-12">@solicitudSeleccionada.EstadoSolicitud.Nombre</div>
-                                <p><strong>Observaciones:</strong> @solicitudSeleccionada.Observaciones</p>
-                            </div>
-                        </div>
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <h6>Documentos Adjuntos:</h6>
-
-                                @if (solicitudSeleccionada?.Persona?.Educaciones?.Any() == true)
-                                {
-                                    var edu = solicitudSeleccionada.Persona.Educaciones
-                                    .FirstOrDefault(e => e.Documento != null);
-
-                                    if (edu?.Documento != null)
-                                    {
-                                        var documentos = new Dictionary<string, string?>
+                        <div class="row mt-1">
+                            <div class="row  mt-2 p-2">
+                                <div class="col-md-3">
+                                    <p class="card-title-desc"><strong>Consejo Regional:</strong></p>
+                                </div>
+                                <div class="col-md-9">
+                                    <select class="form-control" id="cbxConsejoRegional" disabled>
+                                        <option value="">Seleccione...</option>
+                                        @foreach (var consejo in consejos)
                                         {
-                                        { "Título Médico Cirujano", edu.Documento.TituloMedicoCirujanoPath },
-                                        { "Constancia SUNEDU", edu.Documento.ConstanciaInscripcionSuneduPath },
-                                        { "Antecedentes Penales", edu.Documento.CertificadoAntecedentesPenalesPath },
-                                        { "Carnet de Extranjería", edu.Documento.CarnetExtranjeriaPath },
-                                        { "Inscripción Reconocimiento SUNEDU", edu.Documento.ConstanciaInscripcionReconocimientoSuneduPath },
-                                        { "Inscripción Revalidación Universidad Nacional", edu.Documento.ConstanciaInscripcionRevalidacionUniversidadNacionalPath },
-                                        { "Reconocimiento SUNEDU", edu.Documento.ReconocimientoSuneduPath },
-                                        { "Revalidación Universidad Nacional", edu.Documento.RevalidacionUniversidadNacionalPath }
-                                        };
-
-                                        <table class="table table-bordered mt-3">
-                                            <thead>
-                                                <tr>
-                                                    <th>Documento</th>
-                                                    <th>CUMPLE</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach (var doc in documentos.Where(d => !string.IsNullOrEmpty(d.Value)))
-                                                {
-                                                    totalDocumentos = documentos.Count(d => !string.IsNullOrEmpty(d.Value));
-                                                    var keyId = doc.Key.Replace(" ", "_");
-
-                                                    <tr>
-                                                        <td>
-                                                            <button type="button" class="btn btn-sm btn-primary"
-                                                                    @onclick="() => VerPdf(doc.Value,doc.Key)">
-                                                                Ver @doc.Key
-                                                            </button>
-                                                        </td>
-                                                        <td>
-                                                            <div class="form-check form-check-inline">
-                                                                @* <input class="form-check-input" type="radio" name="cumple_@keyId" id="cumple_si_@keyId" value="si" /> *@
-                                                                <input class="form-check-input"
-                                                                       type="radio"
-                                                                       name="cumple_@keyId"
-                                                                       id="cumple_si_@keyId"
-                                                                       value="si"
-                                                                       @onchange="@(() => respuestasCumple[keyId] = "si")" />
-                                                                <label class="form-check-label" for="cumple_si_@keyId">Sí</label>
-                                                            </div>
-                                                            <div class="form-check form-check-inline">
-                                                                @* <input class="form-check-input" type="radio" name="cumple_@keyId" id="cumple_no_@keyId" value="no" /> *@
-                                                                <input class="form-check-input"
-                                                                       type="radio"
-                                                                       name="cumple_@keyId"
-                                                                       id="cumple_no_@keyId"
-                                                                       value="no"
-                                                                       @onchange="@(() => respuestasCumple[keyId] = "no")" />
-                                                                <label class="form-check-label" for="cumple_no_@keyId">No</label>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                }
-                                            </tbody>
-                                        </table>
-                                        @if (puedeObservar)
-                                        {
-                                            <div class="mb-3">
-                                                <label for="Observacion" class="form-label">Observación</label>
-                                                <textarea id="Observacion" name="Observacion"
-                                                          class="form-control"
-                                                          rows="4"
-                                                          maxlength="2000"
-                                                          @bind="observacion"
-                                                          @bind:event="oninput"></textarea>
-                                                <div class="form-text">
-                                                    <span>@observacion.Length</span> / 2000 caracteres
+                                            <option value="@consejo.ConsejoRegional_Key" selected="@(consejo.ConsejoRegional_Key.ToString() == solicitudSeleccionada.Persona.ConsejoRegionalId)">
+                                                @consejo.Nombre
+                                            </option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="accordion" id="accordionExample">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingOne">
+                                        <button class="accordion-button bg-morado text-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                                            Datos Personales
+                                        </button>
+                                    </h2>
+                                    <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#accordionExample">
+                                        <div class="accordion-body">
+                                            <div class="row mt-2 p-2">
+                                                <div class="col-md-6">
+                                                    <p><strong>Nombres:</strong> @solicitudSeleccionada.Persona.NombresCompletos</p>
+                                                    <p><strong>Documento:</strong> @solicitudSeleccionada.Persona.NumeroDocumento</p>
+                                                    <p><strong>Fecha Nacimiento:</strong> @solicitudSeleccionada.Persona.FechaNacimiento?.ToString("dd/MM/yyyy")</p>
+                                                    <p><strong>Grupo Sanguíneo:</strong> @solicitudSeleccionada.Persona.GrupoSanguineo.Nombre</p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6>Foto</h6>
+                                                    @if (!string.IsNullOrEmpty(solicitudSeleccionada.Persona.FotoPath))
+                                                    {
+                                                        <img src="/api/personaseducacion/fotos-medicos/@solicitudSeleccionada.Persona.FotoPath" class="img-thumbnail" style="max-width: 200px;" alt="Foto del médico" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <p>Sin foto disponible</p>
+                                                    }
                                                 </div>
                                             </div>
-                                        }
-                                    }
-                                    else
-                                    {
-                                        <p>No hay documentos registrados.</p>
-                                    }
-                                }
-                                else
-                                {
-                                    <p>Sin información de educación registrada.</p>
-                                }
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingTwo">
+                                        <button class="accordion-button bg-morado text-white collapsed " type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                            Educación y Contacto
+                                        </button>
+                                    </h2>
+                                    <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#accordionExample">
+                                        <div class="accordion-body">
+                                            <div class="row mt-2 p-2">
+                                                <div class="col-md-6">
+                                                    <h6>Educación</h6>
+                                                    <p><strong>Universidad:</strong> @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.Universidad?.Nombre </p>
+                                                    <p><strong>Fecha Título:</strong>  @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.FechaEmisionTitulo.ToString("dd/MM/yyyy") </p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6>Contacto</h6>
+                                                    <p><strong>Email:</strong> @solicitudSeleccionada.Persona.Email</p>
+                                                    <p><strong>Celular:</strong> @solicitudSeleccionada.Persona.Celular</p>
+                                                    <p><strong>Dirección:</strong> @solicitudSeleccionada.Persona.DescripcionZona</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingThree">
+                                        <button class="accordion-button bg-morado text-white collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                            Historial de Estados
+                                        </button>
+                                    </h2>
+                                    <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#accordionExample">
+                                        <div class="accordion-body">
+                                            @if (solicitudSeleccionada?.HistorialEstados != null && solicitudSeleccionada.HistorialEstados.Any())
+                                            {
+                                                <ul class="list-group">
+                                                    @foreach (var historial in solicitudSeleccionada.HistorialEstados.OrderByDescending(h => h.FechaCambio))
+                                                    {
+                                                        <li class="list-group-item">
+                                                            <!-- Primera fila: nombre y fecha -->
+                                                            <div class="d-flex justify-content-between">
+                                                                <button type="button" class="btn btn-@historial.EstadoNuevo?.Color waves-effect waves-light">@historial.EstadoNuevo?.Nombre</button>
+                                                                <small class="text-muted">El @historial.FechaCambio.ToString("dd/MM/yyyy HH:mm")</small>
+                                                            </div>
+                                                            <!-- Segunda fila: observación -->
+                                                            <div class="mt-2">
+                                                                <strong>@historial.Observacion</strong>
+                                                            </div>
+                                                        </li>
+                                                    }
+                                                </ul>
 
+                                            }
+                                            else
+                                            {
+                                                <p class="text-muted">No hay historial disponible.</p>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingFour">
+                                        <button class="accordion-button bg-morado text-white collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                                            Documentos Adjuntos
+                                        </button>
+                                    </h2>
+                                    <div id="collapseFour" class="accordion-collapse collapse show" aria-labelledby="headingFour" data-bs-parent="#accordionExample">
+                                        <div class="accordion-body">
+                                            <h6>Documentos Adjuntos:</h6>
+                                            @if (solicitudSeleccionada?.Persona?.Educaciones?.Any() == true)
+                                            {
+                                                var edu = solicitudSeleccionada.Persona.Educaciones
+                                                .FirstOrDefault(e => e.Documento != null);
+
+                                                if (edu?.Documento != null)
+                                                {
+                                                    var documentos = new Dictionary<string, string?>
+                                                {
+                                                { "Título Médico Cirujano", edu.Documento.TituloMedicoCirujanoPath },
+                                                { "Constancia SUNEDU", edu.Documento.ConstanciaInscripcionSuneduPath },
+                                                { "Antecedentes Penales", edu.Documento.CertificadoAntecedentesPenalesPath },
+                                                { "Carnet de Extranjería", edu.Documento.CarnetExtranjeriaPath },
+                                                { "Inscripción Reconocimiento SUNEDU", edu.Documento.ConstanciaInscripcionReconocimientoSuneduPath },
+                                                { "Inscripción Revalidación Universidad Nacional", edu.Documento.ConstanciaInscripcionRevalidacionUniversidadNacionalPath },
+                                                { "Reconocimiento SUNEDU", edu.Documento.ReconocimientoSuneduPath },
+                                                { "Revalidación Universidad Nacional", edu.Documento.RevalidacionUniversidadNacionalPath }
+                                        };
+
+                                                    <table class="table table-bordered mt-3">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Documento</th>
+                                                                <th>CUMPLE</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach (var doc in documentos.Where(d => !string.IsNullOrEmpty(d.Value)))
+                                                            {
+                                                                totalDocumentos = documentos.Count(d => !string.IsNullOrEmpty(d.Value));
+                                                                var keyId = doc.Key.Replace(" ", "_");
+
+                                                                <tr>
+                                                                    <td>
+                                                                        <button type="button" class="btn btn-sm btn-primary"
+                                                                                @onclick="() => VerPdf(doc.Value,doc.Key)">
+                                                                            Ver @doc.Key
+                                                                        </button>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="form-check form-check-inline">
+                                                                            @* <input class="form-check-input" type="radio" name="cumple_@keyId" id="cumple_si_@keyId" value="si" /> *@
+                                                                            <input class="form-check-input"
+                                                                                   type="radio"
+                                                                                   name="cumple_@keyId"
+                                                                                   id="cumple_si_@keyId"
+                                                                                   value="si"
+                                                                                   @onchange="@(() => respuestasCumple[keyId] = "si")" />
+                                                                            <label class="form-check-label" for="cumple_si_@keyId">Sí</label>
+                                                                        </div>
+                                                                        <div class="form-check form-check-inline">
+                                                                            @* <input class="form-check-input" type="radio" name="cumple_@keyId" id="cumple_no_@keyId" value="no" /> *@
+                                                                            <input class="form-check-input"
+                                                                                   type="radio"
+                                                                                   name="cumple_@keyId"
+                                                                                   id="cumple_no_@keyId"
+                                                                                   value="no"
+                                                                                   @onchange="@(() => respuestasCumple[keyId] = "no")" />
+                                                                            <label class="form-check-label" for="cumple_no_@keyId">No</label>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            }
+                                                        </tbody>
+                                                    </table>
+                                                    @if (puedeObservar)
+                                                    {
+                                                        <div class="mb-3">
+                                                            <label for="Observacion" class="form-label">Observación</label>
+                                                            <textarea id="Observacion" name="Observacion"
+                                                                      class="form-control"
+                                                                      rows="4"
+                                                                      maxlength="2000"
+                                                                      @bind="observacion"
+                                                                      @bind:event="oninput"></textarea>
+                                                            <div class="form-text">
+                                                                <span>@observacion.Length</span> / 2000 caracteres
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <p>No hay documentos registrados.</p>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <p>Sin información de educación registrada.</p>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -434,6 +505,7 @@
     private int totalDocumentos = 0;
     private string observacion = string.Empty;
     private List<EstadoSolicitud> estados = new();
+    private List<Mat_ConsejoRegional> consejos = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -445,6 +517,7 @@
             usuarioId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0";
         }
         estados = await Http.GetFromJsonAsync<List<EstadoSolicitud>>("api/estadosolicitud");
+        consejos = await Http.GetFromJsonAsync<List<Mat_ConsejoRegional>>("api/consejoregional");
         await CargarSolicitudes();
     }
 
