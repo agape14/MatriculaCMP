@@ -39,6 +39,46 @@
 		</div>
 	</div>
 }
+
+<!-- Modal para mostrar observaciones -->
+@if (mostrarObservaciones)
+{
+	<div class="modal fade show" style="display: block;" tabindex="-1">
+		<div class="modal-dialog modal-lg">
+			<div class="modal-content">
+				<div class="modal-header bg-warning text-dark">
+					<h5 class="modal-title">
+						⚠️ Observaciones de la Solicitud
+					</h5>
+					<button type="button" class="btn-close" @onclick="CerrarObservaciones"></button>
+				</div>
+				<div class="modal-body">
+					<div class="alert alert-warning">
+						<h6><strong>Estado Actual:</strong> @estadoActual</h6>
+						<p><strong>Observaciones:</strong></p>
+						<div class="border p-3 bg-light">
+							@observacionesSolicitud
+						</div>
+					</div>
+					<div class="alert alert-info">
+						<p><strong>Instrucciones:</strong></p>
+						<ul>
+							<li>Revise cuidadosamente las observaciones indicadas</li>
+							<li>Corrija los campos que necesiten ajustes</li>
+							<li>Una vez corregido, guarde los cambios</li>
+							<li>Después de guardar, regrese al listado y haga clic en "Reenviar"</li>
+						</ul>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" @onclick="CerrarObservaciones">Cerrar</button>
+					<button type="button" class="btn btn-primary" @onclick="CerrarObservaciones">Entendido</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div class="modal-backdrop fade show"></div>
+}
 <div class="container-fluid">
 	<!-- start page title -->
 	<div class="row">
@@ -401,11 +441,11 @@
 											<div class="col-md-6">
 												<div class="form-group">
 													<label for="pais_uni">País de universidad *</label>
-													<InputSelect @bind-Value="formData.PaisUniversidad" class="form-control" @onchange="OnPaisSeleccionado" id="pais_uni" disabled="@paisBloqueado">
+                                                    <InputSelect @bind-Value="formData.PaisUniversidad" class="form-control" @onchange="OnPaisSeleccionado" id="pais_uni" disabled="@paisBloqueado">
 														<option value="">Seleccione país</option>
 														@foreach (var pais in paisesFiltrados)
 														{
-															<option value="@pais.Id" selected="@(pais.Id == paisId)">
+                                                            <option value="@pais.Id">
 																@pais.Nombre
 															</option>
 														}
@@ -804,6 +844,12 @@
 </div>
 
 @code {
+    private static bool NombreEsPeru(string? nombre)
+    {
+        if (string.IsNullOrWhiteSpace(nombre)) return false;
+        var lower = nombre.ToLowerInvariant();
+        return lower.Contains("peru") || lower.Contains("perú");
+    }
 	[Parameter]
 	public int SolicitudId { get; set; }
 
@@ -862,6 +908,11 @@
 	private bool charging = true;
 	private DateTime MaxFechaNacimiento = DateTime.Today.AddYears(-18);
 	private bool fechaInvalida = false;
+	
+	// Variables para el modal de observaciones
+	private bool mostrarObservaciones = false;
+	private string observacionesSolicitud = "";
+	private string estadoActual = "";
 
 	private async Task OnFotoSelected(InputFileChangeEventArgs e)
 	{
@@ -997,7 +1048,7 @@
 
 			
 
-			var peru = paises.FirstOrDefault(p => p.Nombre.ToLower().Contains("perú"));
+            var peru = paises.FirstOrDefault(p => NombreEsPeru(p.Nombre));
 			if (peru != null)
 			{
 				paisId = peru.Id;
@@ -1010,15 +1061,24 @@
 			{
 				await CargarSolicitudExistente(SolicitudId);
 			}
-			else
-			{
-				var persona = await Http.GetFromJsonAsync<Persona>($"api/personaseducacion/{PersonaId}");
-				// Cargar datos iniciales para nuevo registro
-				formData = await MapPersonaToFormDataAsync(persona);
-				editContext = new EditContext(formData);
-			}
+            else
+            {
+                var persona = await Http.GetFromJsonAsync<Persona>($"api/personaseducacion/{PersonaId}");
+                // Cargar datos iniciales para nuevo registro
+                formData = await MapPersonaToFormDataAsync(persona);
+                editContext = new EditContext(formData);
 
-			await CargarUniversidades();
+                // Asegurar origen nacional por defecto y fijar Perú como país de universidad
+                formData.UniversidadOrigen = string.IsNullOrEmpty(formData.UniversidadOrigen) ? "1" : formData.UniversidadOrigen;
+                await OnTipoSeleccionado(formData.UniversidadOrigen);
+                if (string.IsNullOrEmpty(formData.PaisUniversidad) && paisId > 0)
+                {
+                    formData.PaisUniversidad = paisId.ToString();
+                }
+                await JS.InvokeVoidAsync("console.log", new { tag = "Init-NuevaSolicitud", paisesCount = paises?.Count ?? 0, paisId, formPais = formData.PaisUniversidad });
+            }
+
+            await CargarUniversidades();
 			await CargarUniversidadesPeruanas();
 		}
 		catch (Exception ex)
@@ -1074,14 +1134,69 @@
 			if (solicitud != null)
 			{
 				var personaedit = await Http.GetFromJsonAsync<Persona>($"api/personaseducacion/{solicitud.PersonaId}");
+				
 				// Cargar datos iniciales para nuevo registro
 				formData = await MapPersonaToFormDataAsync(personaedit);
+				
+				// Cargar datos de educación si existen
+				if (personaedit.Educaciones != null && personaedit.Educaciones.Any())
+				{
+					var educacion = personaedit.Educaciones.First();
+					formData.UniversidadOrigen = educacion.UniversidadOrigen;
+					formData.Universidad = educacion.UniversidadId.ToString();
+					formData.FechaEmisionTitulo = educacion.FechaEmisionTitulo;
+					formData.PaisUniversidad = educacion.PaisUniversidadId.ToString() ?? "173";
+					formData.TipoValidacion = educacion.TipoValidacion;
+					formData.NumeroResolucion = educacion.NumeroResolucion;
+					formData.UniversidadPeruana = educacion.UniversidadPeruanaId?.ToString();
+					formData.NombreUniversidadExtranjera = educacion.NombreUniversidadExtranjera;
+				}
+				
 				editContext = new EditContext(formData);
 				
-
 				// Cargar combos dependientes
-				//await OnTipoSeleccionado(solicitud.UniversidadOrigen);
-				// ... otras inicializaciones necesarias ...
+				await OnTipoSeleccionado(formData.UniversidadOrigen);
+				
+				// Cargar universidades según el país
+                if (!string.IsNullOrEmpty(formData.PaisUniversidad))
+                {
+                    if (int.TryParse(formData.PaisUniversidad, out var parsedPais))
+                    {
+                        paisId = parsedPais;
+                    }
+                    else
+                    {
+                        var peruLocal = paises.FirstOrDefault(p => NombreEsPeru(p.Nombre));
+                        if (peruLocal != null)
+                        {
+                            paisId = peruLocal.Id;
+                            formData.PaisUniversidad = peruLocal.Id.ToString();
+                        }
+                    }
+                    await CargarUniversidades();
+                }
+                else
+                {
+                    var peruLocal = paises.FirstOrDefault(p => NombreEsPeru(p.Nombre));
+                    if (peruLocal != null)
+                    {
+                        paisId = peruLocal.Id;
+                        formData.PaisUniversidad = peruLocal.Id.ToString();
+                        await CargarUniversidades();
+                    }
+                }
+                // Sincronizar combo de universidad con valor existente si aplica
+                if (tipoSeleccionado == "1")
+                {
+                    // Si había universidad guardada, mantener selección
+                    if (!string.IsNullOrEmpty(formData.Universidad) && universidades.Any(u => u.Id.ToString() == formData.Universidad))
+                    {
+                        // No hacer nada, Blazor la mantendrá por el bind como string
+                    }
+                }
+				
+				// Obtener información de la solicitud para mostrar observaciones
+				await ObtenerObservacionesSolicitud(solicitudId);
 			}
 		}
 		catch (Exception ex)
@@ -1089,32 +1204,91 @@
 			mensajeError = $"Error al cargar solicitud: {ex.Message}";
 		}
 	}
+	
+	private async Task ObtenerObservacionesSolicitud(int solicitudId)
+	{
+		try
+		{
+			// Usar el nuevo endpoint para obtener observaciones
+			var response = await Http.GetAsync($"api/correccionsolicitud/observaciones-solicitud/{solicitudId}");
+			
+			if (response.IsSuccessStatusCode)
+			{
+				var jsonString = await response.Content.ReadAsStringAsync();
+				var jsonDoc = JsonDocument.Parse(jsonString);
+				var root = jsonDoc.RootElement;
+				
+				if (root.TryGetProperty("estadoActual", out var estadoActualElement))
+				{
+					estadoActual = estadoActualElement.GetString() ?? "Sin estado";
+				}
+				else
+				{
+					estadoActual = "Sin estado";
+				}
+				
+				if (root.TryGetProperty("observaciones", out var observacionesElement))
+				{
+					observacionesSolicitud = observacionesElement.GetString() ?? "No hay observaciones registradas.";
+				}
+				else
+				{
+					observacionesSolicitud = "No hay observaciones registradas.";
+				}
+				
+				// Mostrar modal si la solicitud está en estado rechazado
+				if (root.TryGetProperty("estadoId", out var estadoIdElement))
+				{
+					var estadoId = estadoIdElement.GetInt32();
+					if (estadoId == 3 || estadoId == 5 || estadoId == 7)
+					{
+						mostrarObservaciones = true;
+						StateHasChanged();
+					}
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error al obtener observaciones: {ex.Message}");
+		}
+	}
+	
+	private void CerrarObservaciones()
+	{
+		mostrarObservaciones = false;
+		StateHasChanged();
+	}
 
 	async Task OnTipoSeleccionado(string valorseleccionado)
 	{
 		formData.UniversidadOrigen = valorseleccionado;
 		tipoSeleccionado = valorseleccionado ?? "1";
-		if (tipoSeleccionado == "1") // Nacional
+        if (tipoSeleccionado == "1") // Nacional
 		{
 			paisBloqueado = true;
 
-			var peru = paises.FirstOrDefault(p => p.Nombre.ToLower().Contains("perú"));
+            var peru = paises.FirstOrDefault(p => NombreEsPeru(p.Nombre));
 			if (peru != null)
 			{
 				paisId = peru.Id;
+                formData.PaisUniversidad = peru.Id.ToString();
 			}
 
-			paisesFiltrados = paises.Where(p => p.Nombre.ToLower().Contains("perú")).ToList();
+            paisesFiltrados = paises.Where(p => NombreEsPeru(p.Nombre)).ToList();
+            await JS.InvokeVoidAsync("console.log", new { tag = "OnTipoSeleccionado-Nacional", paisId, formPais = formData.PaisUniversidad });
 		}
-		else // Extranjera
+        else // Extranjera
 		{
 			paisBloqueado = false;
 
-			paisesFiltrados = paises
-				.Where(p => !p.Nombre.ToLower().Contains("perú"))
-				.ToList();
+            paisesFiltrados = paises
+                .Where(p => !NombreEsPeru(p.Nombre))
+                .ToList();
 
 			paisId = 0; // resetear
+            formData.PaisUniversidad = string.Empty;
+            await JS.InvokeVoidAsync("console.log", new { tag = "OnTipoSeleccionado-Extranjera", paisId, formPais = formData.PaisUniversidad });
 		}
 
 		await CargarUniversidades();
@@ -1153,6 +1327,7 @@
 			paisId = id;
 			universidades = await Http.GetFromJsonAsync<List<Universidad>>($"api/universidad/{paisId}");
 			// universidades = await PaisUniversidadesService.ObtenerUniversidadesAsync(paisId);
+         await JS.InvokeVoidAsync("console.log", new { tag = "OnPaisSeleccionado", paisId, formPais = formData.PaisUniversidad, universidadesCount = universidades?.Count ?? 0 });
 		}
 	}
 
@@ -1162,6 +1337,7 @@
 		{
 			universidades = await Http.GetFromJsonAsync<List<Universidad>>($"api/universidad/{paisId}");
 			// universidades = await PaisUniversidadesService.ObtenerUniversidadesAsync(paisId);
+         await JS.InvokeVoidAsync("console.log", new { tag = "CargarUniversidades", paisId, universidadesCount = universidades?.Count ?? 0 });
 		}
 		else
 		{
@@ -1173,7 +1349,7 @@
 
 	async Task CargarUniversidadesPeruanas()
 	{		
-		var peruselect = paises.FirstOrDefault(p => p.Nombre.ToLower().Contains("perú"));		
+        var peruselect = paises.FirstOrDefault(p => NombreEsPeru(p.Nombre));
 		universidadesperuanas = await Http.GetFromJsonAsync<List<Universidad>>($"api/universidad/{peruselect.Id}");
 		// universidadesperuanas = await PaisUniversidadesService.ObtenerUniversidadesAsync(peruselect.Id);
 	}
@@ -1382,14 +1558,29 @@
 
 				if (result?.Success == true)
 				{
-					await JS.InvokeVoidAsync("Swal.fire", new
+					string mensajeExito = result?.Message ?? "Operación completada exitosamente";
+					
+					// Si es una actualización (SolicitudId > 0), mostrar mensaje específico
+					if (SolicitudId > 0)
 					{
-						title = "Éxito",
-						text = result?.Message,
-						icon = "success"
-					});
+						mensajeExito = "Solicitud actualizada exitosamente. Ahora debe regresar al listado de solicitudes y hacer clic en el botón 'Reenviar' para continuar con el proceso.";
+					}
+					
+                    var _ = await JS.InvokeAsync<object>("Swal.fire", new
+                    {
+                        title = "Éxito",
+                        text = mensajeExito,
+                        icon = "success",
+                        confirmButtonText = "Ir al listado"
+                    });
 
-					LimpiarFormulario();
+                    if (SolicitudId == 0)
+                    {
+                        LimpiarFormulario();
+                    }
+
+                    // Redirigir al listado de seguimiento tras confirmar
+                    Navigation.NavigateTo("/solicitudes/seguimiento", forceLoad: true);
 				}
 				else
 				{

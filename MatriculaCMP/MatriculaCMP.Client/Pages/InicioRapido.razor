@@ -34,10 +34,16 @@
             </div>
         </div>
         <div class="col-sm-4">
-            <button class="btn btn-danger  waves-effect waves-light mt-4" @onclick="IniciarSesion">INICIAR SESIÓN DESDE SGD</button>
+            <button class="btn btn-danger  waves-effect waves-light mt-4" disabled="@loginSgdCargando" @onclick="IniciarSesion">
+                @if (loginSgdCargando) { <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> }
+                INICIAR SESIÓN DESDE SGD
+            </button>
         </div>
         <div class="col-sm-6">
-            <button class="btn btn-primary  waves-effect waves-light mt-4" @onclick="IniciarSesionUsuarioContraseña">INICIAR CON USUARIO Y CONTRASEÑA</button>
+            <button class="btn btn-primary  waves-effect waves-light mt-4" disabled="@irALoginCargando" @onclick="IniciarSesionUsuarioContraseña">
+                @if (irALoginCargando) { <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> }
+                INICIAR CON USUARIO Y CONTRASEÑA
+            </button>
         </div>
     </div>
     
@@ -59,6 +65,8 @@
     {
         try
         {
+            loginSgdCargando = true;
+            StateHasChanged();
             // Mostrar spinner mientras se procesa
             await JS.InvokeVoidAsync("mostrarSpinnerLogin", "Validando usuario...");
             string tipoEncriptado = await JS.InvokeAsync<string>("btoa", TipoDocumento);
@@ -113,11 +121,26 @@
                 confirmButtonText = "Cerrar"
             });
         }
+        finally
+        {
+            loginSgdCargando = false;
+            StateHasChanged();
+        }
     }
 
     private async Task IniciarSesionUsuarioContraseña()
     {
-        Nav.NavigateTo("/login");
+        try
+        {
+            irALoginCargando = true;
+            StateHasChanged();
+            await Task.Delay(10);
+            Nav.NavigateTo("/login");
+        }
+        finally
+        {
+            irALoginCargando = false;
+        }
     }
 
     async Task Salir()
@@ -125,4 +148,6 @@
         await JS.InvokeVoidAsync("localStorage.removeItem", "Token");
         await AuthenticationStateProvider.GetAuthenticationStateAsync();
     }
+    private bool loginSgdCargando = false;
+    private bool irALoginCargando = false;
 }

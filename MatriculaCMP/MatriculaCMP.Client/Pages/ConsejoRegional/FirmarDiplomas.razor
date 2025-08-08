@@ -1,9 +1,40 @@
 ﻿@page "/consejoregional/firmar-diplomas"
 @using MatriculaCMP.Shared
+@using static MatriculaCMP.Shared.FirmaDigitalDTO
 @inject IJSRuntime JS
+@inject HttpClient Http
 
 
 <div class="container-fluid">
+    @if (mostrarPdf)
+    {
+        <div class="modal fade show" style="display:block;" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Vista previa del Diploma</h5>
+                        <button type="button" class="btn-close" @onclick="CerrarModalPdf"></button>
+                    </div>
+                    <div class="modal-body" style="height:75vh;background-color:#f8f9fa;">
+                        @if (!string.IsNullOrEmpty(pdfUrl))
+                        {
+                            <object data="@pdfUrl" type="application/pdf" width="100%" height="100%">
+                                <embed src="@pdfUrl" type="application/pdf" width="100%" height="100%" />
+                            </object>
+                        }
+                        else
+                        {
+                            <div class="text-center p-4">Cargando PDF...</div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CerrarModalPdf">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
     <!-- start page title -->
     <div class="row">
         <div class="col-12">
@@ -52,12 +83,14 @@
                                         <th>
                                             <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
                                         </th>
+                                        <th>N° Solicitud</th>
+                                        <th>Fecha Solicitud</th>
+                                        <th>Estado</th>
                                         <th>DNI</th>
                                         <th>Nombres Completos</th>
-                                        <th>Fecha Nac.</th>
-                                        <th>Lugar Nac.</th>
-                                        <th>Estado</th>
-                                        <th>Acción</th>
+                                        <th>N° Colegiatura</th>
+                                        <th>Fecha Emisión Diploma</th>
+                                        <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -67,102 +100,19 @@
                                             <td>
                                                 <input type="checkbox" class="form-check-input" @bind="alumno.Seleccionado" @onclick:stopPropagation="true" />
                                             </td>
-                                            <td>@alumno.Numero</td>
+                                            <td>@alumno.NumeroSolicitud</td>
+                                            <td>@alumno.FechaSolicitud.ToString("dd/MM/yyyy")</td>
+                                            <td><div class="badge bg-success">@alumno.EstadoNombre</div></td>
+                                            <td>@alumno.NumeroDocumento</td>
                                             <td>@alumno.NombreCompleto</td>
-                                            <td>@alumno.FechaNacimiento</td>
-                                            <td>@alumno.LugarNacimiento</td>
+                                            <td>@alumno.NumeroColegiatura</td>
+                                            <td>@alumno.DiplomaFechaEmision.ToString("dd/MM/yyyy")</td>
                                             <td>
-                                                @if (alumno.Estado == "Registrado")
-                                                {
-                                                    <div class="badge bg-info">Registrado</div>
-                                                }
-                                                else if (alumno.Estado == "Por Subsanar")
-                                                {
-                                                    <div class="badge bg-warning">Por Subsanar</div>
-                                                }
-                                                else if (alumno.Estado == "Rechazado")
-                                                {
-                                                    <div class="badge bg-danger">Rechazado</div>
-                                                }
-                                                else if (alumno.Estado == "Aprobado")
-                                                {
-                                                    <div class="badge bg-success">Aprobado</div>
-                                                }
-                                            </td>
-                                            <td>
-                                                <a href="javascript:void(0);" class="me-3 text-info" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Ver">
+                                                <a href="javascript:void(0);" class="me-3 text-info" title="Ver Diploma" @onclick="(async ()=> await VerDiploma(alumno.SolicitudId, true))">
                                                     <i class="ri-eye-fill font-size-18"></i>
                                                 </a>
-                                                <a href="javascript:void(0);" class="me-3 text-warning" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Asignar Colegiatura">
-                                                    <i class="ri-medal-fill font-size-18"></i>
-                                                </a>
-                                                <a href="javascript:void(0);" class="text-primary" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Firmar Asignaciones">
+                                                <a href="javascript:void(0);" class="text-primary" title="Iniciar Firma" @onclick="(async ()=> await IniciarFirma(alumno.SolicitudId))">
                                                     <i class="ri-fingerprint-fill font-size-18"></i>
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                    else if (tabActiva == "extranjeros")
-                    {
-                        <div class="alert alert-primary mb-2 mt-2" role="alert">
-                            <div class="button-items">
-                                <button type="button" class="btn btn-primary">
-                                    <i class="ri-fingerprint-fill align-middle me-2"></i> Firmar Asignaciones
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="table-responsive">
-                            <table class="table table-centered datatable">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th>
-                                            <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
-                                        </th>
-                                        <th>Carnet Ext.</th>
-                                        <th>Nombres Completos</th>
-                                        <th>Fecha Nac.</th>
-                                        <th>Lugar Nac.</th>
-                                        <th>Estado</th>
-                                        <th>Acción</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var alumno in alumnos2)
-                                    {
-                                        <tr @onclick="() => alumno.Seleccionado = !alumno.Seleccionado" style="cursor: pointer;">
-                                            <td>
-                                                <input type="checkbox" class="form-check-input" @bind="alumno.Seleccionado" @onclick:stopPropagation="true" />
-                                            </td>
-                                            <td>@alumno.Numero</td>
-                                            <td>@alumno.NombreCompleto</td>
-                                            <td>@alumno.FechaNacimiento</td>
-                                            <td>@alumno.LugarNacimiento</td>
-                                            <td>
-                                                @if (alumno.Estado == "Registrado")
-                                                {
-                                                    <div class="badge bg-info">Registrado</div>
-                                                }
-                                                else if (alumno.Estado == "Por Subsanar")
-                                                {
-                                                    <div class="badge bg-warning">Por Subsanar</div>
-                                                }
-                                                else if (alumno.Estado == "Rechazado")
-                                                {
-                                                    <div class="badge bg-danger">Rechazado</div>
-                                                }
-                                                else if (alumno.Estado == "Aprobado")
-                                                {
-                                                    <div class="badge bg-success">Aprobado</div>
-                                                }
-                                            </td>
-                                            <td>
-                                                <a href="javascript:void(0);" class="me-3 text-info" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Ver">
-                                                    <i class="ri-eye-fill font-size-18"></i>
                                                 </a>
                                             </td>
                                         </tr>
@@ -189,21 +139,34 @@
         </div>
     </div>
 
+    <!-- Formulario oculto para SignNet (mismo esquema que SG) -->
+    <center>
+        <form type="post" id="ssoForm" name="ssoForm" target="iframeFirma" action="https://firmadorsignnet.cmp.org.pe:8443/SignnetSignature/Servicio" accept-charset="ISO-8859-1" style="display:none">
+            <input type="text" id="codigoFirma" name="codigoFirma" value="" size="40" />
+            <input type="button" id="btnFirma" name="btnFirma" value="Firma" />
+        </form>
+        <div id="dvIframe" class="modal fade">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-body">
+                        <iframe frameborder="0" name="iframeFirma" id="iframeFirma" width="550px" height="320px"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </center>
 </div>
 
 
 @code {
+    private bool mostrarPdf = false;
+    private string? pdfUrl;
     private bool seleccionarTodos = false;
     private string tabActiva = "nacionales";
+    private List<ItemFirma> paraFirma = new();
 
-    private List<ListadoPrematricula> alumnos = new()
-    {
-        new ListadoPrematricula {Id=12, Numero = "89451512", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
-    };
-    private List<ListadoPrematricula> alumnos2 = new()
-    {
-        new ListadoPrematricula {Id=5,  Numero = "000189451518", NombreCompleto = "Gina Nuñez",         FechaNacimiento = "04/11/1998", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
-    };
+    private List<ItemFirmaView> alumnos = new();
+    private List<ItemFirmaView> alumnos2 = new();
 
     private async Task ConfirmarEliminacion(int id)
     {
@@ -228,11 +191,33 @@
         // Aquí puedes agregar la lógica real de descarga
     }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnInitializedAsync()
     {
-        if (firstRender)
+        await CargarParaFirma();
+    }
+
+    private async Task CargarParaFirma()
+    {
+        try
         {
-            await JS.InvokeVoidAsync("inicializarDataTable", "#tblListadoConsejoRegional");
+            paraFirma = await Http.GetFromJsonAsync<List<ItemFirma>>("api/diploma/para-firma");
+            alumnos = paraFirma.Select(x => new ItemFirmaView
+            {
+                SolicitudId = x.SolicitudId,
+                NumeroSolicitud = x.NumeroSolicitud,
+                FechaSolicitud = x.FechaSolicitud,
+                EstadoNombre = x.EstadoNombre,
+                NumeroDocumento = x.NumeroDocumento,
+                NombreCompleto = x.NombreCompleto,
+                NumeroColegiatura = x.NumeroColegiatura,
+                DiplomaFechaEmision = x.DiplomaFechaEmision
+            }).ToList();
+
+            alumnos2 = new List<ItemFirmaView>();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", new { tag = "CargarParaFirma", error = ex.Message });
         }
     }
 
@@ -287,5 +272,130 @@
     {
         tabActiva = tab;
     }
+    private async Task VerDiploma(int solicitudId, bool mostrarEnModal = false)
+    {
+        try
+        {
+            var prep = await Http.PostAsync($"api/diploma/preparar-firma/{solicitudId}", null);
+            if (prep.IsSuccessStatusCode)
+            {
+                var json = await prep.Content.ReadFromJsonAsync<RespPrep>();
+                if (mostrarEnModal)
+                {
+                    pdfUrl = json?.url;
+                    mostrarPdf = true;
+                    StateHasChanged();
+                }
+                else
+                {
+                    await JS.InvokeVoidAsync("open", json?.url, "_blank");
+                }
+            }
+            else
+            {
+                var txt = await prep.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error", text = txt });
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error", text = ex.Message });
+        }
+    }
+
+    private void CerrarModalPdf()
+    {
+        mostrarPdf = false;
+        pdfUrl = null;
+        StateHasChanged();
+    }
+
+    private async Task IniciarFirma(int solicitudId)
+    {
+        try
+        {
+            // Paso 1: enviar a firmador para obtener codigoFirma (reutilizar endpoint existente)
+            var firmaRequest = new { IdExpedienteDocumento = solicitudId, IdExpedienteDocumentoFirmante = 0, TipoDocumentoFirmado = 0 };
+            var resp1 = await Http.PostAsJsonAsync("api/firmadigital/firmar", firmaRequest);
+            if (!resp1.IsSuccessStatusCode)
+            {
+                var err = await resp1.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error al iniciar firma", html = err });
+                return;
+            }
+            var up = await resp1.Content.ReadFromJsonAsync<UploadResponse>();
+            if (up?.codigoFirma <= 0)
+            {
+                await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Firma", text = up?.descripcion ?? "Sin código de firma" });
+                return;
+            }
+
+            // Mostrar formulario/iframe de firma (igual que SG). Inyectamos la función JS si no existe.
+            await RegistrarFuncionesFirmaSiFaltan();
+            await JS.InvokeVoidAsync("mostrarFormularioFirma", up.codigoFirma);
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error", text = ex.Message });
+        }
+    }
+
+    private async Task RegistrarFuncionesFirmaSiFaltan()
+    {
+        // Inserta dinámicamente las funciones JS requeridas si no están disponibles
+        var script = @"(function(){
+            if(!window.mostrarFormularioFirma){
+                window.mostrarFormularioFirma = function(codigoFirma){
+                    var form = document.getElementById('ssoForm');
+                    var input = document.getElementById('codigoFirma');
+                    if(!form){
+                        console.error('No existe el formulario de firma');
+                        return;
+                    }
+                    input.value = codigoFirma;
+                    $('#dvIframe').modal({ backdrop: 'static', keyboard: false, show: true });
+                    form.submit();
+                };
+            }
+            if(!window.obtenerCodigoFirmaDesdeFormulario){
+                window.obtenerCodigoFirmaDesdeFormulario = function(){
+                    var input = document.getElementById('codigoFirma');
+                    return input ? input.value : '';
+                };
+            }
+        })();";
+        await JS.InvokeVoidAsync("eval", script);
+    }
+
+    public class RespPrep { public bool success { get; set; } public string url { get; set; } }
+
+    public class ItemFirma
+    {
+        public int SolicitudId { get; set; }
+        public int NumeroSolicitud { get; set; }
+        public DateTime FechaSolicitud { get; set; }
+        public int EstadoId { get; set; }
+        public string EstadoNombre { get; set; }
+        public int PersonaId { get; set; }
+        public string NumeroDocumento { get; set; }
+        public string NombreCompleto { get; set; }
+        public string NumeroColegiatura { get; set; }
+        public DateTime DiplomaFechaEmision { get; set; }
+        public string RutaPdf { get; set; }
+    }
+
+    public class ItemFirmaView
+    {
+        public int SolicitudId { get; set; }
+        public int NumeroSolicitud { get; set; }
+        public DateTime FechaSolicitud { get; set; }
+        public string EstadoNombre { get; set; }
+        public string NumeroDocumento { get; set; }
+        public string NombreCompleto { get; set; }
+        public string NumeroColegiatura { get; set; }
+        public DateTime DiplomaFechaEmision { get; set; }
+        public bool Seleccionado { get; set; }
+    }
+
 }
 

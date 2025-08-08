@@ -1,6 +1,7 @@
 ﻿using MatriculaCMP.Services;
 using MatriculaCMP.Shared;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace MatriculaCMP.Controller
@@ -56,6 +57,9 @@ namespace MatriculaCMP.Controller
 					return BadRequest(new { message = "No se pudo deserializar los datos de 'Persona' o 'Educacion'." });
 				}
 
+				// Obtener el usuario autenticado
+				var user = HttpContext.User;
+
 				// Eliminado el guardado de archivos aquí
 				var (success, message) = await _matriculaService.GuardarMatriculaAsync(
 					persona,
@@ -72,7 +76,9 @@ namespace MatriculaCMP.Controller
 						["ConstanciaInscripcionRevalidacionUniversidadNacional"] = ConstanciaInscripcionRevalidacionUniversidadNacional,
 						["ReconocimientoSunedu"] = ReconocimientoSunedu,
 						["RevalidacionUniversidadNacional"] = RevalidacionUniversidadNacional
-					});
+					},
+					null, // solicitudId para nueva solicitud
+					user); // Pasar el usuario autenticado
 
 				return success ? Ok(new { success = true, message = message }) : Ok(new { success = false, message = message });
 			}
@@ -104,6 +110,9 @@ namespace MatriculaCMP.Controller
                 var persona = JsonSerializer.Deserialize<Persona>(Persona);
                 var educacion = JsonSerializer.Deserialize<Educacion>(Educacion);
 
+                // Obtener el usuario autenticado
+                var user = HttpContext.User;
+
                 // Preparar diccionario de documentos
                 var docsPdf = new Dictionary<string, IFormFile?>
                 {
@@ -123,7 +132,8 @@ namespace MatriculaCMP.Controller
                     Foto,
                     ResolucionFile,
                     docsPdf,
-                    solicitudId); // Pasar el ID de solicitud existente
+                    solicitudId, // Pasar el ID de solicitud existente
+                    user); // Pasar el usuario autenticado
 
                 return success ? Ok(new { success = true, message = message }) : Ok(new { success = false, message = message });
             }

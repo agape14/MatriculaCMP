@@ -3,7 +3,6 @@ using MatriculaCMP.Shared;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
-using System.Text;
 
 namespace MatriculaCMP.Services
 {
@@ -15,6 +14,20 @@ namespace MatriculaCMP.Services
 		{
 			_context = context;
 			_env = env;
+		}
+
+        // Método helper para obtener el ID del usuario autenticado
+        private string GetUsuarioAutenticadoId(ClaimsPrincipal? user)
+        {
+            if (user?.Identity?.IsAuthenticated == true)
+            {
+                var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    return userId;
+                }
+            }
+            return "Sistema"; // Fallback si no se puede obtener el ID del usuario
         }
 
         public async Task<(bool Success, string Message)> GuardarMatriculaAsync(
@@ -23,7 +36,8 @@ namespace MatriculaCMP.Services
     IFormFile foto,
     IFormFile? resolucionFile = null,
     IDictionary<string, IFormFile?> docsPdf = null,
-    int? solicitudId = null)
+    int? solicitudId = null,
+    ClaimsPrincipal? user = null)
         {
             // Validaciones comunes
             var validationResults = new List<ValidationResult>();
@@ -60,84 +74,106 @@ namespace MatriculaCMP.Services
                 var peruTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SA Pacific Standard Time");
                 var fechaCambio = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, peruTimeZone);
 
-                // 1. Manejo de Persona
-                var personaExistente = await _context.Personas.FindAsync(persona.Id);
-                if (personaExistente != null)
+                // Obtener el ID del usuario autenticado
+                var usuarioId = GetUsuarioAutenticadoId(user);
+
+                // 1. Guardar Persona (actualización selectiva para no borrar FotoPath)
+                if (persona.Id == 0)
                 {
-                    // Actualizar propiedades de persona
-                    _context.Entry(personaExistente).CurrentValues.SetValues(persona);
-                    persona = personaExistente;
+                    persona.FechaRegistro = fechaCambio;
+                    await _context.Personas.AddAsync(persona);
+                    await _context.SaveChangesAsync();
                 }
                 else
                 {
-                    await _context.Personas.AddAsync(persona);
+                    var personaDb = await _context.Personas.FirstOrDefaultAsync(p => p.Id == persona.Id);
+                    if (personaDb == null)
+                    {
+                        return (false, "Persona no encontrada");
+                    }
+                    // Actualizar solo campos editables, preservar FotoPath si no se sube nueva foto
+                    personaDb.ConsejoRegionalId = persona.ConsejoRegionalId;
+                    personaDb.Nombres = persona.Nombres;
+                    personaDb.ApellidoPaterno = persona.ApellidoPaterno;
+                    personaDb.ApellidoMaterno = persona.ApellidoMaterno;
+                    personaDb.Sexo = persona.Sexo;
+                    personaDb.EstadoCivilId = persona.EstadoCivilId;
+                    personaDb.TipoDocumentoId = persona.TipoDocumentoId;
+                    personaDb.NumeroDocumento = persona.NumeroDocumento;
+                    personaDb.GrupoSanguineoId = persona.GrupoSanguineoId;
+                    personaDb.FechaNacimiento = persona.FechaNacimiento;
+                    personaDb.PaisNacimientoId = persona.PaisNacimientoId;
+                    personaDb.DepartamentoNacimientoId = persona.DepartamentoNacimientoId;
+                    personaDb.ProvinciaNacimientoId = persona.ProvinciaNacimientoId;
+                    personaDb.DistritoNacimientoId = persona.DistritoNacimientoId;
+                    personaDb.Telefono = persona.Telefono;
+                    personaDb.Celular = persona.Celular;
+                    personaDb.Email = persona.Email;
+                    personaDb.ZonaDomicilioId = persona.ZonaDomicilioId;
+                    personaDb.DescripcionZona = persona.DescripcionZona;
+                    personaDb.ViaDomicilioId = persona.ViaDomicilioId;
+                    personaDb.DescripcionVia = persona.DescripcionVia;
+                    personaDb.DepartamentoDomicilioId = persona.DepartamentoDomicilioId;
+                    personaDb.ProvinciaDomicilioId = persona.ProvinciaDomicilioId;
+                    personaDb.DistritoDomicilioId = persona.DistritoDomicilioId;
+                    // personaDb.FotoPath se actualiza solo si se sube nueva foto más abajo
+                    _context.Personas.Update(personaDb);
+                    await _context.SaveChangesAsync();
+                    // Reasignar referencia de persona para pasos siguientes
+                    persona = personaDb;
                 }
 
-                // 2. Manejo de Educación
+                // 2. Guardar Educación (buscar existente por PersonaId si está editando)
+                Educacion educacionEntity;
                 if (solicitudId.HasValue)
                 {
-                    var educacionExistente = await _context.Educaciones
-                        .FirstOrDefaultAsync(e => e.PersonaId == persona.Id);
-
-                    if (educacionExistente != null)
-                    {
-                        // Actualizar propiedades individualmente para evitar problemas con claves
-                        educacionExistente.UniversidadOrigen = educacion.UniversidadOrigen;
-                        educacionExistente.UniversidadId = educacion.UniversidadId;
-                        educacionExistente.FechaEmisionTitulo = educacion.FechaEmisionTitulo;
-                        educacionExistente.PaisUniversidadId = educacion.PaisUniversidadId;
-                        educacionExistente.TipoValidacion = educacion.TipoValidacion;
-                        educacionExistente.NumeroResolucion = educacion.NumeroResolucion;
-                        educacionExistente.UniversidadPeruanaId = educacion.UniversidadPeruanaId;
-                        educacionExistente.NombreUniversidadExtranjera = educacion.NombreUniversidadExtranjera;
-                        educacionExistente.EsExtranjera = educacion.EsExtranjera;
-
-                        educacion = educacionExistente;
-                    }
-                    else
-                    {
-                        educacion.PersonaId = persona.Id;
-                        await _context.Educaciones.AddAsync(educacion);
-                    }
+                    educacionEntity = await _context.Educaciones.FirstOrDefaultAsync(e => e.PersonaId == persona.Id)
+                        ?? new Educacion { PersonaId = persona.Id };
                 }
                 else
                 {
-                    educacion.PersonaId = persona.Id;
-                    await _context.Educaciones.AddAsync(educacion);
+                    educacionEntity = educacion.Id == 0
+                        ? new Educacion { PersonaId = persona.Id }
+                        : await _context.Educaciones.FirstOrDefaultAsync(e => e.Id == educacion.Id) ?? new Educacion { PersonaId = persona.Id };
+                }
+
+                // Actualizar campos editables
+                educacionEntity.PersonaId = persona.Id;
+                educacionEntity.UniversidadOrigen = educacion.UniversidadOrigen;
+                educacionEntity.UniversidadId = educacion.UniversidadId;
+                educacionEntity.FechaEmisionTitulo = educacion.FechaEmisionTitulo;
+                educacionEntity.PaisUniversidadId = educacion.PaisUniversidadId;
+                educacionEntity.TipoValidacion = educacion.TipoValidacion;
+                educacionEntity.NumeroResolucion = educacion.NumeroResolucion;
+                educacionEntity.UniversidadPeruanaId = educacion.UniversidadPeruanaId;
+                educacionEntity.NombreUniversidadExtranjera = educacion.NombreUniversidadExtranjera;
+
+                if (educacionEntity.Id == 0)
+                {
+                    await _context.Educaciones.AddAsync(educacionEntity);
+                }
+                else
+                {
+                    _context.Educaciones.Update(educacionEntity);
                 }
                 await _context.SaveChangesAsync();
 
-                // 3. Manejo de Archivos (Foto y Resolución)
+                // 3. Manejo de Foto
                 if (foto != null && foto.Length > 0)
                 {
-                    var fotosMedicosPath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "FotosMedicos");
-                    Directory.CreateDirectory(fotosMedicosPath);
+                    var fotosPath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "FotosMedicos");
+                    Directory.CreateDirectory(fotosPath);
 
-                    var fotoFileName = $"foto_{persona.Id}_{Guid.NewGuid():N}{Path.GetExtension(foto.FileName)}";
-                    var fotoPath = Path.Combine(fotosMedicosPath, fotoFileName);
+                    var uniqueFileName = $"{persona.Id}_{Guid.NewGuid():N}{Path.GetExtension(foto.FileName)}";
+                    var savePath = Path.Combine(fotosPath, uniqueFileName);
 
-                    await using (var stream = new FileStream(fotoPath, FileMode.Create))
-                    {
-                        await foto.CopyToAsync(stream);
-                    }
-                    persona.FotoPath = fotoFileName;
+                    await using var stream = new FileStream(savePath, FileMode.Create);
+                    await foto.CopyToAsync(stream);
+
+                    persona.FotoPath = uniqueFileName;
+                    _context.Personas.Update(persona);
+                    await _context.SaveChangesAsync();
                 }
-
-                if (resolucionFile != null)
-                {
-                    var resolucionesPath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "EducacionDocumentos");
-                    Directory.CreateDirectory(resolucionesPath);
-
-                    var resolucionFileName = $"resolucion_{persona.Id}{Path.GetExtension(resolucionFile.FileName)}";
-                    var resolucionPath = Path.Combine(resolucionesPath, resolucionFileName);
-
-                    await using (var stream = new FileStream(resolucionPath, FileMode.Create))
-                    {
-                        await resolucionFile.CopyToAsync(stream);
-                    }
-                    educacion.ResolucionPath = resolucionFileName;
-                }
-                await _context.SaveChangesAsync();
 
                 // 4. Manejo de Solicitud
                 Solicitud solicitud;
@@ -147,7 +183,8 @@ namespace MatriculaCMP.Services
                     if (solicitud == null) return (false, "Solicitud no encontrada");
 
                     solicitud.FechaSolicitud = fechaCambio;
-                    solicitud.EstadoSolicitudId = 1;
+                    // NO cambiar el estado - mantener el estado actual para correcciones
+                    // solicitud.EstadoSolicitudId = 1; // Comentado para correcciones
                     _context.Solicitudes.Update(solicitud);
                 }
                 else
@@ -183,14 +220,12 @@ namespace MatriculaCMP.Services
                 var eucacionDocumentossPath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "EducacionDocumentos");
                 Directory.CreateDirectory(eucacionDocumentossPath);
 
-                EducacionDocumento docEntity = solicitudId.HasValue
-                    ? await _context.EducacionDocumentos.FirstOrDefaultAsync(d => d.EducacionId == educacion.Id)
-                        ?? new EducacionDocumento { EducacionId = educacion.Id }
-                    : new EducacionDocumento { EducacionId = educacion.Id };
+                var docEntity = await _context.EducacionDocumentos.FirstOrDefaultAsync(d => d.EducacionId == educacionEntity.Id)
+                                 ?? new EducacionDocumento { EducacionId = educacionEntity.Id };
 
                 if (docsPdf != null)
                 {
-                    foreach (var kv in docsPdf.Where(kv => kv.Value != null))
+                    foreach (var kv in docsPdf.Where(kv => kv.Value != null && kv.Value.Length > 0))
                     {
                         var unique = $"{kv.Key}_{persona.Id}_{Guid.NewGuid():N}{Path.GetExtension(kv.Value.FileName)}";
                         var savePath = Path.Combine(eucacionDocumentossPath, unique);
@@ -212,16 +247,20 @@ namespace MatriculaCMP.Services
                 await _context.SaveChangesAsync();
 
                 // 6. Historial de cambios
-                var historial = new SolicitudHistorialEstado
+                if (!solicitudId.HasValue) // Solo para nuevas solicitudes
                 {
-                    SolicitudId = solicitud.Id,
-                    EstadoAnteriorId = solicitudId.HasValue ? solicitud.EstadoSolicitudId : null,
-                    EstadoNuevoId = 1,
-                    FechaCambio = fechaCambio,
-                    Observacion = solicitudId.HasValue ? "Solicitud actualizada" : "Registro inicial de solicitud",
-                    UsuarioCambio = "17"
-                };
-                await _context.SolicitudHistorialEstados.AddAsync(historial);
+                    var historial = new SolicitudHistorialEstado
+                    {
+                        SolicitudId = solicitud.Id,
+                        EstadoAnteriorId = null,
+                        EstadoNuevoId = 1,
+                        FechaCambio = fechaCambio,
+                        Observacion = "Registro inicial de solicitud",
+                        UsuarioCambio = usuarioId // Usar el ID del usuario autenticado
+                    };
+                    await _context.SolicitudHistorialEstados.AddAsync(historial);
+                }
+                // Para correcciones, NO se registra cambio de estado - se mantiene el estado actual
                 await _context.SaveChangesAsync();
 
                 await transaction.CommitAsync();

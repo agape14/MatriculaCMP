@@ -12,9 +12,25 @@ namespace MatriculaCMP.Controller
     public class PersonasEducacionController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
+        
         public PersonasEducacionController(ApplicationDbContext context)
         {
             _context = context;
+        }
+
+        // Método helper para obtener el ID del usuario autenticado
+        private string GetUsuarioAutenticadoId()
+        {
+            var user = HttpContext.User;
+            if (user?.Identity?.IsAuthenticated == true)
+            {
+                var userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    return userId;
+                }
+            }
+            return "Sistema"; // Fallback si no se puede obtener el ID del usuario
         }
 
         [HttpGet("con-educacion")]
@@ -42,52 +58,59 @@ namespace MatriculaCMP.Controller
         [HttpGet("{id}")]
         public async Task<ActionResult<Persona>> GetPersona(int id)
         {
-			try
-			{
-				var persona = await _context.Personas
-					.Include(p => p.Educaciones)
-					.Include(p => p.Usuarios)
-					.FirstOrDefaultAsync(p => p.Id == id);
+            try
+            {
+                var persona = await _context.Personas
+                    .Include(p => p.Educaciones)
+                    .Include(p => p.Usuarios)
+                    .FirstOrDefaultAsync(p => p.Id == id);
 
-				if (persona == null)
-					return NotFound(new { message = $"No se encontró la persona con ID {id}" });
+                if (persona == null)
+                    return NotFound(new { message = $"No se encontró la persona con ID {id}" });
 
-				return Ok(persona);
-			}
-			catch (Exception ex)
-			{
-				return StatusCode(500, new { message = "Error interno", detalle = ex.Message });
-			}
-		}
+                return Ok(persona);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Error interno: {ex.Message}" });
+            }
+        }
 
         [HttpGet("mis-solicitudes/{personaId:int}")]
         public async Task<IActionResult> ObtenerSolicitudesUsuario(int personaId)
         {
-            var solicitudes = await _context.Solicitudes
-            .Where(s => s.PersonaId == personaId)
-            .Include(s => s.Persona)
-                .ThenInclude(p => p.Educaciones)
-                    .ThenInclude(e => e.Universidad)
-            .Include(s => s.Area)
-            .Include(s => s.EstadoSolicitud)
-            .OrderByDescending(s => s.FechaSolicitud)
-            .ToListAsync(); // <-- fuerza la ejecución en memoria
-
-            var resultado = solicitudes.Select(s => new SolicitudSeguimientoDto
+            try
             {
-                Id = s.Id,
-                NumeroSolicitud = s.NumeroSolicitud,
-                TipoSolicitud = s.TipoSolicitud,
-                FechaSolicitud = s.FechaSolicitud,
-                Estado = s.EstadoSolicitud.Nombre,
-                EstadoId = s.EstadoSolicitud.Id,
-                EstadoColor = s.EstadoSolicitud.Color,
-                AreaNombre = s.Area != null ? s.Area.Nombre : "No asignado",
-                PersonaNombre = s.Persona?.NombresCompletos ?? "-",
-                UniversidadNombre = s.Persona?.Educaciones.FirstOrDefault()?.Universidad?.Nombre ?? "-"
-            }).ToList();
+                var solicitudes = await _context.Solicitudes
+                    .Include(s => s.Persona)
+                        .ThenInclude(p => p.Educaciones)
+                            .ThenInclude(e => e.Universidad)
+                    .Include(s => s.Area)
+                    .Include(s => s.EstadoSolicitud)
+                    .Where(s => s.PersonaId == personaId)
+                    .OrderByDescending(s => s.FechaSolicitud)
+                    .ToListAsync();
 
-            return Ok(resultado);
+                var resultado = solicitudes.Select(s => new SolicitudSeguimientoDto
+                {
+                    Id = s.Id,
+                    NumeroSolicitud = s.NumeroSolicitud,
+                    TipoSolicitud = s.TipoSolicitud,
+                    FechaSolicitud = s.FechaSolicitud,
+                    Estado = s.EstadoSolicitud?.Nombre ?? "Sin Estado",
+                    EstadoId = s.EstadoSolicitud?.Id ?? 0,
+                    EstadoColor = s.EstadoSolicitud?.Color ?? "#000000",
+                    AreaNombre = s.Area?.Nombre ?? "No asignado",
+                    PersonaNombre = s.Persona?.NombresCompletos ?? "-",
+                    UniversidadNombre = s.Persona?.Educaciones?.FirstOrDefault()?.Universidad?.Nombre ?? "-"
+                }).ToList();
+
+                return Ok(resultado);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = $"Error al obtener solicitudes: {ex.Message}" });
+            }
         }
 
         [HttpGet("solicituddet/{id}")]
@@ -95,19 +118,22 @@ namespace MatriculaCMP.Controller
         {
             var solicitud = await _context.Solicitudes
                 .Include(s => s.Persona)
-                    .ThenInclude(p => p.Educaciones)
-                        .ThenInclude(e => e.Universidad)       
-                .Include(s => s.Persona)
                     .ThenInclude(p => p.GrupoSanguineo)
+                .Include(s => s.Persona)
+                    .ThenInclude(p => p.Educaciones)
+                        .ThenInclude(e => e.Universidad)
+                .Include(s => s.Persona)
+                    .ThenInclude(p => p.Educaciones)
+                        .ThenInclude(e => e.Documento)
                 .Include(s => s.EstadoSolicitud)
                 .Include(s => s.HistorialEstados)
-                .Include(s => s.Persona)
-                    .ThenInclude(e => e.Educaciones)
-                    .ThenInclude(d => d.Documento)
+                    .ThenInclude(h => h.EstadoAnterior)
+                .Include(s => s.HistorialEstados)
+                    .ThenInclude(h => h.EstadoNuevo)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (solicitud == null)
-                return NotFound();
+                return NotFound("Solicitud no encontrada");
 
             return Ok(solicitud);
         }
@@ -115,37 +141,36 @@ namespace MatriculaCMP.Controller
         [HttpGet("fotos-medicos/{fileName}")]
         public IActionResult GetFotoMedico(string fileName)
         {
-            var imagePath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "FotosMedicos", fileName);
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "FotosMedicos", fileName);
+            if (!System.IO.File.Exists(filePath))
+                return NotFound("Archivo no encontrado");
 
-            if (!System.IO.File.Exists(imagePath))
-                return NotFound();
-
-            return PhysicalFile(imagePath, "image/jpeg");
+            var fileBytes = System.IO.File.ReadAllBytes(filePath);
+            return File(fileBytes, "image/jpeg");
         }
 
         [HttpGet("documentos-educacion/{fileName}")]
         public IActionResult GetDocumentosEducacion(string fileName)
         {
-            var documentoPath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "EducacionDocumentos", fileName);
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "EducacionDocumentos", fileName);
+            if (!System.IO.File.Exists(filePath))
+                return NotFound("Archivo no encontrado");
 
-            if (!System.IO.File.Exists(documentoPath))
-                return NotFound();
-
-            return PhysicalFile(documentoPath, "application/pdf");
+            var fileBytes = System.IO.File.ReadAllBytes(filePath);
+            return File(fileBytes, "application/pdf");
         }
 
         [HttpGet("solicitudesdets")]
         public async Task<ActionResult<SolicitudSeguimientoDto>> GetDetallesSolicitudes()
         {
             var solicitudes = await _context.Solicitudes
-            .Include(s => s.Persona)
-                .ThenInclude(p => p.Educaciones)
-                    .ThenInclude(e => e.Universidad)
-            .Include(s => s.Area)
-            .Include(s => s.EstadoSolicitud)
-            .Where(s => s.EstadoSolicitudId ==1) // Asegurarse de que el estado no sea nulo
-            .OrderByDescending(s => s.FechaSolicitud)
-            .ToListAsync(); // <-- fuerza la ejecución en memoria
+                .Include(s => s.Persona)
+                    .ThenInclude(p => p.Educaciones)
+                        .ThenInclude(e => e.Universidad)
+                .Include(s => s.Area)
+                .Include(s => s.EstadoSolicitud)
+                .OrderByDescending(s => s.FechaSolicitud)
+                .ToListAsync();
 
             var resultado = solicitudes.Select(s => new SolicitudSeguimientoDto
             {
@@ -153,19 +178,79 @@ namespace MatriculaCMP.Controller
                 NumeroSolicitud = s.NumeroSolicitud,
                 TipoSolicitud = s.TipoSolicitud,
                 FechaSolicitud = s.FechaSolicitud,
-                Estado = s.EstadoSolicitud.Nombre,
-				EstadoId = s.EstadoSolicitud.Id,
-                EstadoColor = s.EstadoSolicitud.Color,
-				AreaNombre = s.Area != null ? s.Area.Nombre : "No asignado",
+                Estado = s.EstadoSolicitud?.Nombre ?? "Sin Estado",
+                EstadoId = s.EstadoSolicitud?.Id ?? 0,
+                EstadoColor = s.EstadoSolicitud?.Color ?? "#000000",
+                AreaNombre = s.Area?.Nombre ?? "No asignado",
                 PersonaNombre = s.Persona?.NombresCompletos ?? "-",
-                UniversidadNombre = s.Persona?.Educaciones.FirstOrDefault()?.Universidad?.Nombre ?? "-"
+                UniversidadNombre = s.Persona?.Educaciones?.FirstOrDefault()?.Universidad?.Nombre ?? "-"
             }).ToList();
 
-            if (resultado == null || !resultado.Any())
-                return NotFound(new { message = "No se encontraron solicitudes." });
             return Ok(resultado);
         }
 
+        // Solo solicitudes en estado 1 (Registrado) para Consejo Regional
+        [HttpGet("solicitudes-registradas")]
+        public async Task<ActionResult<IEnumerable<SolicitudSeguimientoDto>>> GetSolicitudesRegistradas()
+        {
+            var solicitudes = await _context.Solicitudes
+                .Include(s => s.Persona)
+                    .ThenInclude(p => p.Educaciones)
+                        .ThenInclude(e => e.Universidad)
+                .Include(s => s.Area)
+                .Include(s => s.EstadoSolicitud)
+                .Where(s => s.EstadoSolicitudId == 1)
+                .OrderByDescending(s => s.FechaSolicitud)
+                .ToListAsync();
+
+            var resultado = solicitudes.Select(s => new SolicitudSeguimientoDto
+            {
+                Id = s.Id,
+                NumeroSolicitud = s.NumeroSolicitud,
+                TipoSolicitud = s.TipoSolicitud,
+                FechaSolicitud = s.FechaSolicitud,
+                Estado = s.EstadoSolicitud?.Nombre ?? "Sin Estado",
+                EstadoId = s.EstadoSolicitud?.Id ?? 0,
+                EstadoColor = s.EstadoSolicitud?.Color ?? "#000000",
+                AreaNombre = s.Area?.Nombre ?? "No asignado",
+                PersonaNombre = s.Persona?.NombresCompletos ?? "-",
+                UniversidadNombre = s.Persona?.Educaciones?.FirstOrDefault()?.Universidad?.Nombre ?? "-"
+            }).ToList();
+
+            return Ok(resultado);
+        }
+
+        [HttpGet("solicitudes-aprobadas-cr")]
+        public async Task<ActionResult<SolicitudSeguimientoDto>> GetSolicitudesAprobadasCR()
+        {
+            var solicitudes = await _context.Solicitudes
+                .Include(s => s.Persona)
+                    .ThenInclude(p => p.Educaciones)
+                        .ThenInclude(e => e.Universidad)
+                .Include(s => s.Area)
+                .Include(s => s.EstadoSolicitud)
+                .Where(s => s.EstadoSolicitudId == 2) // Solo solicitudes aprobadas por Consejo Regional
+                .OrderByDescending(s => s.FechaSolicitud)
+                .ToListAsync();
+
+            var resultado = solicitudes.Select(s => new SolicitudSeguimientoDto
+            {
+                Id = s.Id,
+                NumeroSolicitud = s.NumeroSolicitud,
+                TipoSolicitud = s.TipoSolicitud,
+                FechaSolicitud = s.FechaSolicitud,
+                Estado = s.EstadoSolicitud?.Nombre ?? "Sin Estado",
+                EstadoId = s.EstadoSolicitud?.Id ?? 0,
+                EstadoColor = s.EstadoSolicitud?.Color ?? "#000000",
+                AreaNombre = s.Area?.Nombre ?? "No asignado",
+                PersonaNombre = s.Persona?.NombresCompletos ?? "-",
+                UniversidadNombre = s.Persona?.Educaciones?.FirstOrDefault()?.Universidad?.Nombre ?? "-"
+            }).ToList();
+
+            if (resultado == null || !resultado.Any())
+                return NotFound(new { message = "No se encontraron solicitudes aprobadas por el Consejo Regional." });
+            return Ok(resultado);
+        }
 
         [HttpPost("cambiar-estado")]
         public async Task<IActionResult> CambiarEstado([FromBody] SolicitudCambioEstadoDto dto)
@@ -187,6 +272,9 @@ namespace MatriculaCMP.Controller
                 var peruTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SA Pacific Standard Time");
                 var fechaCambio = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, peruTimeZone);
 
+                // Obtener el ID del usuario autenticado
+                var usuarioId = GetUsuarioAutenticadoId();
+
                 // Guardar en historial
                 var historial = new SolicitudHistorialEstado
                 {
@@ -195,7 +283,7 @@ namespace MatriculaCMP.Controller
                     EstadoNuevoId = dto.NuevoEstadoId,
                     FechaCambio = fechaCambio,
                     Observacion = dto.Observacion,
-                    UsuarioCambio = dto.UsuarioCambio
+                    UsuarioCambio = usuarioId // Usar el ID del usuario autenticado
                 };
 
                 _context.SolicitudHistorialEstados.Add(historial);
@@ -210,7 +298,7 @@ namespace MatriculaCMP.Controller
                     .Select(e => e.Nombre)
                     .FirstOrDefaultAsync();
 
-                await EmailHelper.EnviarCorreoCambioEstadoAsync(destinatario, nombre, apellido, nombreEstado ?? "Sin Estado");
+                await EmailHelper.EnviarCorreoCambioEstadoAsync(destinatario, nombre, apellido, nombreEstado ?? "Sin Estado", dto.Observacion);
 
                 return Ok();
             }
@@ -264,7 +352,7 @@ namespace MatriculaCMP.Controller
             var response = new EstadoSolicitudConCheckResponse
             {
                 PorcentajeCompletado = Math.Round(porcentaje, 2), // Redondea a 2 decimales
-                NombreUltimoEstado = historial.FirstOrDefault().EstadoNombre,
+                NombreUltimoEstado = historial.FirstOrDefault()?.EstadoNombre,
                 Estados = estados
             };
 

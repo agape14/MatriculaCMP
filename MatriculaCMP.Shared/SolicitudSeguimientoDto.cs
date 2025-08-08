@@ -15,9 +15,11 @@ namespace MatriculaCMP.Shared
         public int EstadoId { get; set; }
 		public string Estado { get; set; }
 		public string EstadoColor { get; set; }
-		public string AreaNombre { get; set; }
+		        public string AreaNombre { get; set; }
         public string PersonaNombre { get; set; }
         public string UniversidadNombre { get; set; }
         public string Observaciones { get; set; }
+        public string? NumeroColegiatura { get; set; }
+        public bool TieneDiploma { get; set; }
     }
 }

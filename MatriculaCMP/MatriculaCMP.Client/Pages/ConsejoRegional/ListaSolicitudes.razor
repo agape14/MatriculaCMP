@@ -88,8 +88,16 @@
                                                 </td>
                                                 <td>@(s.AreaNombre ?? "")</td>
                                                 <td>
-                                                    <button class="btn btn-outline-primary btn-sm" @onclick="@(() => VerDetalle(s))">
-                                                        <i class="ri-list-check  align-middle ml-2"></i> Validar
+                                                    <button class="btn btn-outline-primary btn-sm" disabled="@loadingVerDetalle.Contains(s.Id)" @onclick="@(() => VerDetalle(s))">
+                                                        @if (loadingVerDetalle.Contains(s.Id))
+                                                        {
+                                                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <i class="ri-list-check  align-middle ml-2"></i>
+                                                        }
+                                                        Validar
                                                     </button>
                                                    @*
                                                     <button class="btn btn-outline-success btn-sm ms-1" @onclick="() => CambiarEstado(s.Id, 2)">
@@ -245,7 +253,7 @@
                                                     <p><strong>Nombres:</strong> @solicitudSeleccionada.Persona.NombresCompletos</p>
                                                     <p><strong>Documento:</strong> @solicitudSeleccionada.Persona.NumeroDocumento</p>
                                                     <p><strong>Fecha Nacimiento:</strong> @solicitudSeleccionada.Persona.FechaNacimiento?.ToString("dd/MM/yyyy")</p>
-                                                    <p><strong>Grupo Sanguíneo:</strong> @solicitudSeleccionada.Persona.GrupoSanguineo.Nombre</p>
+                                                    <p><strong>Grupo Sanguíneo:</strong> @(solicitudSeleccionada.Persona.GrupoSanguineo?.Nombre ?? "No especificado")</p>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <h6>Foto</h6>
@@ -273,8 +281,8 @@
                                             <div class="row mt-2 p-2">
                                                 <div class="col-md-6">
                                                     <h6>Educación</h6>
-                                                    <p><strong>Universidad:</strong> @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.Universidad?.Nombre </p>
-                                                    <p><strong>Fecha Título:</strong>  @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.FechaEmisionTitulo.ToString("dd/MM/yyyy") </p>
+                                                    <p><strong>Universidad:</strong> @(solicitudSeleccionada.Persona.Educaciones?.FirstOrDefault()?.Universidad?.Nombre ?? "No especificada") </p>
+                                                    <p><strong>Fecha Título:</strong>  @(solicitudSeleccionada.Persona.Educaciones?.FirstOrDefault()?.FechaEmisionTitulo.ToString("dd/MM/yyyy") ?? "No especificada") </p>
                                                 </div>
                                                 <div class="col-md-6">
                                                     <h6>Contacto</h6>
@@ -302,12 +310,12 @@
                                                         <li class="list-group-item">
                                                             <!-- Primera fila: nombre y fecha -->
                                                             <div class="d-flex justify-content-between">
-                                                                <button type="button" class="btn btn-@historial.EstadoNuevo?.Color waves-effect waves-light">@historial.EstadoNuevo?.Nombre</button>
+                                                                <button type="button" class="btn btn-@(historial.EstadoNuevo?.Color ?? "secondary") waves-effect waves-light">@(historial.EstadoNuevo?.Nombre ?? "Sin estado")</button>
                                                                 <small class="text-muted">El @historial.FechaCambio.ToString("dd/MM/yyyy HH:mm")</small>
                                                             </div>
                                                             <!-- Segunda fila: observación -->
                                                             <div class="mt-2">
-                                                                <strong>@historial.Observacion</strong>
+                                                                <strong>@(historial.Observacion ?? "Sin observaciones")</strong>
                                                             </div>
                                                         </li>
                                                     }
@@ -431,14 +439,30 @@
 
                         <button type="button" class="btn btn-danger"
                                 @onclick="() => CambiarEstado(3)"
-                                disabled="@(puedeObservar == false)">
-                            <i class="ri-close-line align-middle ml-2"></i> Observar
+                                disabled="@(puedeObservar == false || cambiandoEstado)">
+                            @if (cambiandoEstado)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                            }
+                            else
+                            {
+                                <i class="ri-close-line align-middle ml-2"></i>
+                            }
+                            Observar
                         </button>
 
                         <button type="button" class="btn btn-primary"
                                 @onclick="() => CambiarEstado(2)"
-                                disabled="@(puedeAprobar == false)">
-                            <i class="ri-check-line align-middle ml-2"></i> Aprobar
+                                disabled="@(puedeAprobar == false || cambiandoEstado)">
+                            @if (cambiandoEstado)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                            }
+                            else
+                            {
+                                <i class="ri-check-line align-middle ml-2"></i>
+                            }
+                            Aprobar
                         </button>
                     </div>
                 </div>
@@ -469,6 +493,8 @@
     private string tabActiva = "nacionales";
     private List<SolicitudSeguimientoDto> solicitudes = new();
     private Solicitud? solicitudSeleccionada = null;
+    private HashSet<int> loadingVerDetalle = new();
+    private bool cambiandoEstado = false;
     private List<ListadoPrematricula> alumnos = new()
     {
         new ListadoPrematricula {Id=1,  Numero = "89451501", NombreCompleto = "Frank Dean",         FechaNacimiento = "28/03/2020", LugarNacimiento = "Lima", Estado = "Registrado" },
@@ -525,7 +551,8 @@
     {
         try
         {
-            solicitudes = await Http.GetFromJsonAsync<List<SolicitudSeguimientoDto>>("api/personaseducacion/solicitudesdets");
+            // Mostrar solo solicitudes en estado 1 (Registrado)
+            solicitudes = await Http.GetFromJsonAsync<List<SolicitudSeguimientoDto>>("api/personaseducacion/solicitudes-registradas");
         }
         catch (HttpRequestException ex)
         {
@@ -620,7 +647,17 @@
 
     private async Task  VerDetalle(SolicitudSeguimientoDto solicitud)
     {
-        solicitudSeleccionada = await Http.GetFromJsonAsync<Solicitud>($"api/personaseducacion/solicituddet/{solicitud.Id}");
+        try
+        {
+            loadingVerDetalle.Add(solicitud.Id);
+            StateHasChanged();
+            solicitudSeleccionada = await Http.GetFromJsonAsync<Solicitud>($"api/personaseducacion/solicituddet/{solicitud.Id}");
+        }
+        finally
+        {
+            loadingVerDetalle.Remove(solicitud.Id);
+            StateHasChanged();
+        }
     }
 
     async Task CambiarEstado(int nuevoEstadoId)
@@ -650,7 +687,17 @@
                 UsuarioCambio = usuarioId
             };
 
-        await EnviarCambioEstado(dto);
+        try
+        {
+            cambiandoEstado = true;
+            StateHasChanged();
+            await EnviarCambioEstado(dto);
+        }
+        finally
+        {
+            cambiandoEstado = false;
+            StateHasChanged();
+        }
     }
     private async Task EnviarCambioEstado(SolicitudCambioEstadoDto dto)
     {

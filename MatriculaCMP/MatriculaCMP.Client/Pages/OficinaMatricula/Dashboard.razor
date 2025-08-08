@@ -1,0 +1,285 @@
+@page "/oficinamatricula/dashboard"
+@using MatriculaCMP.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div class="container-fluid">
+    <!-- start page title -->
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <h4 class="mb-sm-0">Oficina de Matrícula - Dashboard</h4>
+
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        <li class="breadcrumb-item"><a href="javascript: void(0);">Inicio</a></li>
+                        <li class="breadcrumb-item active">Dashboard</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-xl-3 col-md-6">
+            <div class="card mini-stats-wid">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div class="flex-grow-1">
+                            <p class="text-muted fw-medium">Total Solicitudes</p>
+                            <h4 class="mb-0">@estadisticas.TotalSolicitudes</h4>
+                        </div>
+
+                        <div class="flex-shrink-0 align-self-center">
+                            <div class="mini-stat-icon avatar-sm rounded-circle bg-primary">
+                                <span class="avatar-title">
+                                    <i class="bx bx-copy-alt font-size-24"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card mini-stats-wid">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div class="flex-grow-1">
+                            <p class="text-muted fw-medium">Pendientes de Revisión</p>
+                            <h4 class="mb-0">@estadisticas.Pendientes</h4>
+                        </div>
+
+                        <div class="flex-shrink-0 align-self-center">
+                            <div class="mini-stat-icon avatar-sm rounded-circle bg-warning">
+                                <span class="avatar-title">
+                                    <i class="bx bx-time font-size-24"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card mini-stats-wid">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div class="flex-grow-1">
+                            <p class="text-muted fw-medium">Aprobadas</p>
+                            <h4 class="mb-0">@estadisticas.Aprobadas</h4>
+                        </div>
+
+                        <div class="flex-shrink-0 align-self-center">
+                            <div class="mini-stat-icon avatar-sm rounded-circle bg-success">
+                                <span class="avatar-title">
+                                    <i class="bx bx-check-circle font-size-24"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card mini-stats-wid">
+                <div class="card-body">
+                    <div class="d-flex">
+                        <div class="flex-grow-1">
+                            <p class="text-muted fw-medium">Rechazadas</p>
+                            <h4 class="mb-0">@estadisticas.Rechazadas</h4>
+                        </div>
+
+                        <div class="flex-shrink-0 align-self-center">
+                            <div class="mini-stat-icon avatar-sm rounded-circle bg-danger">
+                                <span class="avatar-title">
+                                    <i class="bx bx-x-circle font-size-24"></i>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title mb-4">Acciones Rápidas</h4>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card border">
+                                <div class="card-body text-center">
+                                    <i class="ri-list-check-2 font-size-48 text-primary"></i>
+                                    <h5 class="mt-3">Revisar Solicitudes</h5>
+                                    <p class="text-muted">Ver solicitudes pendientes de revisión</p>
+                                    <a href="/oficinamatricula/lista" class="btn btn-primary">Ir a Lista</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border">
+                                <div class="card-body text-center">
+                                    <i class="ri-file-text-line font-size-48 text-warning"></i>
+                                    <h5 class="mt-3">Generar Reportes</h5>
+                                    <p class="text-muted">Generar reportes de solicitudes</p>
+                                    <button class="btn btn-warning" @onclick="GenerarReporte">Generar</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card border">
+                                <div class="card-body text-center">
+                                    <i class="ri-settings-3-line font-size-48 text-info"></i>
+                                    <h5 class="mt-3">Configuración</h5>
+                                    <p class="text-muted">Configurar parámetros del sistema</p>
+                                    <button class="btn btn-info" @onclick="AbrirConfiguracion">Configurar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title mb-4">Últimas Solicitudes Procesadas</h4>
+                    <div class="table-responsive">
+                        <table class="table table-centered table-nowrap mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Número</th>
+                                    <th>Solicitante</th>
+                                    <th>Estado</th>
+                                    <th>Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (ultimasSolicitudes != null && ultimasSolicitudes.Any())
+                                {
+                                    @foreach (var solicitud in ultimasSolicitudes.Take(5))
+                                    {
+                                        <tr>
+                                            <td>@solicitud.NumeroSolicitud.ToString("D8")</td>
+                                            <td>@solicitud.PersonaNombre</td>
+                                            <td>
+                                                <span class="badge badge-soft-@solicitud.EstadoColor font-size-12">
+                                                    @solicitud.Estado
+                                                </span>
+                                            </td>
+                                            <td>@solicitud.FechaSolicitud.ToString("dd/MM/yyyy")</td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td colspan="4" class="text-center">No hay solicitudes recientes</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title mb-4">Resumen del Día</h4>
+                    <div class="text-center">
+                        <div class="mb-3">
+                            <h2 class="text-primary">@solicitudesHoy</h2>
+                            <p class="text-muted">Solicitudes procesadas hoy</p>
+                        </div>
+                        <div class="mb-3">
+                            <h2 class="text-success">@aprobadasHoy</h2>
+                            <p class="text-muted">Aprobadas hoy</p>
+                        </div>
+                        <div class="mb-3">
+                            <h2 class="text-danger">@rechazadasHoy</h2>
+                            <p class="text-muted">Rechazadas hoy</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private EstadisticasOficinaMatricula estadisticas = new();
+    private List<SolicitudSeguimientoDto> ultimasSolicitudes = new();
+    private int solicitudesHoy = 0;
+    private int aprobadasHoy = 0;
+    private int rechazadasHoy = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarEstadisticas();
+        await CargarUltimasSolicitudes();
+        await CargarResumenDia();
+    }
+
+    private async Task CargarEstadisticas()
+    {
+        try
+        {
+            estadisticas = await Http.GetFromJsonAsync<EstadisticasOficinaMatricula>("api/oficinamatricula/estadisticas");
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Error al cargar estadísticas: {ex.Message}");
+        }
+    }
+
+    private async Task CargarUltimasSolicitudes()
+    {
+        try
+        {
+            ultimasSolicitudes = await Http.GetFromJsonAsync<List<SolicitudSeguimientoDto>>("api/oficinamatricula/solicitudes-pendientes");
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Error al cargar últimas solicitudes: {ex.Message}");
+        }
+    }
+
+    private async Task CargarResumenDia()
+    {
+        // Por ahora valores de ejemplo, se pueden implementar endpoints específicos
+        solicitudesHoy = 5;
+        aprobadasHoy = 3;
+        rechazadasHoy = 1;
+    }
+
+    private async Task GenerarReporte()
+    {
+        await JS.InvokeVoidAsync("Swal.fire", "Generando Reporte", "El reporte se está generando...", "info");
+        // Implementar lógica de generación de reportes
+    }
+
+    private async Task AbrirConfiguracion()
+    {
+        await JS.InvokeVoidAsync("Swal.fire", "Configuración", "Funcionalidad en desarrollo", "info");
+        // Implementar lógica de configuración
+    }
+
+    public class EstadisticasOficinaMatricula
+    {
+        public int TotalSolicitudes { get; set; }
+        public int Pendientes { get; set; }
+        public int Aprobadas { get; set; }
+        public int Rechazadas { get; set; }
+    }
+} 

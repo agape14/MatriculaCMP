@@ -1,14 +1,19 @@
 ﻿@page "/oficinamatricula/lista"
 @using MatriculaCMP.Shared
-@inject IJSRuntime JS
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using MatriculaCMP.Client.Helpers
 
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <div class="container-fluid">
     <!-- start page title -->
     <div class="row">
         <div class="col-12">
             <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                <h4 class="mb-sm-0">Oficina Matricula - Listado Solicitudes</h4>
+                <h4 class="mb-sm-0">Oficina de Matrícula - Listado Solicitudes</h4>
 
                 <div class="page-title-right">
                     <ol class="breadcrumb m-0">
@@ -39,14 +44,11 @@
                     {
                         <div class="alert alert-primary mb-2 mt-2" role="alert">
                             <div class="button-items">
-                               @*  <button type="button" class="btn btn-primary">
-                                    <i class="ri-fingerprint-fill align-middle me-2"></i> Firmar Asignaciones
-                                </button> *@
-                                <button class="btn btn-success" >
-                                    <i class="ri-checkbox-circle-line align-middle me-2"></i> Aprobar
+                                <button class="btn btn-success" @onclick="FirmarDigitalmente">
+                                    <i class="ri-checkbox-circle-line align-middle me-2"></i> Validar Solicitudes
                                 </button>
-                                <button class="btn btn-danger" >
-                                    <i class=" ri-close-circle-line align-middle me-2"></i> Observar
+                                <button class="btn btn-danger" @onclick="FirmarDigitalmente">
+                                    <i class=" ri-close-circle-line align-middle me-2"></i> Observar Solicitudes
                                 </button>
                                 <button type="button" class="btn btn-warning">
                                     <i class="ri-file-text-line align-middle me-2"></i> Generar Diplomas
@@ -58,66 +60,112 @@
                             <table class="table table-centered datatable">
                                 <thead class="thead-light">
                                     <tr>
-                                        <th>
-                                            <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
-                                        </th>
-                                        <th>DNI</th>
-                                        <th>Nombres Completos</th>
-                                        <th>Fecha Nac.</th>
-                                        <th>Lugar Nac.</th>
-                                        <th>Nro. <br />Colegiatura</th>
+                                        <th>#</th>
+                                        <th>Nombres <br /> Completos</th>
+                                        <th>Nro. <br /> Solicitud</th>
+                                        <th>Fecha <br /> Solicitud</th>
                                         <th>Estado</th>
-                                        <th>Formatos</th>
-                                        <th>Acción</th>
+                                        <th>Área <br /> Encargada</th>
+                                        <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var alumno in alumnos)
+                                    @if (solicitudes?.Count > 0)
                                     {
-                                        <tr @onclick="() => alumno.Seleccionado = !alumno.Seleccionado" style="cursor: pointer;">
-                                            <td>
-                                                <input type="checkbox" class="form-check-input" @bind="alumno.Seleccionado" @onclick:stopPropagation="true" />
+                                        int index = 1;
+                                        foreach (var s in solicitudes)
+                                        {
+                                            <tr>
+                                                <td>@index</td>
+                                                <td>@(s.PersonaNombre ?? "")</td>
+                                                <td>@s.NumeroSolicitud.ToString("D8")</td>
+                                                <td>@s.FechaSolicitud.ToString("dd/MM/yyyy")</td>
+                                                <td>
+                                                    <div class="badge badge-soft-@(s.EstadoColor ?? "") font-size-12">@(s.Estado ?? "")</div>
                                             </td>
-                                            <td>@alumno.Numero</td>
-                                            <td>@alumno.NombreCompleto</td>
-                                            <td>@alumno.FechaNacimiento</td>
-                                            <td>@alumno.LugarNacimiento</td>
-                                            <td>-----</td>
-                                            <td>
-                                                @if (alumno.Estado == "Registrado")
-                                                {
-                                                    <div class="badge bg-info">Registrado</div>
-                                                }
-                                                else if (alumno.Estado == "Por Subsanar")
-                                                {
-                                                    <div class="badge bg-warning">Por Subsanar</div>
-                                                }
-                                                else if (alumno.Estado == "Rechazado")
-                                                {
-                                                    <div class="badge bg-danger">Rechazado</div>
-                                                }
-                                                else if (alumno.Estado == "Aprobado")
-                                                {
-                                                    <div class="badge bg-success">Aprobado</div>
-                                                }
-                                            </td>
-                                            <td>
-                                                <button class="btn btn-light btn-rounded" @onclick="DescargarFormato">
-                                                    Descargar <i class="mdi mdi-download ms-2"></i>
+                                                <td>@(s.AreaNombre ?? "")</td>
+                                                <td>
+                                                    <div class="btn-group" role="group">
+                                                        @if (s.EstadoId == 2) // Solo mostrar Validar para solicitudes aprobadas por Consejo Regional
+                                                        {
+                                                            <button class="btn btn-outline-primary btn-sm" disabled="@loadingVerDetalle.Contains(s.Id)" @onclick="@(() => VerDetalle(s))">
+                                                                @if (loadingVerDetalle.Contains(s.Id))
+                                                                {
+                                                                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <i class="ri-list-check align-middle me-1"></i>
+                                                                }
+                                                                Validar
+                                                            </button>
+                                                        }
+                                                        @if (s.EstadoId == 6) // Solicitud aprobada por Of. Matrícula
+                                                        {
+                                                            @if (string.IsNullOrEmpty(s.NumeroColegiatura))
+                                                            {
+                                                                <button class="btn btn-outline-success btn-sm" disabled="@loadingColegiatura.Contains(s.Id)" @onclick="@(() => GenerarNumeroColegiatura(s.Id))" title="Generar Número de Colegiatura">
+                                                                    @if (loadingColegiatura.Contains(s.Id))
+                                                                    {
+                                                                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <i class="ri-number-1 align-middle me-1"></i>
+                                                                    }
+                                                                    N° Colegiatura
+                                                                </button>
+                                                            }
+                                                            else if (s.TieneDiploma != true) // Si tiene número de colegiatura pero no tiene diploma
+                                                            {
+                                                                <button class="btn btn-outline-warning btn-sm" disabled="@loadingDiploma.Contains(s.Id)" @onclick="@(() => GenerarDiploma(s.Id))" title="Generar Diploma">
+                                                                    @if (loadingDiploma.Contains(s.Id))
+                                                                    {
+                                                                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <i class="ri-file-text-line align-middle me-1"></i>
+                                                                    }
+                                                                    Diploma
+                                                                </button>
+                                                            }
+                                                            else // Si ya tiene diploma generado
+                                                            {
+                                                                <button class="btn btn-outline-secondary btn-sm" disabled="@loadingRegenerar.Contains(s.Id)" @onclick="@(() => RegenerarDiploma(s.Id))" title="Regenerar Diploma">
+                                                                    @if (loadingRegenerar.Contains(s.Id))
+                                                                    {
+                                                                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <i class="ri-refresh-line align-middle me-1"></i>
+                                                                    }
+                                                                    Regenerar PDF
+                                                                </button>
+                                                                <button class="btn btn-outline-info btn-sm ms-1" disabled="@loadingVerDetalle.Contains(s.Id)" @onclick="@(() => VerDiploma(s.Id))" title="Ver Diploma">
+                                                                    @if (loadingVerDetalle.Contains(s.Id))
+                                                                    {
+                                                                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <i class="ri-eye-line align-middle me-1"></i>
+                                                                    }
+                                                                    Ver Diploma
                                                 </button>
+                                                            }
+                                                        }
+                                                    </div>
                                             </td>
-                                            <td>
-                                                <a href="javascript:void(0);" class="me-3 text-success" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Ver">
-                                                    <i class="ri-checkbox-circle-line font-size-18"></i>
-                                                </a>
-                                                <a href="javascript:void(0);" class="me-3 text-warning" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Asignar Colegiatura">
-                                                    <i class="ri-medal-fill font-size-18"></i>
-                                                </a>
-                                                <a href="javascript:void(0);" class="me-3 text-danger" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Asignar Colegiatura">
-                                                    <i class=" ri-close-circle-line  font-size-18"></i>
-                                                </a>
-                                               
-                                            </td>
+                                            </tr>
+                                            index++;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <tr>
+                                            <td colspan="7" class="text-center">No se encontraron solicitudes</td>
                                         </tr>
                                     }
                                 </tbody>
@@ -128,8 +176,14 @@
                     {
                         <div class="alert alert-primary mb-2 mt-2" role="alert">
                             <div class="button-items">
-                                <button type="button" class="btn btn-primary">
-                                    <i class="ri-fingerprint-fill align-middle me-2"></i> Firmar Asignaciones
+                                <button class="btn btn-success" @onclick="FirmarDigitalmente">
+                                    <i class="ri-checkbox-circle-line align-middle me-2"></i> Validar Solicitudes
+                                </button>
+                                <button class="btn btn-danger" @onclick="FirmarDigitalmente">
+                                    <i class=" ri-close-circle-line align-middle me-2"></i> Observar Solicitudes
+                                </button>
+                                <button type="button" class="btn btn-info">
+                                    <i class="ri-fingerprint-fill align-middle me-2"></i> Firmar Solicitudes
                                 </button>
                             </div>
                         </div>
@@ -145,10 +199,9 @@
                                         <th>Nombres Completos</th>
                                         <th>Fecha Nac.</th>
                                         <th>Lugar Nac.</th>
-                                        <th>Nro. <br />Colegiatura</th>
                                         <th>Estado</th>
                                         <th>Formatos</th>
-                                        <th>Acción</th>
+                                       
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -162,7 +215,6 @@
                                             <td>@alumno.NombreCompleto</td>
                                             <td>@alumno.FechaNacimiento</td>
                                             <td>@alumno.LugarNacimiento</td>
-                                            <td>-----</td>
                                             <td>
                                                 @if (alumno.Estado == "Registrado")
                                                 {
@@ -182,18 +234,11 @@
                                                 }
                                             </td>
                                             <td>
-                                                <button class="btn btn-light btn-rounded" @onclick="DescargarFormato">
+                                                <button class="btn btn-light btn-rounded" @onclick="DescargarFormato" disabled>
                                                     Descargar <i class="mdi mdi-download ms-2"></i>
                                                 </button>
                                             </td>
-                                            <td>
-                                                <a href="javascript:void(0);" class="me-3 text-warning" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Asignar Colegiatura">
-                                                    <i class="ri-medal-fill font-size-18"></i>
-                                                </a>
-                                                <a href="javascript:void(0);" class="text-primary" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Firmar Asignaciones">
-                                                    <i class="ri-fingerprint-fill font-size-18"></i>
-                                                </a>
-                                            </td>
+                                           
                                         </tr>
                                     }
                                 </tbody>
@@ -218,21 +263,388 @@
         </div>
     </div>
 
+    @if (solicitudSeleccionada != null)
+    {
+        <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5)" id="detalleModal">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Detalle de Solicitud #@(solicitudSeleccionada?.NumeroSolicitud.ToString("D8") ?? "")</h5>
+                        <button type="button" class="btn-close" @onclick="() => solicitudSeleccionada = null"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row mt-1">
+                            <div class="row  mt-2 p-2">
+                                <div class="col-md-3">
+                                    <p class="card-title-desc"><strong>Consejo Regional:</strong></p>
+                                </div>
+                                <div class="col-md-9">
+                                    <select class="form-control" id="cbxConsejoRegional" disabled>
+                                        <option value="">Seleccione...</option>
+                                        @foreach (var consejo in consejos)
+                                        {
+                                            <option value="@consejo.ConsejoRegional_Key" selected="@(consejo.ConsejoRegional_Key.ToString() == solicitudSeleccionada.Persona?.ConsejoRegionalId?.ToString())">
+                                                @consejo.Nombre
+                                            </option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="accordion" id="accordionExample">
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingOne">
+                                        <button class="accordion-button bg-morado text-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                                            Datos Personales
+                                        </button>
+                                    </h2>
+                                    <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#accordionExample">
+                                        <div class="accordion-body">
+                                            <div class="row mt-2 p-2">
+                                                <div class="col-md-6">
+                                                    <p><strong>Nombres:</strong> @(solicitudSeleccionada.Persona?.NombresCompletos ?? "")</p>
+                                                    <p><strong>Documento:</strong> @(solicitudSeleccionada.Persona?.NumeroDocumento ?? "")</p>
+                                                    <p><strong>Fecha Nacimiento:</strong> @(solicitudSeleccionada.Persona?.FechaNacimiento?.ToString("dd/MM/yyyy") ?? "")</p>
+                                                    <p><strong>Grupo Sanguíneo:</strong> @(solicitudSeleccionada.Persona?.GrupoSanguineo?.Nombre ?? "")</p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6>Foto</h6>
+                                                    @if (!string.IsNullOrEmpty(solicitudSeleccionada.Persona?.FotoPath))
+                                                    {
+                                                        <img src="/api/personaseducacion/fotos-medicos/@solicitudSeleccionada.Persona.FotoPath" class="img-thumbnail" style="max-width: 200px;" alt="Foto del médico" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <p>Sin foto disponible</p>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingTwo">
+                                        <button class="accordion-button bg-morado text-white collapsed " type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                            Educación y Contacto
+                                        </button>
+                                    </h2>
+                                    <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#accordionExample">
+                                        <div class="accordion-body">
+                                            <div class="row mt-2 p-2">
+                                                <div class="col-md-6">
+                                                    <h6>Educación</h6>
+                                                    <p><strong>Universidad:</strong> @(solicitudSeleccionada.Persona?.Educaciones?.FirstOrDefault()?.Universidad?.Nombre ?? "") </p>
+                                                    <p><strong>Fecha Título:</strong>  @(solicitudSeleccionada.Persona?.Educaciones?.FirstOrDefault()?.FechaEmisionTitulo.ToString("dd/MM/yyyy") ?? "") </p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6>Contacto</h6>
+                                                    <p><strong>Email:</strong> @(solicitudSeleccionada.Persona?.Email ?? "")</p>
+                                                    <p><strong>Celular:</strong> @(solicitudSeleccionada.Persona?.Celular ?? "")</p>
+                                                    <p><strong>Dirección:</strong> @(solicitudSeleccionada.Persona?.DescripcionZona ?? "")</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingThree">
+                                        <button class="accordion-button bg-morado text-white collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                            Historial de Estados
+                                        </button>
+                                    </h2>
+                                    <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#accordionExample">
+                                        <div class="accordion-body">
+                                            @if (solicitudSeleccionada?.HistorialEstados != null && solicitudSeleccionada.HistorialEstados.Any())
+                                            {
+                                                <ul class="list-group">
+                                                    @foreach (var historial in solicitudSeleccionada.HistorialEstados.OrderByDescending(h => h.FechaCambio))
+                                                    {
+                                                        <li class="list-group-item">
+                                                            <!-- Primera fila: nombre y fecha -->
+                                                            <div class="d-flex justify-content-between">
+                                                                <button type="button" class="btn btn-@historial.EstadoNuevo?.Color waves-effect waves-light">@historial.EstadoNuevo?.Nombre</button>
+                                                                <small class="text-muted">El @historial.FechaCambio.ToString("dd/MM/yyyy HH:mm")</small>
+                                                            </div>
+                                                            <!-- Segunda fila: observación -->
+                                                            <div class="mt-2">
+                                                                <strong>@(historial.Observacion ?? "Sin observaciones")</strong>
+                                                            </div>
+                                                        </li>
+                                                    }
+                                                </ul>
+
+                                            }
+                                            else
+                                            {
+                                                <p class="text-muted">No hay historial disponible.</p>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header" id="headingFour">
+                                        <button class="accordion-button bg-morado text-white collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                                            Documentos Adjuntos
+                                        </button>
+                                    </h2>
+                                    <div id="collapseFour" class="accordion-collapse collapse show" aria-labelledby="headingFour" data-bs-parent="#accordionExample">
+                                        <div class="accordion-body">
+                                            <h6>Documentos Adjuntos:</h6>
+                                            @if (solicitudSeleccionada?.Persona?.Educaciones?.Any() == true)
+                                            {
+                                                var edu = solicitudSeleccionada.Persona.Educaciones
+                                                .FirstOrDefault(e => e.Documento != null);
+
+                                                if (edu?.Documento != null)
+                                                {
+                                                    var documentos = new Dictionary<string, string?>
+                                                {
+                                                { "Título Médico Cirujano", edu.Documento.TituloMedicoCirujanoPath },
+                                                { "Constancia SUNEDU", edu.Documento.ConstanciaInscripcionSuneduPath },
+                                                { "Antecedentes Penales", edu.Documento.CertificadoAntecedentesPenalesPath },
+                                                { "Carnet de Extranjería", edu.Documento.CarnetExtranjeriaPath },
+                                                { "Inscripción Reconocimiento SUNEDU", edu.Documento.ConstanciaInscripcionReconocimientoSuneduPath },
+                                                { "Inscripción Revalidación Universidad Nacional", edu.Documento.ConstanciaInscripcionRevalidacionUniversidadNacionalPath },
+                                                { "Reconocimiento SUNEDU", edu.Documento.ReconocimientoSuneduPath },
+                                                { "Revalidación Universidad Nacional", edu.Documento.RevalidacionUniversidadNacionalPath }
+                                        };
+
+                                                    <table class="table table-bordered mt-3">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Documento</th>
+                                                                <th>CUMPLE</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach (var doc in documentos.Where(d => !string.IsNullOrEmpty(d.Value)))
+                                                            {
+                                                                totalDocumentos = documentos.Count(d => !string.IsNullOrEmpty(d.Value));
+                                                                var keyId = doc.Key.Replace(" ", "_");
+
+                                                                <tr>
+                                                                    <td>
+                                                                        <button type="button" class="btn btn-sm btn-primary"
+                                                                                @onclick="() => VerPdf(doc.Value,doc.Key)">
+                                                                            Ver @doc.Key
+                                                                        </button>
+                                                                    </td>
+                                                                    <td>
+                                                                        <div class="form-check form-check-inline">
+                                                                            <input class="form-check-input"
+                                                                                   type="radio"
+                                                                                   name="cumple_@keyId"
+                                                                                   id="cumple_si_@keyId"
+                                                                                   value="si"
+                                                                                   @onchange="@(() => respuestasCumple[keyId] = "si")" />
+                                                                            <label class="form-check-label" for="cumple_si_@keyId">Sí</label>
+                                                                        </div>
+                                                                        <div class="form-check form-check-inline">
+                                                                            <input class="form-check-input"
+                                                                                   type="radio"
+                                                                                   name="cumple_@keyId"
+                                                                                   id="cumple_no_@keyId"
+                                                                                   value="no"
+                                                                                   @onchange="@(() => respuestasCumple[keyId] = "no")" />
+                                                                            <label class="form-check-label" for="cumple_no_@keyId">No</label>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            }
+                                                        </tbody>
+                                                    </table>
+                                                    @if (puedeObservar)
+                                                    {
+                                                        <div class="mb-3">
+                                                            <label for="Observacion" class="form-label">Observación</label>
+                                                            <textarea id="Observacion" name="Observacion"
+                                                                      class="form-control"
+                                                                      rows="4"
+                                                                      maxlength="2000"
+                                                                      @bind="observacion"
+                                                                      @bind:event="oninput"></textarea>
+                                                            <div class="form-text">
+                                                                <span>@observacion.Length</span> / 2000 caracteres
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <p>No hay documentos registrados.</p>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <p>Sin información de educación registrada.</p>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="() => solicitudSeleccionada = null"> <i class="ri-close-circle-line align-middle ml-2"></i> Salir</button>
+
+                        <button type="button" class="btn btn-danger"
+                                @onclick="() => CambiarEstado(7)"
+                                disabled="@(puedeObservar == false)">
+                            <i class="ri-close-line align-middle ml-2"></i> Observar
+                        </button>
+
+                        <button type="button" class="btn btn-primary"
+                                @onclick="() => CambiarEstado(6)"
+                                disabled="@(puedeAprobar == false)">
+                            <i class="ri-check-line align-middle ml-2"></i> Aprobar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    @if (mostrarVisorPdf && !string.IsNullOrEmpty(pdfUrl))
+    {
+        <div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.8); z-index: 1055;">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content" style="height: 100vh; border-radius: 0;">
+                    <div class="modal-header bg-morado text-white">
+                        <h5 class="modal-title text-white ">@nombrePDF</h5>
+                        <button type="button" class="btn-close btn-close-white" @onclick="CerrarVisorPdf"></button>
+                    </div>
+                    <div class="modal-body p-0" style="height: calc(100vh - 56px);">
+                        <iframe src="@pdfUrl" width="100%" height="100%" style="border: none;"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    
+    @if (mostrarModalDiploma)
+    {
+        <div class="modal fade show d-block" style="background-color: rgba(0, 0, 0, 0.8); z-index: 1055;">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content" style="height: 100vh; border-radius: 0;">
+                    <div class="modal-header bg-morado text-white">
+                        <h5 class="modal-title text-white">Diploma - @nombreDiploma</h5>
+                        <button type="button" class="btn-close btn-close-white" @onclick="CerrarModalDiploma"></button>
+                    </div>
+                    <div class="modal-body p-0" style="height: calc(100vh - 56px); background-color: #f8f9fa;">
+                        @if (!string.IsNullOrEmpty(pdfDiplomaBase64))
+                        {
+                            <object data="data:application/pdf;base64,@pdfDiplomaBase64" type="application/pdf" width="100%" height="100%">
+                                <embed src="data:application/pdf;base64,@pdfDiplomaBase64" type="application/pdf" width="100%" height="100%" />
+                            </object>
+                        }
+                        else if (generandoDiploma)
+                        {
+                            <div class="d-flex justify-content-center align-items-center h-100">
+                                <div class="text-center">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Generando diploma...</span>
+                                    </div>
+                                    <p class="mt-3">Generando diploma...</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 </div>
 
 
 @code {
     private bool seleccionarTodos = false;
     private string tabActiva = "nacionales";
-
+    private List<SolicitudSeguimientoDto> solicitudes = new();
+    private Solicitud? solicitudSeleccionada = null;
     private List<ListadoPrematricula> alumnos = new()
     {
+        new ListadoPrematricula {Id=1,  Numero = "89451501", NombreCompleto = "Frank Dean",         FechaNacimiento = "28/03/2020", LugarNacimiento = "Lima", Estado = "Registrado" },
+        new ListadoPrematricula {Id=2,  Numero = "89451502", NombreCompleto = "Eddy Torres",        FechaNacimiento = "28/03/2020", LugarNacimiento = "Junin", Estado = "Registrado" },
+        new ListadoPrematricula {Id=3,  Numero = "89451503", NombreCompleto = "Jeffrey Waltz",      FechaNacimiento = "31/03/2020", LugarNacimiento = "Cajamarca", Estado = "Por Subsanar" },
+        new ListadoPrematricula {Id=4,  Numero = "89451504", NombreCompleto = "Jefferson Allen",    FechaNacimiento = "01/03/2020", LugarNacimiento = "Tacna", Estado = "Rechazado" },
+        new ListadoPrematricula {Id=5,  Numero = "89451505", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=6,  Numero = "89451506", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=7,  Numero = "89451507", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=8,  Numero = "89451508", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
+        new ListadoPrematricula {Id=9,  Numero = "89451509", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
+        new ListadoPrematricula {Id=10, Numero = "89451510", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
+        new ListadoPrematricula {Id=11, Numero = "89451511", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
         new ListadoPrematricula {Id=12, Numero = "89451512", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
+        new ListadoPrematricula {Id=13, Numero = "89451513", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Registrado" },
     };
     private List<ListadoPrematricula> alumnos2 = new()
     {
+        new ListadoPrematricula {Id=1,  Numero = "000189451514", NombreCompleto = "Miguel Grau",        FechaNacimiento = "21/08/2000", LugarNacimiento = "Lima", Estado = "Registrado" },
+        new ListadoPrematricula {Id=2,  Numero = "000189451515", NombreCompleto = "Estefany Tito",      FechaNacimiento = "22/04/2010", LugarNacimiento = "Junin", Estado = "Aprobado" },
+        new ListadoPrematricula {Id=3,  Numero = "000189451516", NombreCompleto = "Jorge Walter",       FechaNacimiento = "30/07/2004", LugarNacimiento = "Cajamarca", Estado = "Por Subsanar" },
+        new ListadoPrematricula {Id=4,  Numero = "000189451517", NombreCompleto = "Jennifer Aniston",   FechaNacimiento = "01/01/1999", LugarNacimiento = "Tacna", Estado = "Rechazado" },
         new ListadoPrematricula {Id=5,  Numero = "000189451518", NombreCompleto = "Gina Nuñez",         FechaNacimiento = "04/11/1998", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
     };
+    private string usuarioId = "";
+    private string personaId = "";
+    private string? pdfUrl;
+    private bool mostrarVisorPdf = false;
+    private string nombrePDF = "";
+    private Dictionary<string, string?> respuestasCumple = new();
+    private bool puedeAprobar => respuestasCumple.Values.All(v => v == "si") && respuestasCumple.Count == totalDocumentos;
+    private bool puedeObservar => respuestasCumple.Values.Any(v => v == "no") || respuestasCumple.Values.Any(v => v == null);
+    private int totalDocumentos = 0;
+    private string observacion = string.Empty;
+    private List<EstadoSolicitud> estados = new();
+    private List<Mat_ConsejoRegional> consejos = new();
+    
+    // Variables para diplomas
+    private bool mostrarModalDiploma = false;
+    private string? pdfDiplomaBase64;
+    private string? nombreDiploma;
+    private bool generandoDiploma = false;
+    // loaders por fila
+    private HashSet<int> loadingVerDetalle = new();
+    private HashSet<int> loadingColegiatura = new();
+    private HashSet<int> loadingDiploma = new();
+    private HashSet<int> loadingRegenerar = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated ?? false)
+        {
+            usuarioId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0";
+        }
+        estados = await Http.GetFromJsonAsync<List<EstadoSolicitud>>("api/estadosolicitud") ?? new List<EstadoSolicitud>();
+        consejos = await Http.GetFromJsonAsync<List<Mat_ConsejoRegional>>("api/consejoregional") ?? new List<Mat_ConsejoRegional>();
+        await CargarSolicitudes();
+    }
+
+    private async Task CargarSolicitudes()
+    {
+        try
+        {
+            // Cargar solo solicitudes que fueron aprobadas por el Consejo Regional (estado 2)
+            solicitudes = await Http.GetFromJsonAsync<List<SolicitudSeguimientoDto>>("api/oficinamatricula/solicitudes-pendientes") ?? new List<SolicitudSeguimientoDto>();
+            
+            // Debug: Log the NumeroColegiatura values for state 6
+            foreach (var s in solicitudes.Where(s => s.EstadoId == 6))
+            {
+                Console.WriteLine($"Frontend - Solicitud {s.Id}: NumeroColegiatura = '{s.NumeroColegiatura}'");
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Error en solicitud HTTP: {ex.Message}");
+            solicitudes = new List<SolicitudSeguimientoDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error general: {ex.Message}");
+            solicitudes = new List<SolicitudSeguimientoDto>();
+        }
+    }
 
     private async Task ConfirmarEliminacion(int id)
     {
@@ -240,7 +652,6 @@
 
         if (confirmado)
         {
-            // Eliminar lógica aquí
             Console.WriteLine($"Eliminado: {id}");
         }
     }
@@ -249,12 +660,9 @@
     {
         await JS.InvokeVoidAsync("mostrarModal", "#loadingModal");
 
-        // Simular una descarga
         await Task.Delay(2000);
 
         await JS.InvokeVoidAsync("ocultarModal", "#loadingModal");
-
-        // Aquí puedes agregar la lógica real de descarga
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -307,14 +715,292 @@
                 showConfirmButton = true
             });
         }
-
-        // Aquí iría tu lógica real de firma
     }
-
 
     private void CambiarTab(string tab)
     {
         tabActiva = tab;
+    }
+
+    private async Task VerDetalle(SolicitudSeguimientoDto solicitud)
+    {
+        try
+        {
+            loadingVerDetalle.Add(solicitud.Id);
+            StateHasChanged();
+            solicitudSeleccionada = await Http.GetFromJsonAsync<Solicitud>($"api/oficinamatricula/solicitud-detalle/{solicitud.Id}");
+            
+            // Verificar que la solicitud se cargó correctamente
+            if (solicitudSeleccionada == null)
+            {
+                await JS.InvokeVoidAsync("Swal.fire", "Error", "No se pudo cargar el detalle de la solicitud", "error");
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Error", $"Error al cargar el detalle: {ex.Message}", "error");
+        }
+        finally
+        {
+            loadingVerDetalle.Remove(solicitud.Id);
+            StateHasChanged();
+        }
+    }
+
+    async Task CambiarEstado(int nuevoEstadoId)
+    {
+        string accion = nuevoEstadoId == 6 ? "aprobar" : "observar"; // 6 = aprobado por Oficina Matrícula, 7 = rechazado por Oficina Matrícula
+
+        if (nuevoEstadoId != 6 && string.IsNullOrWhiteSpace(observacion))
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Observación requerida", "Debes ingresar una observación antes de continuar.", "warning");
+            return;
+        }
+
+        var confirmar = await JS.InvokeAsync<bool>("confirmarSweet",
+            $"¿Estás seguro de {accion} esta solicitud?",
+            "Esta acción no se puede deshacer");
+
+        if (!confirmar) return;
+        
+        var estadoNombre = estados.FirstOrDefault(e => e.Id == nuevoEstadoId)?.Nombre ?? "Desconocido";
+        var dto = new SolicitudCambioEstadoDto
+        {
+            SolicitudId = solicitudSeleccionada.Id,
+            NuevoEstadoId = nuevoEstadoId,
+            Observacion = nuevoEstadoId == 6
+                ? $"{estadoNombre}"
+                : observacion,
+            UsuarioCambio = usuarioId
+        };
+
+        await EnviarCambioEstado(dto);
+    }
+
+    private async Task EnviarCambioEstado(SolicitudCambioEstadoDto dto)
+    {
+        string endpoint = dto.NuevoEstadoId == 6 ? "aprobar-solicitud" : "rechazar-solicitud";
+        var resp = await Http.PostAsJsonAsync($"/api/oficinamatricula/{endpoint}", dto);
+
+        if (resp.IsSuccessStatusCode)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Éxito", "Estado actualizado correctamente", "success");
+            solicitudSeleccionada = null;
+            await CargarSolicitudes();
+        }
+        else
+        {
+            var msg = await resp.Content.ReadAsStringAsync();
+            await JS.InvokeVoidAsync("Swal.fire", "Error", msg, "error");
+        }
+    }
+
+    private void VerPdf(string ruta, string nombre)
+    {
+        pdfUrl = $"/api/personaseducacion/documentos-educacion/{ruta}";
+        mostrarVisorPdf = true;
+        nombrePDF = nombre;
+    }
+
+    private void CerrarVisorPdf()
+    {
+        pdfUrl = null;
+        mostrarVisorPdf = false;
+        nombrePDF = "";
+    }
+
+    private async Task GenerarNumeroColegiatura(int solicitudId)
+    {
+        try
+        {
+            loadingColegiatura.Add(solicitudId);
+            StateHasChanged();
+            var confirmar = await JS.InvokeAsync<bool>("confirmarSweet",
+                "¿Generar número de colegiatura?",
+                "Esta acción generará un número único de colegiatura para el médico.");
+
+            if (!confirmar) return;
+
+            var response = await Http.PostAsync($"api/diploma/generar-numero-colegiatura/{solicitudId}", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var jsonDoc = System.Text.Json.JsonDocument.Parse(jsonString);
+                var numeroColegiatura = jsonDoc.RootElement.GetProperty("numeroColegiatura").GetString();
+                
+                await JS.InvokeVoidAsync("Swal.fire", "Éxito", $"Número de colegiatura generado: {numeroColegiatura}", "success");
+                await CargarSolicitudes(); // Recargar para mostrar el número actualizado
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("Swal.fire", "Error", error, "error");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Error", $"Error al generar número de colegiatura: {ex.Message}", "error");
+        }
+        finally
+        {
+            loadingColegiatura.Remove(solicitudId);
+            StateHasChanged();
+        }
+    }
+
+    private async Task GenerarDiploma(int solicitudId)
+    {
+        try
+        {
+            loadingDiploma.Add(solicitudId);
+            StateHasChanged();
+            // Buscar la solicitud en la lista para verificar si tiene número de colegiatura
+            var solicitud = solicitudes.FirstOrDefault(s => s.Id == solicitudId);
+            if (solicitud == null)
+            {
+                await JS.InvokeVoidAsync("Swal.fire", "Error", "No se encontró la solicitud", "error");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(solicitud.NumeroColegiatura))
+            {
+                await JS.InvokeVoidAsync("Swal.fire", "Error", "Debe generar primero el número de colegiatura antes de crear el diploma", "error");
+                return;
+            }
+
+            var confirmar = await JS.InvokeAsync<bool>("confirmarSweet",
+                "¿Generar diploma?",
+                "Esta acción generará el diploma oficial del médico.");
+
+            if (!confirmar) return;
+
+            // Mostrar modal de carga
+            mostrarModalDiploma = true;
+            generandoDiploma = true;
+            StateHasChanged();
+
+            var response = await Http.PostAsync($"api/diploma/generar-diploma/{solicitudId}", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var jsonDoc = System.Text.Json.JsonDocument.Parse(jsonString);
+                pdfDiplomaBase64 = jsonDoc.RootElement.GetProperty("pdfBase64").GetString();
+                nombreDiploma = jsonDoc.RootElement.GetProperty("fileName").GetString();
+                generandoDiploma = false;
+                StateHasChanged();
+                // Refrescar lista para que aparezcan los botones Regenerar/Ver sin F5
+                await CargarSolicitudes();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("Swal.fire", "Error", error, "error");
+                CerrarModalDiploma();
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Error", $"Error al generar diploma: {ex.Message}", "error");
+            CerrarModalDiploma();
+        }
+        finally
+        {
+            loadingDiploma.Remove(solicitudId);
+            StateHasChanged();
+        }
+    }
+
+    private void CerrarModalDiploma()
+    {
+        mostrarModalDiploma = false;
+        pdfDiplomaBase64 = null;
+        nombreDiploma = null;
+        generandoDiploma = false;
+    }
+
+    private async Task VerDiploma(int solicitudId)
+    {
+        try
+        {
+            loadingVerDetalle.Add(solicitudId);
+            StateHasChanged();
+            mostrarModalDiploma = true;
+            generandoDiploma = true;
+            StateHasChanged();
+
+            var response = await Http.GetAsync($"api/diploma/diploma/{solicitudId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var jsonDoc = System.Text.Json.JsonDocument.Parse(jsonString);
+                pdfDiplomaBase64 = jsonDoc.RootElement.GetProperty("pdfBase64").GetString();
+                nombreDiploma = jsonDoc.RootElement.GetProperty("fileName").GetString();
+                generandoDiploma = false;
+                StateHasChanged();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("Swal.fire", "Error", error, "error");
+                CerrarModalDiploma();
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Error", $"Error al obtener diploma: {ex.Message}", "error");
+            CerrarModalDiploma();
+        }
+        finally
+        {
+            loadingVerDetalle.Remove(solicitudId);
+            StateHasChanged();
+        }
+    }
+
+    private async Task RegenerarDiploma(int solicitudId)
+    {
+        try
+        {
+            loadingRegenerar.Add(solicitudId);
+            StateHasChanged();
+            mostrarModalDiploma = true;
+            generandoDiploma = true;
+            StateHasChanged();
+
+            var response = await Http.PostAsync($"api/diploma/regenerar-diploma/{solicitudId}", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var jsonString = await response.Content.ReadAsStringAsync();
+                var jsonDoc = System.Text.Json.JsonDocument.Parse(jsonString);
+                pdfDiplomaBase64 = jsonDoc.RootElement.GetProperty("pdfBase64").GetString();
+                nombreDiploma = jsonDoc.RootElement.GetProperty("fileName").GetString();
+                generandoDiploma = false;
+                StateHasChanged();
+                // Refrescar lista en regeneración también
+                await CargarSolicitudes();
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("Swal.fire", "Error", error, "error");
+                CerrarModalDiploma();
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Error", $"Error al regenerar diploma: {ex.Message}", "error");
+            CerrarModalDiploma();
+        }
+        finally
+        {
+            loadingRegenerar.Remove(solicitudId);
+            StateHasChanged();
+        }
     }
 }
 

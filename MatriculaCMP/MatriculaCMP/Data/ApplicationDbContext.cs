@@ -40,6 +40,7 @@ namespace MatriculaCMP.Server.Data
         public DbSet<Correlativos> Correlativos { get; set; }
         public DbSet<SolicitudHistorialEstado> SolicitudHistorialEstados { get; set; }
         public DbSet<EducacionDocumento> EducacionDocumentos { get; set; }
+        public DbSet<Diploma> Diplomas { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Educacion>()

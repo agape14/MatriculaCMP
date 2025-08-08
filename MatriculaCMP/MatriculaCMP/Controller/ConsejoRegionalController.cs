@@ -16,6 +16,31 @@ namespace MatriculaCMP.Controller
             _context = context;
         }
 
+        [HttpGet("solicitud-detalle/{id}")]
+        public async Task<ActionResult<Solicitud>> GetDetalleSolicitud(int id)
+        {
+            var solicitud = await _context.Solicitudes
+                .Include(s => s.Persona)
+                    .ThenInclude(p => p.GrupoSanguineo)
+                .Include(s => s.Persona)
+                    .ThenInclude(p => p.Educaciones)
+                        .ThenInclude(e => e.Universidad)
+                .Include(s => s.Persona)
+                    .ThenInclude(p => p.Educaciones)
+                        .ThenInclude(e => e.Documento)
+                .Include(s => s.EstadoSolicitud)
+                .Include(s => s.HistorialEstados)
+                    .ThenInclude(h => h.EstadoAnterior)
+                .Include(s => s.HistorialEstados)
+                    .ThenInclude(h => h.EstadoNuevo)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (solicitud == null)
+                return NotFound("Solicitud no encontrada");
+
+            return Ok(solicitud);
+        }
+
         [HttpGet]
         public async Task<IActionResult> Get()
         {

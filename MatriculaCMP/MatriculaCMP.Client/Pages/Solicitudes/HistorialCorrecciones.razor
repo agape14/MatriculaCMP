@@ -1,0 +1,216 @@
+@page "/solicitudes/historial-correcciones/{SolicitudId:int}"
+@using MatriculaCMP.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div class="container-fluid">
+    <!-- start page title -->
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <h4 class="mb-sm-0">Historial de Correcciones</h4>
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        <li class="breadcrumb-item"><a href="javascript: void(0);">Inicio</a></li>
+                        <li class="breadcrumb-item"><a href="/solicitudes/seguimiento">Seguimiento</a></li>
+                        <li class="breadcrumb-item active">Historial Correcciones</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="card-title">Solicitud #@SolicitudId.ToString("D8")</h5>
+                        <button class="btn btn-secondary" @onclick="VolverASeguimiento">
+                            <i class="ri-arrow-left-line"></i> Volver
+                        </button>
+                    </div>
+
+                    @if (historial != null && historial.Any())
+                    {
+                        <div class="timeline">
+                            @foreach (var item in historial)
+                            {
+                                <div class="timeline-item">
+                                    <div class="timeline-marker @GetTimelineMarkerClass(item.EstadoNuevo)">
+                                        <i class="@GetTimelineIcon(item.EstadoNuevo)"></i>
+                                    </div>
+                                    <div class="timeline-content">
+                                        <div class="timeline-header">
+                                            <h6 class="mb-1">@item.EstadoNuevo</h6>
+                                            <small class="text-muted">@item.Fecha.ToString("dd/MM/yyyy HH:mm")</small>
+                                        </div>
+                                        <div class="timeline-body">
+                                            <p class="mb-2">@item.Observacion</p>
+                                            @if (!string.IsNullOrEmpty(item.EstadoAnterior) && item.EstadoAnterior != "N/A")
+                                            {
+                                                <small class="text-muted">
+                                                    <i class="ri-arrow-right-line"></i> 
+                                                    Cambió de <strong>@item.EstadoAnterior</strong> a <strong>@item.EstadoNuevo</strong>
+                                                </small>
+                                            }
+                                        </div>
+                                        <div class="timeline-footer">
+                                            <small class="text-muted">
+                                                <i class="ri-user-line"></i> @item.Usuario
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="ri-time-line" style="font-size: 3rem; color: #6c757d;"></i>
+                            <h5 class="mt-3">No hay historial disponible</h5>
+                            <p class="text-muted">No se encontraron registros de cambios para esta solicitud.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+
+    .timeline::before {
+        content: '';
+        position: absolute;
+        left: 15px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e9ecef;
+    }
+
+    .timeline-item {
+        position: relative;
+        margin-bottom: 30px;
+    }
+
+    .timeline-marker {
+        position: absolute;
+        left: -22px;
+        top: 0;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 12px;
+    }
+
+    .timeline-content {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 20px;
+        margin-left: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .timeline-header {
+        border-bottom: 1px solid #e9ecef;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+
+    .timeline-body {
+        margin-bottom: 15px;
+    }
+
+    .timeline-footer {
+        border-top: 1px solid #e9ecef;
+        padding-top: 10px;
+    }
+
+    .marker-success {
+        background-color: #28a745;
+    }
+
+    .marker-warning {
+        background-color: #ffc107;
+    }
+
+    .marker-danger {
+        background-color: #dc3545;
+    }
+
+    .marker-info {
+        background-color: #17a2b8;
+    }
+
+    .marker-secondary {
+        background-color: #6c757d;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public int SolicitudId { get; set; }
+
+    private List<HistorialCorreccionDto> historial = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarHistorial();
+    }
+
+    private async Task CargarHistorial()
+    {
+        try
+        {
+            historial = await Http.GetFromJsonAsync<List<HistorialCorreccionDto>>($"api/correccionsolicitud/historial-correcciones/{SolicitudId}");
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Error", $"Error al cargar el historial: {ex.Message}", "error");
+        }
+    }
+
+    private string GetTimelineMarkerClass(string estado)
+    {
+        return estado.ToLower() switch
+        {
+            var s when s.Contains("aprobado") => "marker-success",
+            var s when s.Contains("rechazado") || s.Contains("observado") => "marker-danger",
+            var s when s.Contains("registrado") => "marker-info",
+            _ => "marker-secondary"
+        };
+    }
+
+    private string GetTimelineIcon(string estado)
+    {
+        return estado.ToLower() switch
+        {
+            var s when s.Contains("aprobado") => "ri-check-line",
+            var s when s.Contains("rechazado") || s.Contains("observado") => "ri-close-line",
+            var s when s.Contains("registrado") => "ri-file-list-line",
+            _ => "ri-time-line"
+        };
+    }
+
+    private void VolverASeguimiento()
+    {
+        Nav.NavigateTo("/solicitudes/seguimiento");
+    }
+}

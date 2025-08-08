@@ -95,6 +95,7 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<PdfService>();
 builder.Services.AddMemoryCache();
 //builder.Services.AddSingleton<UniversidadScraper>();
 builder.Services.AddScoped<PaisesService>();
@@ -102,6 +103,9 @@ builder.Services.AddScoped<UniversidadesService>();
 builder.Services.AddScoped<UniversidadScraper>();
 builder.Services.AddScoped<MatriculaService>();
 builder.Services.AddScoped<FirmaDigitalService>();
+// Inicializar EmailHelper con la configuración
+EmailHelper.Initialize(builder.Configuration);
+
 var app = builder.Build();
 app.UseCors("AllowAll"); // 🔴 Muy importante: debe estar antes de UseAuthorization
 // Configure the HTTP request pipeline.

@@ -79,6 +79,8 @@ namespace MatriculaCMP.Shared
 
         public string? FotoPath { get; set; }
 
+        public string? NumeroColegiatura { get; set; }
+
         public DateTime FechaRegistro { get; set; } = DateTime.Now;
 
         // Upload (no mapeado)

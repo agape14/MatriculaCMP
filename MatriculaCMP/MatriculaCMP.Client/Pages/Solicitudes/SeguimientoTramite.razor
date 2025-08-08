@@ -84,13 +84,23 @@
                                                     <td>@(s.AreaNombre ?? "")</td>
                                                     <td>@(s.Observaciones ?? "")</td>
                                                     <td>
-                                                        <button class="btn btn-outline-primary btn-sm" @onclick="@(() => VerDetalle(s))">
-                                                            <i class="ri-eye-line"></i> Ver
+                                                        <button class="btn btn-outline-primary btn-sm" disabled="@loadingVer.Contains(s.Id)" @onclick="@(() => VerDetalle(s))">
+                                                            @if (loadingVer.Contains(s.Id)) { <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> } else { <i class="ri-eye-line"></i> }
+                                                            Ver
+                                                        </button>
+                                                        <button class="btn btn-outline-info btn-sm ms-1" disabled="@loadingHistorial.Contains(s.Id)" @onclick="@(() => VerHistorialAsync(s.Id))">
+                                                            @if (loadingHistorial.Contains(s.Id)) { <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> } else { <i class="ri-history-line"></i> }
+                                                            Historial
                                                         </button>
                                                         @if (s.EstadoId==3 || s.EstadoId==5 ||s.EstadoId==7 )
                                                         {
-                                                            <button class="btn btn-outline-warning btn-sm ms-1" @onclick="@(() => EditarSolicitud(s.Id))">
-                                                                <i class="ri-edit-line"></i> Editar
+                                                            <button class="btn btn-outline-warning btn-sm ms-1" disabled="@loadingEditar.Contains(s.Id)" @onclick="@(() => EditarSolicitudAsync(s.Id))">
+                                                                @if (loadingEditar.Contains(s.Id)) { <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> } else { <i class="ri-edit-line"></i> }
+                                                                Editar
+                                                            </button>
+                                                            <button class="btn btn-outline-success btn-sm ms-1" disabled="@loadingReenviar.Contains(s.Id)" @onclick="@(() => ReenviarSolicitud(s.Id))">
+                                                                @if (loadingReenviar.Contains(s.Id)) { <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> } else { <i class="ri-send-plane-line"></i> }
+                                                                Reenviar
                                                             </button>
                                                         }
                                                     </td>
@@ -168,7 +178,7 @@
                                         <p><strong>Nombres:</strong> @solicitudSeleccionada.Persona.NombresCompletos</p>
                                         <p><strong>Documento:</strong> @solicitudSeleccionada.Persona.NumeroDocumento</p>
                                         <p><strong>Fecha Nacimiento:</strong> @solicitudSeleccionada.Persona.FechaNacimiento?.ToString("dd/MM/yyyy")</p>
-                                        <p><strong>Grupo Sanguíneo:</strong> @solicitudSeleccionada.Persona.GrupoSanguineo.Nombre</p>
+                                        <p><strong>Grupo Sanguíneo:</strong> @(solicitudSeleccionada.Persona.GrupoSanguineo?.Nombre ?? "No especificado")</p>
                                     </div>
                                     <div class="col-md-6">
                                         <h6>Foto</h6>
@@ -196,8 +206,8 @@
                                 <div class="row mt-2 p-2">
                                     <div class="col-md-6">
                                         <h6>Educación</h6>
-                                        <p><strong>Universidad:</strong> @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.Universidad?.Nombre </p>
-                                        <p><strong>Fecha Título:</strong>  @solicitudSeleccionada.Persona.Educaciones.FirstOrDefault()?.FechaEmisionTitulo.ToString("dd/MM/yyyy") </p>
+                                        <p><strong>Universidad:</strong> @(solicitudSeleccionada.Persona.Educaciones?.FirstOrDefault()?.Universidad?.Nombre ?? "No especificada") </p>
+                                        <p><strong>Fecha Título:</strong>  @(solicitudSeleccionada.Persona.Educaciones?.FirstOrDefault()?.FechaEmisionTitulo.ToString("dd/MM/yyyy") ?? "No especificada") </p>
                                     </div>
                                     <div class="col-md-6">
                                         <h6>Contacto</h6>
@@ -225,12 +235,12 @@
                                             <li class="list-group-item">
                                                 <!-- Primera fila: nombre y fecha -->
                                                 <div class="d-flex justify-content-between">
-                                                    <button type="button" class="btn btn-@historial.EstadoNuevo?.Color waves-effect waves-light">@historial.EstadoNuevo?.Nombre</button>
+                                                    <button type="button" class="btn btn-@(historial.EstadoNuevo?.Color ?? "secondary") waves-effect waves-light">@(historial.EstadoNuevo?.Nombre ?? "Sin estado")</button>
                                                     <small class="text-muted">El @historial.FechaCambio.ToString("dd/MM/yyyy HH:mm")</small>
                                                 </div>
                                                 <!-- Segunda fila: observación -->
                                                 <div class="mt-2">
-                                                    <strong>@historial.Observacion</strong>
+                                                    <strong>@(historial.Observacion ?? "Sin observaciones")</strong>
                                                 </div>
                                             </li>
                                         }
@@ -333,6 +343,10 @@
     private bool mostrarVisorPdf = false;
     private string nombrePDF = "";
     private List<Mat_ConsejoRegional> consejos = new();
+    private HashSet<int> loadingVer = new();
+    private HashSet<int> loadingHistorial = new();
+    private HashSet<int> loadingEditar = new();
+    private HashSet<int> loadingReenviar = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -373,11 +387,93 @@
     }
     private async Task  VerDetalle(SolicitudSeguimientoDto solicitud)
     {
-        solicitudSeleccionada = await Http.GetFromJsonAsync<Solicitud>($"api/personaseducacion/solicituddet/{solicitud.Id}");
+        try
+        {
+            loadingVer.Add(solicitud.Id);
+            StateHasChanged();
+            solicitudSeleccionada = await Http.GetFromJsonAsync<Solicitud>($"api/personaseducacion/solicituddet/{solicitud.Id}");
+        }
+        finally
+        {
+            loadingVer.Remove(solicitud.Id);
+            StateHasChanged();
+        }
     }
-    private void EditarSolicitud(int solicitudId)
+    private async Task EditarSolicitudAsync(int solicitudId)
     {
-        Nav.NavigateTo($"/solicitudes/prematricula/{solicitudId}");
+        try
+        {
+            loadingEditar.Add(solicitudId);
+            StateHasChanged();
+            await Task.Delay(10);
+            Nav.NavigateTo($"/solicitudes/prematricula/{solicitudId}");
+        }
+        finally
+        {
+            loadingEditar.Remove(solicitudId);
+        }
+    }
+
+    private async Task VerHistorialAsync(int solicitudId)
+    {
+        try
+        {
+            loadingHistorial.Add(solicitudId);
+            StateHasChanged();
+            await Task.Delay(10);
+            Nav.NavigateTo($"/solicitudes/historial-correcciones/{solicitudId}");
+        }
+        finally
+        {
+            loadingHistorial.Remove(solicitudId);
+        }
+    }
+
+    private async Task ReenviarSolicitud(int solicitudId)
+    {
+        loadingReenviar.Add(solicitudId);
+        StateHasChanged();
+        var confirmar = await JS.InvokeAsync<bool>("confirmarSweet",
+            "¿Está seguro de reenviar esta solicitud?",
+            "La solicitud será enviada nuevamente al área correspondiente para revisión.");
+
+        if (!confirmar)
+        {
+            loadingReenviar.Remove(solicitudId);
+            StateHasChanged();
+            return;
+        }
+
+        try
+        {
+            var response = await Http.PostAsync($"api/correccionsolicitud/reenviar-solicitud/{solicitudId}", null);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                await JS.InvokeVoidAsync("Swal.fire", "Éxito", "Solicitud reenviada exitosamente", "success");
+                var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+                var user = authState.User;
+                var personaClaim = user.FindFirst("PersonaId")?.Value ?? "0";
+                if (int.TryParse(personaClaim, out var personaIdInt))
+                {
+                    await CargarSolicitudes(personaIdInt);
+                }
+            }
+            else
+            {
+                var errorMessage = await response.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("Swal.fire", "Error", errorMessage, "error");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Error", $"Error al reenviar la solicitud: {ex.Message}", "error");
+        }
+        finally
+        {
+            loadingReenviar.Remove(solicitudId);
+            StateHasChanged();
+        }
     }
     private string GetBadgeColor(string estado)
     {

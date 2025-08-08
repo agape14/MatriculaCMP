@@ -63,10 +63,18 @@
                                     </div>
 
                                     <div class="mt-4 text-center">
-                                        <button class="btn btn-primary  waves-effect waves-light" @onclick="IniciarSesion">
-                                            <i class="bi bi-box-arrow-in-right me-2"></i> Iniciar Sesión
+                                        <button class="btn btn-primary  waves-effect waves-light" disabled="@iniciando" @onclick="IniciarSesion">
+                                            @if (iniciando)
+                                            {
+                                                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-box-arrow-in-right me-2"></i>
+                                            }
+                                            Iniciar Sesión
                                         </button>
-
+                                        
                                     </div>
 
                                     <div class="mt-4 text-center">
@@ -146,6 +154,8 @@
 
         try
         {
+            iniciando = true;
+            StateHasChanged();
             var resultado = await Http.PostAsJsonAsync("api/Usuario/Login", usuario);
 
             if (resultado.IsSuccessStatusCode)
@@ -185,6 +195,11 @@
             await Task.Delay(5000);
             mensajeError = null;
         }
+        finally
+        {
+            iniciando = false;
+            StateHasChanged();
+        }
 
         StateHasChanged();
     }
@@ -210,4 +225,5 @@
     {
         passwordFieldType = passwordFieldType == "password" ? "text" : "password";
     }
+    private bool iniciando = false;
 }
