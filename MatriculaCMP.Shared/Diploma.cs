@@ -22,6 +22,7 @@ namespace MatriculaCMP.Shared
         public DateTime FechaEmision { get; set; } = DateTime.Now;
         
         public string? RutaPdf { get; set; }
+        public string? RutaPdfFirmado { get; set; }
         
         public DateTime FechaCreacion { get; set; } = DateTime.Now;
         

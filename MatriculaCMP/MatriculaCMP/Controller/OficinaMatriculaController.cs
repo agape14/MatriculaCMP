@@ -42,7 +42,7 @@ namespace MatriculaCMP.Controller
                         .ThenInclude(e => e.Universidad)
                 .Include(s => s.Area)
                 .Include(s => s.EstadoSolicitud)
-                .Where(s => s.EstadoSolicitudId == 2 || s.EstadoSolicitudId == 6) // Solicitudes aprobadas por CR (2) y OM (6)
+                .Where(s => s.EstadoSolicitudId == 2 || s.EstadoSolicitudId == 6 || s.EstadoSolicitudId == 11) // + Estado 11: Proceso finalizado - Entregado (firmado por Decano)
                 .OrderByDescending(s => s.FechaSolicitud)
                 .ToListAsync();
 

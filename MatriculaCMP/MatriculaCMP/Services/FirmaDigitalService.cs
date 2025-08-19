@@ -40,15 +40,32 @@ namespace MatriculaCMP.Services
                 {
                     _logger.LogInformation($"Scopes del token: {token.scope}");
                 }
-                // Obtener el documento a firmar (simplificado - deberías implementar esta lógica)
-                string rutaDocumento = ObtenerRutaDocumento(request.IdExpedienteDocumento, request.TipoDocumentoFirmado);
-                byte[] pdfBytes = await File.ReadAllBytesAsync(rutaDocumento);
+                // Obtener el documento a firmar: exactamente el preparado en wwwroot/firmas_digitales/documento_{SolicitudId}.pdf
+                string rutaDocumento = Path.Combine(_config["FirmaDigital:RutaArchivos"], $"documento_{request.IdExpedienteDocumento}.pdf");
+                // Abrir en modo compartido lectura para evitar conflictos de bloqueo
+                byte[] pdfBytes;
+                using (var fs = new FileStream(rutaDocumento, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    using var ms = new MemoryStream();
+                    await fs.CopyToAsync(ms);
+                    pdfBytes = ms.ToArray();
+                }
                 string pdfBase64 = Convert.ToBase64String(pdfBytes);
                 string nombreArchivo = Path.GetFileName(rutaDocumento);
 
                 bool indAval = true; //request.IdAvalMedico > 0; // Simplificación de la lógica de aval
 
-                var responseEnvio = await EnviarFirmaCargaPendienteAsync(token.access_token, pdfBase64, nombreArchivo, indAval);
+                // Seleccionar coordenadas según el actor/etapa (TipoDocumentoFirmado como selector temporal)
+                string coordenadas = request.TipoDocumentoFirmado switch
+                {
+                    1 => _config["FirmaDigital:CoordenadasFirmaCRSecretario"],
+                    2 => _config["FirmaDigital:CoordenadasFirmaCRDecano"],
+                    3 => _config["FirmaDigital:CoordenadasFirmaSGSecretario"],
+                    4 => _config["FirmaDigital:CoordenadasFirmaDecano"],
+                    _ => _config["FirmaDigital:CoordenadasFirmador"]
+                } ?? _config["FirmaDigital:CoordenadasFirmador"];
+
+                var responseEnvio = await EnviarFirmaCargaPendienteAsync(token.access_token, pdfBase64, nombreArchivo, indAval, coordenadas);
 
                 return responseEnvio ?? new UploadResponse { codigoFirma = -1, descripcion = "No se pudo cargar el documento al servicio" };
             }
@@ -73,16 +90,24 @@ namespace MatriculaCMP.Services
 
                 if (responseDescarga != null && responseDescarga.estado > 0 && !string.IsNullOrEmpty(responseDescarga.archivoFirmado))
                 {
-                    // Guardar el archivo firmado
-                    string nombreArchivo = $"CertificadoFirmado{request.IdExpedienteDocumento}{DateTime.Now:ddMMyyyyHHmmss}.pdf";
-                    string rutaArchivo = Path.Combine(_config["FirmaDigital:RutaArchivos"], nombreArchivo);
+                    // Guardar el archivo firmado con un nombre determinístico por solicitud
+                    string nombreArchivo = $"documento_{request.IdExpedienteDocumento}_firmado.pdf";
+                    string rutaCarpeta = _config["FirmaDigital:RutaArchivos"];
+                    Directory.CreateDirectory(rutaCarpeta);
+                    string rutaArchivo = Path.Combine(rutaCarpeta, nombreArchivo);
 
                     byte[] archivoBytes = Convert.FromBase64String(responseDescarga.archivoFirmado);
                     await File.WriteAllBytesAsync(rutaArchivo, archivoBytes);
 
-                    // Aquí deberías llamar a tu servicio para actualizar la base de datos
-                    // Ejemplo simplificado:
-                    // var mensaje = await _documentoService.ActualizarDatosDocumentoFirmadoAsync(...);
+                    // Reemplazar el PDF de trabajo para próximas firmas: documento_{id}.pdf = firmado
+                    try
+                    {
+                        var rutaTrabajo = Path.Combine(rutaCarpeta, $"documento_{request.IdExpedienteDocumento}.pdf");
+                        File.Copy(rutaArchivo, rutaTrabajo, overwrite: true);
+                    }
+                    catch { }
+
+                    // Nota: actualización de BD y avance de estado se realizará en el controlador que conoce Solicitud/Diploma
 
                     return responseDescarga;
                 }
@@ -220,7 +245,7 @@ namespace MatriculaCMP.Services
 
 
         private async Task<UploadResponse> EnviarFirmaCargaPendienteAsync(string token, string archivoBase64,
-            string nombreArchivo, bool indAval)
+            string nombreArchivo, bool indAval, string coordenadas)
         {
             try
             {
@@ -251,7 +276,7 @@ namespace MatriculaCMP.Services
                     {
                         posicionFirma = "CO",
                         ubicacionPagina = "PP",
-                        coordenadas = _config["FirmaDigital:CoordenadasFirmador"],
+                        coordenadas = coordenadas,
                         estiloFirma = "ID",
                         invisible = "1",
                         aplicarImagen = "0",

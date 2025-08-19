@@ -25,8 +25,9 @@ namespace MatriculaCMP.Controller
         {
             try
             {
+                // Para CR mostramos items en estado 6 (aprobado Of. Matrícula) y los pendientes de firma CR (8 y 9)
                 var registros = await _context.Solicitudes
-                    .Where(s => s.EstadoSolicitudId == 6)
+                    .Where(s => s.EstadoSolicitudId == 6 || s.EstadoSolicitudId == 8 || s.EstadoSolicitudId == 9)
                     .Include(s => s.Persona)
                     .Include(s => s.EstadoSolicitud)
                     .Join(_context.Diplomas,
@@ -57,6 +58,80 @@ namespace MatriculaCMP.Controller
             }
         }
 
+        [HttpGet("sg-para-firma")]
+        public async Task<IActionResult> ListarParaFirmaSG()
+        {
+            try
+            {
+                var registros = await _context.Solicitudes
+                    .Where(s => s.EstadoSolicitudId == 9)
+                    .Include(s => s.Persona)
+                    .Include(s => s.EstadoSolicitud)
+                    .Join(_context.Diplomas,
+                        s => s.Id,
+                        d => d.SolicitudId,
+                        (s, d) => new
+                        {
+                            SolicitudId = s.Id,
+                            NumeroSolicitud = s.NumeroSolicitud,
+                            FechaSolicitud = s.FechaSolicitud,
+                            EstadoId = s.EstadoSolicitudId,
+                            EstadoNombre = s.EstadoSolicitud.Nombre,
+                            PersonaId = s.PersonaId,
+                            NumeroDocumento = s.Persona.NumeroDocumento,
+                            NombreCompleto = s.Persona.NombresCompletos,
+                            NumeroColegiatura = s.Persona.NumeroColegiatura,
+                            DiplomaFechaEmision = d.FechaEmision,
+                            RutaPdf = d.RutaPdf
+                        })
+                    .OrderBy(r => r.NumeroSolicitud)
+                    .ToListAsync();
+
+                return Ok(registros);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error al listar diplomas para firma SG: {ex.Message}");
+            }
+        }
+
+        [HttpGet("decanato-para-firma")]
+        public async Task<IActionResult> ListarParaFirmaDecanato()
+        {
+            try
+            {
+                var registros = await _context.Solicitudes
+                    .Where(s => s.EstadoSolicitudId == 10 || s.EstadoSolicitudId == 11)
+                    .Include(s => s.Persona)
+                    .Include(s => s.EstadoSolicitud)
+                    .Join(_context.Diplomas,
+                        s => s.Id,
+                        d => d.SolicitudId,
+                        (s, d) => new
+                        {
+                            SolicitudId = s.Id,
+                            NumeroSolicitud = s.NumeroSolicitud,
+                            FechaSolicitud = s.FechaSolicitud,
+                            EstadoId = s.EstadoSolicitudId,
+                            EstadoNombre = s.EstadoSolicitud.Nombre,
+                            PersonaId = s.PersonaId,
+                            NumeroDocumento = s.Persona.NumeroDocumento,
+                            NombreCompleto = s.Persona.NombresCompletos,
+                            NumeroColegiatura = s.Persona.NumeroColegiatura,
+                            DiplomaFechaEmision = d.FechaEmision,
+                            RutaPdf = d.RutaPdf
+                        })
+                    .OrderBy(r => r.NumeroSolicitud)
+                    .ToListAsync();
+
+                return Ok(registros);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error al listar diplomas para firma Decanato: {ex.Message}");
+            }
+        }
+
         [HttpPost("preparar-firma/{solicitudId}")]
         public async Task<IActionResult> PrepararFirma(int solicitudId)
         {
@@ -68,7 +143,12 @@ namespace MatriculaCMP.Controller
                     return NotFound("Diploma no encontrado");
                 }
 
-                var sourcePath = Path.Combine(Directory.GetCurrentDirectory(), "Resources", "Diplomas", diploma.RutaPdf ?? string.Empty);
+                // Si ya existe una versión firmada parcial, usarla como base de trabajo; si no, usar el original
+                var firmadosDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "firmas_digitales");
+                var firmadoTrabajo = Path.Combine(firmadosDir, $"documento_{solicitudId}_firmado.pdf");
+                var sourcePath = System.IO.File.Exists(firmadoTrabajo)
+                    ? firmadoTrabajo
+                    : Path.Combine(Directory.GetCurrentDirectory(), "Resources", "Diplomas", diploma.RutaPdf ?? string.Empty);
                 if (!System.IO.File.Exists(sourcePath))
                 {
                     return NotFound("Archivo del diploma no encontrado");
@@ -78,7 +158,28 @@ namespace MatriculaCMP.Controller
                 Directory.CreateDirectory(targetDir);
                 var targetPath = Path.Combine(targetDir, $"documento_{solicitudId}.pdf");
 
-                System.IO.File.Copy(sourcePath, targetPath, overwrite: true);
+                // Si el archivo de trabajo ya existe, no intentar sobreescribir si podría estar en uso
+                if (!System.IO.File.Exists(targetPath))
+                {
+                    System.IO.File.Copy(sourcePath, targetPath, overwrite: true);
+                }
+                else
+                {
+                    // Si la fuente es más reciente, intentar actualizar, pero tolerar bloqueo por uso
+                    try
+                    {
+                        var srcTime = System.IO.File.GetLastWriteTimeUtc(sourcePath);
+                        var tgtTime = System.IO.File.GetLastWriteTimeUtc(targetPath);
+                        if (srcTime > tgtTime)
+                        {
+                            System.IO.File.Copy(sourcePath, targetPath, overwrite: true);
+                        }
+                    }
+                    catch (IOException)
+                    {
+                        // Ignorar si el archivo está en uso; usar el existente
+                    }
+                }
 
                 var publicUrl = $"/firmas_digitales/documento_{solicitudId}.pdf";
                 return Ok(new { success = true, url = publicUrl });

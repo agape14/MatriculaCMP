@@ -44,6 +44,7 @@ namespace MatriculaCMP.Shared
             public int IdExpedienteDocumento { get; set; }
             public int IdExpedienteDocumentoFirmante { get; set; }
             public int CodigoFirma { get; set; }
+            public int? TipoDocumentoFirmado { get; set; }
         }
 
         public class Mensaje

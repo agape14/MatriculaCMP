@@ -156,6 +156,20 @@
                                                 </button>
                                                             }
                                                         }
+                                                        @if (s.EstadoId == 11)
+                                                        {
+                                                            <button class="btn btn-outline-success btn-sm ms-1" disabled="@loadingVerDetalle.Contains(s.Id)" @onclick="@(() => VerDiplomaFirmadoDecano(s.Id))" title="Ver Diploma Firmado (Decano)">
+                                                                @if (loadingVerDetalle.Contains(s.Id))
+                                                                {
+                                                                    <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <i class="ri-verified-badge-line align-middle me-1"></i>
+                                                                }
+                                                                Ver Diploma Firmado
+                                                            </button>
+                                                        }
                                                     </div>
                                             </td>
                                             </tr>
@@ -953,6 +967,39 @@
         {
             await JS.InvokeVoidAsync("Swal.fire", "Error", $"Error al obtener diploma: {ex.Message}", "error");
             CerrarModalDiploma();
+        }
+        finally
+        {
+            loadingVerDetalle.Remove(solicitudId);
+            StateHasChanged();
+        }
+    }
+
+    private async Task VerDiplomaFirmadoDecano(int solicitudId)
+    {
+        try
+        {
+            loadingVerDetalle.Add(solicitudId);
+            StateHasChanged();
+
+            // Mostrar directamente el PDF firmado por Decano
+            var url = $"/firmas_digitales/documento_{solicitudId}_firmado.pdf";
+
+            // Validar que el recurso exista accesible
+            var resp = await Http.GetAsync(url);
+            if (!resp.IsSuccessStatusCode)
+            {
+                await JS.InvokeVoidAsync("Swal.fire", "Error", "No se encontró el PDF firmado por Decano.", "error");
+                return;
+            }
+
+            pdfUrl = url;
+            nombrePDF = $"Diploma_Firmado_{solicitudId}.pdf";
+            mostrarVisorPdf = true;
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Error", $"Error al abrir PDF firmado: {ex.Message}", "error");
         }
         finally
         {

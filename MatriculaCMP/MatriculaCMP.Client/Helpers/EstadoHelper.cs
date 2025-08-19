@@ -13,6 +13,12 @@
                 5 => "danger",    // Rechazado por Secretaria General
                 6 => "success",   // Aprobado por Of. Matrícula
                 7 => "danger",    // Rechazado por Of. Matrícula
+                8 => "warning",   // Pendiente Firma Secretario CR
+                9 => "warning",   // Pendiente Firma Decano CR
+                10 => "warning",  // Pendiente Firma Secretario General
+                11 => "warning",  // Pendiente Firma Decano
+                12 => "info",     // Diploma Firmado - Pendiente Entrega
+                13 => "success",  // Proceso finalizado - Entregado
                 _ => "light"
             };
         }
