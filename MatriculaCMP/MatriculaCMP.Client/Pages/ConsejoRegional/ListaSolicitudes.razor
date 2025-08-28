@@ -30,36 +30,33 @@
         <div class="col-lg-12">
             <div class="card">
                 <div class="card-body  pt-0">
-                    <ul class="nav nav-tabs nav-tabs-custom mb-4">
-                        <li class="nav-item">
-                            <a class="nav-link fw-bold p-3 @(tabActiva == "nacionales" ? "active" : "")"
-                               @onclick='() => CambiarTab("nacionales")'>Solicitudes Nacionales</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link fw-bold p-3 @(tabActiva == "extranjeros" ? "active" : "")"
-                               @onclick='() => CambiarTab("extranjeros")'>Solicitudes Extranjeros</a>
-                        </li>
-                    </ul>
-                    @if (tabActiva == "nacionales")
-                    {
-                        <div class="alert alert-primary mb-2 mt-2" role="alert">
-                            <div class="button-items">
-                                <button class="btn btn-success" @onclick="FirmarDigitalmente">
-                                    <i class="ri-checkbox-circle-line align-middle me-2"></i> Validar Solicitudes
-                                </button>
-                                <button class="btn btn-danger" @onclick="FirmarDigitalmente">
-                                    <i class=" ri-close-circle-line align-middle me-2"></i> Observar Solicitudes
-                                </button>
-                                @* <button type="button" class="btn btn-light">
-                                    <i class="ri-file-text-line align-middle me-2"></i> Generar Formatos
-                                </button> *@
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3 px-2 px-sm-3">
+                        <div class="form-check">
+                            <input type="checkbox" id="chkTodos" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasSolicitudes" />
+                            <label class="form-check-label" for="chkTodos">Seleccionar todos</label>
+                        </div>
+                        <button class="btn btn-success" @onclick="AprobarSeleccionados">
+                            <i class="ri-checkbox-circle-line align-middle me-2"></i> Validar seleccionados
+                        </button>
+                        <button class="btn btn-danger" @onclick="ObservarSeleccionados">
+                            <i class="ri-close-circle-line align-middle me-2"></i> Observar seleccionados
+                        </button>
+                        <span class="text-muted small">Seleccionados: @seleccionados.Count</span>
+                        <div class="ms-auto" style="min-width:260px;max-width:340px;">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="ri-search-2-line"></i></span>
+                                <input class="form-control" placeholder="Buscar..." @oninput="OnSearchInput" />
                             </div>
                         </div>
+                    </div>
 
-                        <div class="table-responsive">
-                            <table class="table table-centered datatable">
+                    <div class="table-responsive">
+                            <table id="tblListadoConsejoRegional" class="table table-hover align-middle datatable">
                                 <thead class="thead-light">
                                     <tr>
+                                        <th style="width:42px">
+                                            <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasSolicitudes" />
+                                        </th>
                                         <th>#</th>
                                         <th>Nombres <br /> Completos</th>
                                         <th>Nro. <br /> Solicitud</th>
@@ -76,6 +73,9 @@
                                         foreach (var s in solicitudes)
                                         {
                                             <tr>
+                                                <td>
+                                                    <input type="checkbox" class="form-check-input" checked="@seleccionados.Contains(s.Id)" @onchange="(()=>ToggleSeleccion(s.Id))" />
+                                                </td>
                                                 <td>@index</td>
                                                 <td>@s.PersonaNombre</td>
                                                 <td>@s.NumeroSolicitud.ToString("D8")</td>
@@ -120,80 +120,6 @@
                                 </tbody>
                             </table>
                         </div>
-                    }
-                    else if (tabActiva == "extranjeros")
-                    {
-                        <div class="alert alert-primary mb-2 mt-2" role="alert">
-                            <div class="button-items">
-                                <button class="btn btn-success" @onclick="FirmarDigitalmente">
-                                    <i class="ri-checkbox-circle-line align-middle me-2"></i> Validar Solicitudes
-                                </button>
-                                <button class="btn btn-danger" @onclick="FirmarDigitalmente">
-                                    <i class=" ri-close-circle-line align-middle me-2"></i> Observar Solicitudes
-                                </button>
-                                <button type="button" class="btn btn-info">
-                                    <i class="ri-fingerprint-fill align-middle me-2"></i> Firmar Solicitudes
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="table-responsive">
-                            <table class="table table-centered datatable">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th>
-                                            <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
-                                        </th>
-                                        <th>Carnet Ext.</th>
-                                        <th>Nombres Completos</th>
-                                        <th>Fecha Nac.</th>
-                                        <th>Lugar Nac.</th>
-                                        <th>Estado</th>
-                                        <th>Formatos</th>
-                                       
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var alumno in alumnos2)
-                                    {
-                                        <tr @onclick="() => alumno.Seleccionado = !alumno.Seleccionado" style="cursor: pointer;">
-                                            <td>
-                                                <input type="checkbox" class="form-check-input" @bind="alumno.Seleccionado" @onclick:stopPropagation="true" />
-                                            </td>
-                                            <td>@alumno.Numero</td>
-                                            <td>@alumno.NombreCompleto</td>
-                                            <td>@alumno.FechaNacimiento</td>
-                                            <td>@alumno.LugarNacimiento</td>
-                                            <td>
-                                                @if (alumno.Estado == "Registrado")
-                                                {
-                                                    <div class="badge bg-info">Registrado</div>
-                                                }
-                                                else if (alumno.Estado == "Por Subsanar")
-                                                {
-                                                    <div class="badge bg-warning">Por Subsanar</div>
-                                                }
-                                                else if (alumno.Estado == "Rechazado")
-                                                {
-                                                    <div class="badge bg-danger">Rechazado</div>
-                                                }
-                                                else if (alumno.Estado == "Aprobado")
-                                                {
-                                                    <div class="badge bg-success">Aprobado</div>
-                                                }
-                                            </td>
-                                            <td>
-                                                <button class="btn btn-light btn-rounded" @onclick="DescargarFormato" disabled>
-                                                    Descargar <i class="mdi mdi-download ms-2"></i>
-                                                </button>
-                                            </td>
-                                           
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
 
                     <!-- Modal Loading -->
                     <div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
@@ -490,11 +416,12 @@
 
 @code {
     private bool seleccionarTodos = false;
-    private string tabActiva = "nacionales";
     private List<SolicitudSeguimientoDto> solicitudes = new();
     private Solicitud? solicitudSeleccionada = null;
     private HashSet<int> loadingVerDetalle = new();
+    private HashSet<int> seleccionados = new();
     private bool cambiandoEstado = false;
+    private string filtroTabla = string.Empty;
     private List<ListadoPrematricula> alumnos = new()
     {
         new ListadoPrematricula {Id=1,  Numero = "89451501", NombreCompleto = "Frank Dean",         FechaNacimiento = "28/03/2020", LugarNacimiento = "Lima", Estado = "Registrado" },
@@ -551,16 +478,97 @@
     {
         try
         {
-            // Mostrar solo solicitudes en estado 1 (Registrado)
             solicitudes = await Http.GetFromJsonAsync<List<SolicitudSeguimientoDto>>("api/personaseducacion/solicitudes-registradas");
         }
         catch (HttpRequestException ex)
         {
             Console.WriteLine($"Error en solicitud HTTP: {ex.Message}");
-            // Puedes mostrar un mensaje de error con JS si lo deseas
         }
     }
 
+    private void SeleccionarTodasSolicitudes(ChangeEventArgs e)
+    {
+        seleccionarTodos = (bool)e.Value;
+        seleccionados.Clear();
+        if (seleccionarTodos)
+        {
+            foreach (var s in solicitudes) seleccionados.Add(s.Id);
+        }
+    }
+
+    private void ToggleSeleccion(int id)
+    {
+        if (seleccionados.Contains(id)) seleccionados.Remove(id); else seleccionados.Add(id);
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        filtroTabla = e?.Value?.ToString() ?? string.Empty;
+        await JS.InvokeVoidAsync("inicializarDataTableFiltro", "#tblListadoConsejoRegional", filtroTabla);
+    }
+
+    private async Task AprobarSeleccionados()
+    {
+        if (!seleccionados.Any())
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Validación", "Seleccione al menos una solicitud", "warning");
+            return;
+        }
+        var confirm = await JS.InvokeAsync<bool>("confirmarSweet", "¿Aprobar solicitudes seleccionadas?", $"Se aprobarán {seleccionados.Count} solicitudes.");
+        if (!confirm) return;
+        try
+        {
+            cambiandoEstado = true; StateHasChanged();
+            var ok = new List<int>(); var fail = new List<int>();
+            foreach (var id in seleccionados.ToList())
+            {
+                var dto = new SolicitudCambioEstadoDto
+                {
+                    SolicitudId = id,
+                    NuevoEstadoId = 2,
+                    Observacion = "Aprobado",
+                    UsuarioCambio = usuarioId
+                };
+                var resp = await Http.PostAsJsonAsync("/api/personaseducacion/cambiar-estado", dto);
+                if (resp.IsSuccessStatusCode) ok.Add(id); else fail.Add(id);
+            }
+            await CargarSolicitudes(); seleccionados.Clear(); seleccionarTodos = false;
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = "Resultado", html = $"Aprobados: {ok.Count}<br/>Fallidos: {fail.Count}" });
+        }
+        finally { cambiandoEstado = false; StateHasChanged(); }
+    }
+
+    private async Task ObservarSeleccionados()
+    {
+        if (!seleccionados.Any())
+        {
+            await JS.InvokeVoidAsync("Swal.fire", "Observación", "Seleccione al menos una solicitud", "warning");
+            return;
+        }
+        // Solicitar una sola observación para todos
+        var obs = await JS.InvokeAsync<string>("solicitarObservacionUnica");
+        if (string.IsNullOrWhiteSpace(obs)) return;
+        try
+        {
+            cambiandoEstado = true; StateHasChanged();
+            var ok = new List<int>(); var fail = new List<int>();
+            foreach (var id in seleccionados.ToList())
+            {
+                var dto = new SolicitudCambioEstadoDto
+                {
+                    SolicitudId = id,
+                    NuevoEstadoId = 3,
+                    Observacion = obs,
+                    UsuarioCambio = usuarioId
+                };
+                var resp = await Http.PostAsJsonAsync("/api/personaseducacion/cambiar-estado", dto);
+                if (resp.IsSuccessStatusCode) ok.Add(id); else fail.Add(id);
+            }
+            await CargarSolicitudes(); seleccionados.Clear(); seleccionarTodos = false;
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = "Resultado", html = $"Observadas: {ok.Count}<br/>Fallidas: {fail.Count}" });
+        }
+        finally { cambiandoEstado = false; StateHasChanged(); }
+    }
 
     private async Task ConfirmarEliminacion(int id)
     {
@@ -591,58 +599,6 @@
         {
             await JS.InvokeVoidAsync("inicializarDataTable", "#tblListadoConsejoRegional");
         }
-    }
-
-    private void SeleccionarTodasFilas(ChangeEventArgs e)
-    {
-        seleccionarTodos = (bool)e.Value;
-        foreach (var alumno in alumnos)
-        {
-            alumno.Seleccionado = seleccionarTodos;
-        }
-    }
-
-    private async Task FirmarDigitalmente()
-    {
-        var seleccionados = alumnos.Where(a => a.Seleccionado).ToList();
-
-        if (!seleccionados.Any())
-        {
-            await JS.InvokeVoidAsync("Swal.fire", new
-            {
-                icon = "warning",
-                title = "Seleccione al menos un registro para firmar",
-                showConfirmButton = true
-            });
-            return;
-        }
-
-        if (seleccionados.Count == 1)
-        {
-            await JS.InvokeVoidAsync("Swal.fire", new
-            {
-                icon = "success",
-                title = $"Firma individual para: {seleccionados.First().NombreCompleto}",
-                showConfirmButton = true
-            });
-        }
-        else
-        {
-            await JS.InvokeVoidAsync("Swal.fire", new
-            {
-                icon = "info",
-                title = $"Firma masiva para {seleccionados.Count} alumnos",
-                showConfirmButton = true
-            });
-        }
-
-        // Aquí iría tu lógica real de firma
-    }
-
-
-    private void CambiarTab(string tab)
-    {
-        tabActiva = tab;
     }
 
     private async Task  VerDetalle(SolicitudSeguimientoDto solicitud)
@@ -761,4 +717,25 @@
         }
     }
 }
+
+<script>
+    // Vincula DataTable existente y expone método para buscar
+    window.inicializarDataTableFiltro = function (selector, q) {
+        try {
+            var t = $(selector).DataTable();
+            if (!t) return;
+            t.search(q || '').draw();
+        } catch (e) { }
+    }
+    // Solicita observación única vía SweetAlert
+    window.solicitarObservacionUnica = async function(){
+        const { value: text } = await Swal.fire({
+            title: 'Observación para las seleccionadas',
+            input: 'text', inputLabel: 'Motivo', inputPlaceholder: 'Ingrese observación',
+            inputValidator: (v)=> !v || v.trim()==='' ? 'Debe ingresar una observación' : null,
+            showCancelButton: true, confirmButtonText: 'Aplicar a todas', cancelButtonText: 'Cancelar'
+        });
+        return text || '';
+    }
+</script>
 

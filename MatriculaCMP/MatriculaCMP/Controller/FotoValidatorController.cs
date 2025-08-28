@@ -210,36 +210,38 @@ namespace MatriculaCMP.Controller
 		{
 			return @"Evalúa esta imagen como VALIDA para matrícula profesional SOLO si cumple TODOS estos requisitos (responde EXCLUSIVAMENTE 'sí' o 'no'):
 
-			1. [FONDO] Color claro (blanco o tono claro uniforme) sin patrones ni objetos visibles
-			2. [VESTIMENTA] Atuendo formal (terno/con corbata o camisa formal de manga larga)
-			3. [POSTURA] Rostro frontal con mirada al frente (se permite ligera inclinación natural)
-			4. [ROSTRO] Claramente visible sin obstrucciones (anteojos permitidos si no reflejan luz)
-			5. [COMPOSICIÓN] Una sola persona ocupando al menos el 60% de la imagen
+1) FONDO: Blanco uniforme (tipo pasaporte/carnet). Sin texturas, sin objetos, sin colores añadidos, sin recortes ni fondos editados. Se tolera SOMBRA MUY SUAVE.
 
-			Consideraciones adicionales:
-			- Se permiten sombras suaves naturales
-			- Barba/cabello bien arreglados son aceptables
-			- Corbata preferible pero no obligatoria si la vestimenta es formal
+2) VESTIMENTA (HOMBRE): Saco/terno o chaqueta formal y camisa de vestir. Corbata preferible. NO polos/camisetas, ropa deportiva, capuchas, gorros ni estampados llamativos.
 
-			¿Cumple TODOS los requisitos esenciales?";
+3) POSTURA Y EXPRESIÓN: Rostro frontal, cabeza recta, hombros nivelados, mirada al frente, boca cerrada, expresión neutra (sin gestos de posar). NO selfies (brazo extendido) ni inclinación evidente.
+
+4) ROSTRO Y ACCESORIOS: Cara completamente visible, sin obstrucciones. Lentes permitidos SOLO si no reflejan luz. Sin gafas de sol, sombreros, audífonos, mascarillas. Cabello no debe cubrir ojos/rostro.
+
+5) COMPOSICIÓN Y CALIDAD: Una sola persona, encuadre tipo pasaporte (rostro y parte superior del torso ~70–80% del alto). Imagen nítida, bien iluminada, sin filtros ni desenfoque, color natural.
+
+RECHAZA si detectas cualquiera de: fondo no blanco, ropa informal, pose de estudio/fashion, selfie, filtros, recorte inadecuado, ángulo lateral, baja iluminación/ruido, múltiples personas, gestos exagerados.
+
+¿Cumple TODOS los requisitos?";
 		}
 
 		private string BuildFemaleValidationPrompt()
 		{
 			return @"Evalúa esta imagen como VALIDA para matrícula profesional SOLO si cumple TODOS estos requisitos (responde EXCLUSIVAMENTE 'sí' o 'no'):
 
-			1. [FONDO] Color claro (blanco o tono claro uniforme) sin patrones ni objetos visibles
-			2. [VESTIMENTA] Atuendo formal (blusa/chaqueta profesional o vestido formal)
-			3. [POSTURA] Rostro frontal con mirada al frente (se permite ligera inclinación natural)
-			4. [ROSTRO] Claramente visible sin obstrucciones (maquillaje discreto permitido)
-			5. [COMPOSICIÓN] Una sola persona ocupando al menos el 60% de la imagen
+1) FONDO: Blanco uniforme (tipo pasaporte/carnet). Sin texturas, sin objetos, sin colores añadidos, sin recortes ni fondos editados. Se tolera SOMBRA MUY SUAVE.
 
-			Consideraciones adicionales:
-			- Se permiten aretes pequeños y collar discreto
-			- Cabello recogido o suelto mientras no tape el rostro
-			- Blusa con escote moderado aceptable
+2) VESTIMENTA (MUJER): Blusa y/o chaqueta formal de oficina o vestido formal sobrio. NO camisetas/tops informales, ropa deportiva ni estampados llamativos.
 
-			¿Cumple TODOS los requisitos esenciales?";
+3) POSTURA Y EXPRESIÓN: Rostro frontal, cabeza recta, hombros nivelados, mirada al frente, boca cerrada, expresión neutra (sin gestos de posar). NO selfies (brazo extendido) ni inclinación evidente.
+
+4) ROSTRO Y ACCESORIOS: Cara completamente visible, sin obstrucciones. Lentes permitidos SOLO si no reflejan luz. Sin gafas de sol, sombreros, audífonos, mascarillas. Cabello no debe cubrir ojos/rostro. Aretes/collar discretos aceptables.
+
+5) COMPOSICIÓN Y CALIDAD: Una sola persona, encuadre tipo pasaporte (rostro y parte superior del torso ~70–80% del alto). Imagen nítida, bien iluminada, sin filtros ni desenfoque, color natural.
+
+RECHAZA si detectas cualquiera de: fondo no blanco, ropa informal, pose de estudio/fashion, selfie, filtros, recorte inadecuado, ángulo lateral, baja iluminación/ruido, múltiples personas, gestos exagerados.
+
+¿Cumple TODOS los requisitos?";
 		}
 		#endregion
 		#region Clases de Soporte

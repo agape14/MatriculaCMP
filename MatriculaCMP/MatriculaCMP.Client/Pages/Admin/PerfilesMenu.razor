@@ -1,0 +1,424 @@
+@page "/admin/perfiles-menu"
+@using MatriculaCMP.Shared
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <h4 class="mb-sm-0">Asignación de Menús por Perfil</h4>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body pt-0">
+            <div class="d-flex flex-wrap align-items-center gap-2 mb-3 px-2 px-sm-3">
+                <button class="btn btn-primary" @onclick="NuevoMenu"><i class="ri-add-fill me-1"></i> Nuevo Menú</button>
+                <div class="input-group" style="max-width:380px;">
+                    <span class="input-group-text"><i class="ri-user-3-line"></i></span>
+                    <select class="form-select" @onchange="OnPerfilChange">
+                        <option value="0">Seleccione un perfil…</option>
+                        @foreach (var p in perfiles)
+                        {
+                            <option value="@p.Id" selected="@(p.Id == perfilId)">@p.Nombre</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="ms-auto" style="min-width:260px;max-width:340px;">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="ri-search-2-line"></i></span>
+                        <input class="form-control" placeholder="Buscar menú..." @oninput="OnSearchInput" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-2 d-flex align-items-center gap-2">
+                <input type="checkbox" class="form-check-input" id="chkTodos"
+                       checked="@seleccionarTodos" @onchange="SeleccionarTodos" />
+                <label class="form-check-label" for="chkTodos">Seleccionar todos</label>
+            </div>
+
+            <div class="accordion" id="accordionModulos">
+                @foreach (var modulo in modulosOrdenados)
+                {
+                    var slug = SlugModulo(modulo);
+                    var items = menusPorModulo[modulo]
+                        .Where(m => CoincideBusqueda(m))
+                        .ToList();
+                    if (items.Count == 0) { continue; }
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="heading_@slug">
+                            <div class="accordion-button d-flex align-items-center gap-3" data-bs-toggle="collapse" data-bs-target="#collapse_@slug" aria-expanded="true" aria-controls="collapse_@slug">
+                                <input id="chk-mod-@slug" type="checkbox" class="form-check-input"
+                                       checked="@ModuloCompleto(modulo)" @onchange="(e=>ToggleModulo(modulo, e))" />
+                                <strong>@modulo</strong>
+                                <span class="badge bg-light text-dark ms-2">@items.Count</span>
+                                @if (!ModuloCompleto(modulo) && ModuloConAlguno(modulo))
+                                {
+                                    <span class="badge bg-warning text-dark">Parcial</span>
+                                }
+                                <button class="btn btn-sm btn-outline-primary ms-auto" title="Editar ícono de módulo" @onclick="(() => AbrirEditarModuloIcono(modulo))">
+                                    <i class="ri-pen-nib-line"></i>
+                                </button>
+                            </div>
+                        </h2>
+                        <div id="collapse_@slug" class="accordion-collapse collapse show" aria-labelledby="heading_@slug" data-bs-parent="#accordionModulos">
+                            <div class="accordion-body p-0">
+                                <ul class="list-group list-group-flush">
+                                    @foreach (var m in items)
+                                    {
+                                        <li class="list-group-item d-flex align-items-center justify-content-between">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <input type="checkbox" class="form-check-input" checked="@menuSeleccionados.Contains(m.Id)" @onchange="(() => ToggleSeleccion(m.Id))" />
+                                                <div>
+                                                    <div class="fw-semibold">@m.Titulo <small class="text-muted">(@m.Ruta)</small></div>
+                                                    <small class="text-muted"><i class="@m.Icono"></i> @m.Icono</small>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <button class="btn btn-sm btn-outline-secondary me-1" @onclick="(() => EditarMenu(m))"><i class="ri-edit-2-line"></i></button>
+                                                <button class="btn btn-sm btn-outline-danger" @onclick="(() => EliminarMenu(m.Id))"><i class="ri-delete-bin-line"></i></button>
+                                            </div>
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="d-flex justify-content-end gap-2 mt-3">
+                <button class="btn btn-secondary" @onclick="CancelarCambios"><i class="ri-close-line me-1"></i> Cancelar</button>
+                <button class="btn btn-primary" @onclick="GuardarAsignaciones" disabled="@(perfilId<=0)"><i class="ri-save-3-line me-1"></i> Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<Perfil> perfiles = new();
+    private List<Menu> menus = new();
+    private int perfilId = 0;
+    private bool seleccionarTodos = false;
+    private HashSet<int> menuSeleccionados = new();
+    private Menu menuEdit = new();
+    private bool mostrarModalMenu = false;
+    private bool editando = false;
+    private Dictionary<string, List<Menu>> menusPorModulo = new();
+    private List<string> modulosOrdenados = new();
+    private string textoBusqueda = string.Empty;
+    private bool mostrarModalModuloIcono = false;
+    private string moduloEditando = string.Empty;
+    private string moduloIconoEdit = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        perfiles = await Http.GetFromJsonAsync<List<Perfil>>("api/perfiles") ?? new List<Perfil>();
+        menus = await Http.GetFromJsonAsync<List<Menu>>("api/menu") ?? new List<Menu>();
+        AgruparPorModulo();
+    }
+
+    private async Task OnPerfilChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e?.Value?.ToString(), out var id))
+        {
+            perfilId = id;
+            var ids = await Http.GetFromJsonAsync<List<int>>($"api/menu/ids-por-perfil/{perfilId}") ?? new List<int>();
+            menuSeleccionados = new HashSet<int>(ids);
+            seleccionarTodos = menus.Count > 0 && menuSeleccionados.Count == menus.Count;
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleSeleccion(int id)
+    {
+        if (menuSeleccionados.Contains(id)) menuSeleccionados.Remove(id); else menuSeleccionados.Add(id);
+        seleccionarTodos = menus.Count > 0 && menuSeleccionados.Count == menus.Count;
+    }
+
+    private void SeleccionarTodos(ChangeEventArgs e)
+    {
+        var marcar = e?.Value is bool b && b;
+        seleccionarTodos = marcar;
+        if (marcar)
+        {
+            menuSeleccionados = menus.Select(m => m.Id).ToHashSet();
+        }
+        else
+        {
+            menuSeleccionados.Clear();
+        }
+    }
+
+    private async Task GuardarAsignaciones()
+    {
+        if (perfilId <= 0)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "warning", title = "Seleccione un perfil" });
+            return;
+        }
+        var req = new { perfilId = perfilId, menuIds = menuSeleccionados.ToList() };
+        var resp = await Http.PostAsJsonAsync("api/menu/asignar", req);
+        if (resp.IsSuccessStatusCode)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = "Asignaciones guardadas" });
+        }
+        else
+        {
+            var msg = await resp.Content.ReadAsStringAsync();
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error", html = msg });
+        }
+    }
+
+    private Task OnSearchInput(ChangeEventArgs e)
+    {
+        textoBusqueda = e?.Value?.ToString() ?? string.Empty;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task CancelarCambios()
+    {
+        menuSeleccionados.Clear();
+        seleccionarTodos = false;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task NuevoMenu()
+    {
+        editando = false;
+        menuEdit = new Menu();
+        mostrarModalMenu = true;
+        return Task.CompletedTask;
+    }
+
+    private Task EditarMenu(Menu m)
+    {
+        editando = true;
+        menuEdit = new Menu { Id = m.Id, Titulo = m.Titulo, Ruta = m.Ruta, Modulo = m.Modulo, Icono = m.Icono, Orden = m.Orden };
+        mostrarModalMenu = true;
+        return Task.CompletedTask;
+    }
+
+    private async Task GuardarMenu()
+    {
+        if (string.IsNullOrWhiteSpace(menuEdit.Titulo) || string.IsNullOrWhiteSpace(menuEdit.Ruta))
+        {
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "warning", title = "Complete los campos requeridos" });
+            return;
+        }
+
+        HttpResponseMessage resp;
+        if (editando)
+        {
+            resp = await Http.PutAsJsonAsync($"api/menu/{menuEdit.Id}", menuEdit);
+        }
+        else
+        {
+            resp = await Http.PostAsJsonAsync("api/menu", menuEdit);
+        }
+
+        if (resp.IsSuccessStatusCode)
+        {
+            mostrarModalMenu = false;
+            menus = await Http.GetFromJsonAsync<List<Menu>>("api/menu") ?? new List<Menu>();
+            AgruparPorModulo();
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = "Menú guardado" });
+        }
+        else
+        {
+            var msg = await resp.Content.ReadAsStringAsync();
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error", html = msg });
+        }
+    }
+
+    private void MoverArriba()
+    {
+        if (!menuEdit.Orden.HasValue) menuEdit.Orden = 0;
+        menuEdit.Orden = Math.Max(0, (menuEdit.Orden ?? 0) - 1);
+    }
+
+    private void MoverAbajo()
+    {
+        if (!menuEdit.Orden.HasValue) menuEdit.Orden = 0;
+        menuEdit.Orden = (menuEdit.Orden ?? 0) + 1;
+    }
+
+    private async Task EliminarMenu(int id)
+    {
+        var ok = await JS.InvokeAsync<bool>("confirmarSweet", "¿Eliminar menú?", "Esta acción no se puede deshacer");
+        if (!ok) return;
+        var resp = await Http.DeleteAsync($"api/menu/{id}");
+        if (resp.IsSuccessStatusCode)
+        {
+            menus = await Http.GetFromJsonAsync<List<Menu>>("api/menu") ?? new List<Menu>();
+            AgruparPorModulo();
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = "Menú eliminado" });
+        }
+        else
+        {
+            var msg = await resp.Content.ReadAsStringAsync();
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error", html = msg });
+        }
+    }
+
+    private void AgruparPorModulo()
+    {
+        menusPorModulo = menus
+            .GroupBy(m => string.IsNullOrWhiteSpace(m.Modulo) ? "General" : m.Modulo)
+            .OrderBy(g => g.Key)
+            .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Titulo).ToList());
+        modulosOrdenados = menusPorModulo.Keys.OrderBy(k => k).ToList();
+        seleccionarTodos = menus.Count > 0 && menuSeleccionados.Count == menus.Count;
+    }
+
+    private static string SlugModulo(string modulo)
+    {
+        return (modulo ?? "general").ToLower().Replace(' ', '-').Replace('/', '-');
+    }
+
+    private bool ModuloCompleto(string modulo)
+    {
+        if (!menusPorModulo.ContainsKey(modulo)) return false;
+        var ids = menusPorModulo[modulo].Select(m => m.Id).ToHashSet();
+        return ids.All(id => menuSeleccionados.Contains(id)) && ids.Count > 0;
+    }
+
+    private bool ModuloConAlguno(string modulo)
+    {
+        if (!menusPorModulo.ContainsKey(modulo)) return false;
+        var ids = menusPorModulo[modulo].Select(m => m.Id);
+        return ids.Any(id => menuSeleccionados.Contains(id)) && !ModuloCompleto(modulo);
+    }
+
+    private void ToggleModulo(string modulo, ChangeEventArgs e)
+    {
+        var marcar = e?.Value is bool b && b;
+        if (!menusPorModulo.ContainsKey(modulo)) return;
+        foreach (var m in menusPorModulo[modulo])
+        {
+            if (marcar) menuSeleccionados.Add(m.Id); else menuSeleccionados.Remove(m.Id);
+        }
+        seleccionarTodos = menus.Count > 0 && menuSeleccionados.Count == menus.Count;
+    }
+
+    private bool CoincideBusqueda(Menu m)
+    {
+        if (string.IsNullOrWhiteSpace(textoBusqueda)) return true;
+        var q = textoBusqueda.Trim().ToLower();
+        return (m.Titulo ?? "").ToLower().Contains(q)
+            || (m.Ruta ?? "").ToLower().Contains(q)
+            || (m.Icono ?? "").ToLower().Contains(q);
+    }
+
+    private void AbrirEditarModuloIcono(string modulo)
+    {
+        moduloEditando = modulo;
+        moduloIconoEdit = menusPorModulo.ContainsKey(modulo)
+            ? (menusPorModulo[modulo].FirstOrDefault(m => !string.IsNullOrWhiteSpace(m.ModuloIcono))?.ModuloIcono ?? "")
+            : "";
+        mostrarModalModuloIcono = true;
+    }
+
+    private async Task GuardarModuloIcono()
+    {
+        if (string.IsNullOrWhiteSpace(moduloEditando)) { mostrarModalModuloIcono = false; return; }
+        var req = new { Modulo = moduloEditando, ModuloIcono = moduloIconoEdit ?? string.Empty };
+        var resp = await Http.PostAsJsonAsync("api/menu/modulo-icono", req);
+        if (resp.IsSuccessStatusCode)
+        {
+            // Refrescar menús
+            menus = await Http.GetFromJsonAsync<List<Menu>>("api/menu") ?? new List<Menu>();
+            AgruparPorModulo();
+            mostrarModalModuloIcono = false;
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = "Ícono actualizado" });
+            // Notificar a NavMenu para auto-refresco
+            try { await JS.InvokeVoidAsync("localStorage.setItem", "cmp-refresh-nav", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString()); } catch { }
+        }
+        else
+        {
+            var msg = await resp.Content.ReadAsStringAsync();
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error", html = msg });
+        }
+    }
+}
+
+<script></script>
+
+@if (mostrarModalMenu)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5); z-index: 1055;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-morado text-white">
+                    <h5 class="modal-title text-white">@(editando ? "Editar Menú" : "Nuevo Menú")</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="(() => mostrarModalMenu = false)"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Módulo</label>
+                        <input class="form-control" @bind="menuEdit.Modulo" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Título</label>
+                        <input class="form-control" @bind="menuEdit.Titulo" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ruta</label>
+                        <input class="form-control" @bind="menuEdit.Ruta" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ícono (clase Remix Icon)</label>
+                        <input class="form-control" @bind="menuEdit.Icono" placeholder="ri-home-2-line" />
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2">
+                        <div class="flex-grow-1">
+                            <label class="form-label">Orden</label>
+                            <input type="number" class="form-control" @bind-value="menuEdit.Orden" @bind-value:event="oninput" />
+                        </div>
+                        <div class="d-flex flex-column gap-1" style="margin-top:1.6rem;">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="MoverArriba"><i class="ri-arrow-up-line"></i></button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="MoverAbajo"><i class="ri-arrow-down-line"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="(() => mostrarModalMenu = false)">Cancelar</button>
+                    <button class="btn btn-primary" @onclick="GuardarMenu"><i class="ri-save-3-line me-1"></i> Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (mostrarModalModuloIcono)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5); z-index: 1055;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-morado text-white">
+                    <h5 class="modal-title text-white">Ícono del módulo: @moduloEditando</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="(() => mostrarModalModuloIcono = false)"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Clase de ícono (Remix Icon)</label>
+                        <input class="form-control" @bind="moduloIconoEdit" placeholder="ri-government-line" />
+                        <small class="text-muted">Ejemplos: ri-government-line, ri-shield-star-line, ri-building-line, ri-award-line, ri-settings-3-line</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" @onclick="(() => mostrarModalModuloIcono = false)">Cancelar</button>
+                    <button class="btn btn-primary" @onclick="GuardarModuloIcono"><i class="ri-save-3-line me-1"></i> Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+

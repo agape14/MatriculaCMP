@@ -31,35 +31,25 @@
         <div class="col-lg-12">
             <div class="card">
                 <div class="card-body  pt-0">
-                    <ul class="nav nav-tabs nav-tabs-custom mb-4">
-                        <li class="nav-item">
-                            <a class="nav-link fw-bold p-3 active" href="#">Todos mis Trámites</a>
-                        </li>
-                    </ul>
-                    <div class="alert alert-primary mb-2 mt-2" role="alert">
-                        <div class="button-items">
-                            @*
-                            <button class="btn btn-primary waves-effect waves-light" @onclick="FirmarDigitalmente" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-original-title="Firmar Documento Digitalmente">
-                                <i class="ri-fingerprint-fill align-middle me-2"></i> Firmar Digitalmente
-                            </button>
-                            <button type="button" class="btn btn-warning waves-effect waves-light" disabled>
-                                <i class="ri-error-warning-line align-middle me-2"></i> Sub sanar
-                            </button>
-                             *@
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3 px-2 px-sm-3">
+                        <span class="badge bg-primary">Total: @(solicitudes?.Count ?? 0)</span>
+                        <div class="ms-auto" style="min-width:260px;max-width:340px;">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="ri-search-2-line"></i></span>
+                                <input class="form-control" placeholder="Buscar en la tabla..." @oninput="OnSearchInput" />
+                            </div>
                         </div>
                     </div>
-                    <div class="table-responsive">
-                        <div class="row">
-                            <div class="col-sm-12">
-                                <table id="tblListadoSolicitante" class="table table-centered datatable dt-responsive nowrap dataTable no-footer dtr-inline collapsed" data-page-length="5" style="border-collapse: collapse; border-spacing: 0px; width: 100%;" role="grid">
+                    <div class="table-responsive px-2 px-sm-3">
+                        <table id="tblListadoSolicitante" class="table table-hover align-middle datatable dt-responsive nowrap dataTable no-footer dtr-inline collapsed" data-page-length="5" style="border-collapse: collapse; border-spacing: 0px; width: 100%;" role="grid">
                                     <thead class="thead-light">
                                         <tr role="row">
                                             <th>#</th>
-                                            <th>Nombres <br /> Completos</th>
-                                            <th>Nro. <br /> Solicitud</th>
-                                            <th>Fecha <br /> Solicitud</th>
+                                            <th>Nombre</th>
+                                            <th>N° Solicitud</th>
+                                            <th class="d-none d-md-table-cell">Fecha Solicitud</th>
                                             <th>Estado</th>
-                                            <th>Área <br /> Encargada</th>
+                                            <th class="d-none d-lg-table-cell">Área</th>
                                             <th>Observaciones</th>
                                             <th>Acciones</th>
                                         </tr>
@@ -74,14 +64,11 @@
                                                     <td>@index</td>
                                                     <td>@s.PersonaNombre</td>
                                                     <td>@s.NumeroSolicitud.ToString("D8")</td>
-                                                    <td>@s.FechaSolicitud.ToString("dd/MM/yyyy")</td>
+                                                    <td class="d-none d-md-table-cell">@s.FechaSolicitud.ToString("dd/MM/yyyy")</td>
                                                     <td>
-                                                       @*  <span class="badge bg-@EstadoHelper.GetBadgeColor(s.EstadoId)">
-                                                            @s.Estado
-                                                        </span> *@
                                                         <div class="badge badge-soft-@s.EstadoColor font-size-12">@s.Estado</div>
                                                     </td>
-                                                    <td>@(s.AreaNombre ?? "")</td>
+                                                    <td class="d-none d-lg-table-cell">@(s.AreaNombre ?? "")</td>
                                                     <td>@(s.Observaciones ?? "")</td>
                                                     <td>
                                                         <button class="btn btn-outline-primary btn-sm" disabled="@loadingVer.Contains(s.Id)" @onclick="@(() => VerDetalle(s))">
@@ -111,13 +98,11 @@
                                         else
                                         {
                                             <tr>
-                                                <td colspan="7" class="text-center">No se encontraron solicitudes</td>
+                                                <td colspan="8" class="text-center">No se encontraron solicitudes</td>
                                             </tr>
                                         }
                                     </tbody>
                                 </table>
-                            </div>
-                        </div>
                     </div>
                    
                     <!-- Modal Loading -->
@@ -493,6 +478,12 @@
             await JS.InvokeVoidAsync("inicializarDataTable", "#tblListadoSolicitante");
         }
     }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        var q = e?.Value?.ToString() ?? string.Empty;
+        await JS.InvokeVoidAsync("buscarEnTablaSolicitudes", q);
+    }
     private async Task ConfirmarEliminacion(int id)
     {
         var confirmado = await JS.InvokeAsync<bool>("confirmarSweet", "¿Estás seguro?", "Esta acción no se puede deshacer");
@@ -573,4 +564,13 @@
         nombrePDF = "";
     }
 }
+
+<script>
+    window.buscarEnTablaSolicitudes = function (q) {
+        try {
+            var t = $('#tblListadoSolicitante').DataTable();
+            t.search(q || '').draw();
+        } catch (e) { /* silencioso */ }
+    }
+</script>
 

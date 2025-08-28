@@ -20,6 +20,17 @@ namespace MatriculaCMP.Controller
             _context = context;
         }
 
+        private string GetUsuarioAutenticadoId()
+        {
+            var user = HttpContext.User;
+            if (user?.Identity?.IsAuthenticated == true)
+            {
+                var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                if (!string.IsNullOrEmpty(userId)) return userId;
+            }
+            return "Sistema";
+        }
+
         [HttpPost("firmar")]
         public async Task<ActionResult<UploadResponse>> FirmarDocumento([FromBody] FirmaRequest request)
         {
@@ -40,7 +51,7 @@ namespace MatriculaCMP.Controller
                     EstadoNuevoId = 8,
                     FechaCambio = DateTime.Now,
                     Observacion = "Enviado a firma Secretario CR",
-                    UsuarioCambio = "Sistema"
+                    UsuarioCambio = GetUsuarioAutenticadoId()
                 });
                 await _context.SaveChangesAsync();
             }
@@ -64,7 +75,14 @@ namespace MatriculaCMP.Controller
             var diploma = await _context.Diplomas.FirstOrDefaultAsync(d => d.SolicitudId == solicitudId);
             if (diploma != null)
             {
-                diploma.RutaPdfFirmado = $"documento_{solicitudId}_firmado.pdf";
+                // Buscar el archivo más reciente con sufijos [F]
+                var rutaBase = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "firmas_digitales");
+                var baseName = $"documento_{solicitudId}";
+                var candidatos = Directory.GetFiles(rutaBase, baseName + "*.pdf");
+                var elegido = candidatos
+                    .OrderByDescending(p => Path.GetFileNameWithoutExtension(p).Count(c => c == 'F'))
+                    .FirstOrDefault() ?? $"{baseName}.pdf";
+                diploma.RutaPdfFirmado = Path.GetFileName(elegido);
                 _context.Diplomas.Update(diploma);
             }
 
@@ -95,7 +113,7 @@ namespace MatriculaCMP.Controller
                         EstadoNuevoId = proximoEstado,
                         FechaCambio = fechaCambio,
                         Observacion = "Avance por firma digital",
-                        UsuarioCambio = "Sistema"
+                        UsuarioCambio = GetUsuarioAutenticadoId()
                     };
                     _context.SolicitudHistorialEstados.Add(historial);
                     _context.Solicitudes.Update(solicitud);

@@ -41,7 +41,7 @@ namespace MatriculaCMP.Services
                     _logger.LogInformation($"Scopes del token: {token.scope}");
                 }
                 // Obtener el documento a firmar: exactamente el preparado en wwwroot/firmas_digitales/documento_{SolicitudId}.pdf
-                string rutaDocumento = Path.Combine(_config["FirmaDigital:RutaArchivos"], $"documento_{request.IdExpedienteDocumento}.pdf");
+                string rutaDocumento = ObtenerRutaDocumentoActual(request.IdExpedienteDocumento);
                 // Abrir en modo compartido lectura para evitar conflictos de bloqueo
                 byte[] pdfBytes;
                 using (var fs = new FileStream(rutaDocumento, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
@@ -99,15 +99,34 @@ namespace MatriculaCMP.Services
                     byte[] archivoBytes = Convert.FromBase64String(responseDescarga.archivoFirmado);
                     await File.WriteAllBytesAsync(rutaArchivo, archivoBytes);
 
-                    // Reemplazar el PDF de trabajo para próximas firmas: documento_{id}.pdf = firmado
-                    try
-                    {
-                        var rutaTrabajo = Path.Combine(rutaCarpeta, $"documento_{request.IdExpedienteDocumento}.pdf");
-                        File.Copy(rutaArchivo, rutaTrabajo, overwrite: true);
-                    }
-                    catch { }
+                    // Generar nombre único acumulando [F] por cada firma y mantener un solo archivo
+                    var baseName = $"documento_{request.IdExpedienteDocumento}";
+                    var existentes = Directory.GetFiles(rutaCarpeta, baseName + "*.pdf");
+                    int firmasPrevias = existentes
+                        .Select(p => Path.GetFileNameWithoutExtension(p))
+                        .Select(n => n.Count(c => c == 'F'))
+                        .DefaultIfEmpty(0)
+                        .Max();
 
-                    // Nota: actualización de BD y avance de estado se realizará en el controlador que conoce Solicitud/Diploma
+                    string nuevoNombre = firmasPrevias <= 0
+                        ? $"{baseName}[F].pdf"
+                        : $"{baseName}{new string('[', 1)}F{new string(']', 1)}".Replace("[F]", string.Concat(Enumerable.Repeat("[F]", firmasPrevias + 1))) // placeholder
+                        ;
+                    // Armar correctamente el nombre con repetición de [F]
+                    nuevoNombre = firmasPrevias <= 0
+                        ? $"{baseName}[F].pdf"
+                        : $"{baseName}{string.Concat(Enumerable.Repeat("[F]", firmasPrevias + 1))}.pdf";
+
+                    string nuevoPath = Path.Combine(rutaCarpeta, nuevoNombre);
+
+                    // Guardar firmado como el único archivo vigente
+                    await File.WriteAllBytesAsync(nuevoPath, archivoBytes);
+                    foreach (var p in existentes)
+                    {
+                        try { if (!string.Equals(p, nuevoPath, StringComparison.OrdinalIgnoreCase)) File.Delete(p); } catch { }
+                    }
+
+                    // Nota: actualización de BD y avance de estado se realizará en el controlador
 
                     return responseDescarga;
                 }
@@ -343,6 +362,20 @@ namespace MatriculaCMP.Services
             // Esto es un ejemplo simplificado
             string rutaBase = _config["FirmaDigital:RutaArchivos"];
             return Path.Combine(rutaBase, $"documento_{idExpedienteDocumento}.pdf");
+        }
+
+        private string ObtenerRutaDocumentoActual(int id)
+        {
+            var rutaBase = _config["FirmaDigital:RutaArchivos"];
+            var baseName = $"documento_{id}";
+            var candidatos = Directory.GetFiles(rutaBase, baseName + "*.pdf");
+            if (candidatos.Length == 0)
+                return Path.Combine(rutaBase, baseName + ".pdf");
+            // Preferir el que tenga más [F]
+            var elegido = candidatos
+                .OrderByDescending(p => Path.GetFileNameWithoutExtension(p).Count(c => c == 'F'))
+                .First();
+            return elegido;
         }
     }
 }

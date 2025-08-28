@@ -103,6 +103,7 @@ builder.Services.AddScoped<UniversidadesService>();
 builder.Services.AddScoped<UniversidadScraper>();
 builder.Services.AddScoped<MatriculaService>();
 builder.Services.AddScoped<FirmaDigitalService>();
+builder.Services.AddScoped<FirmaDigitalLoteService>();
 // Inicializar EmailHelper con la configuración
 EmailHelper.Initialize(builder.Configuration);
 

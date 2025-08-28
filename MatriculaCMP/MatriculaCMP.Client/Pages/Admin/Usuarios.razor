@@ -40,12 +40,31 @@
                 <div class="col-lg-12">
                     <div class="card">
                         <div class="card-body  pt-0">
-                            <div class="alert alert-primary mb-2 mt-2" role="alert">
-                                <div class="button-items">
-                                    <button class="btn btn-primary waves-effect waves-light mb-3"
-                                            @onclick="@(() => Nav.NavigateTo("/admin/usuarios/new"))">
-                                        <i class="ri-add-fill"></i> Nuevo Usuario
-                                    </button>
+                            <!-- Barra de acciones: nuevo, filtros por perfil y buscador -->
+                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3 px-2 px-sm-3">
+                                <button class="btn btn-primary"
+                                        @onclick="@(() => Nav.NavigateTo("/admin/usuarios/new"))">
+                                    <i class="ri-add-fill"></i> Nuevo Usuario
+                                </button>
+
+                                <div class="d-flex flex-wrap align-items-center gap-1">
+                                    <button class="btn btn-sm @(perfilActivo=="Todos"?"btn-primary":"btn-outline-primary")"
+                                            @onclick='@(() => FiltrarPorPerfil("Todos"))'>Todos</button>
+                                    @if (perfiles?.Count > 0)
+                                    {
+                                        foreach (var p in perfiles)
+                                        {
+                                            <button class="btn btn-sm @(perfilActivo==p?"btn-primary":"btn-outline-primary")"
+                                                    @onclick='@(() => FiltrarPorPerfil(p))'>@p</button>
+                                        }
+                                    }
+                                </div>
+
+                                <div class="ms-auto" style="min-width:260px;max-width:340px;">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="ri-search-2-line"></i></span>
+                                        <input class="form-control" placeholder="Buscar..." @oninput="OnSearchInput" />
+                                    </div>
                                 </div>
                             </div>
 
@@ -114,6 +133,9 @@
     Estado estado = Estado.Cargando;
     string? mensajeError;
     private Dictionary<int, string> consejosMap = new();
+    private List<string> perfiles = new();
+    private string perfilActivo = "Todos";
+    private bool dataTableInicializado = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -131,6 +153,12 @@
         try
         {
             usuarios = await Http.GetFromJsonAsync<List<Usuario>>("/api/usuario");
+            perfiles = usuarios?
+                .Select(u => u.Perfil?.Nombre)
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Distinct()
+                .OrderBy(n => n)
+                .ToList() ?? new List<string>();
             estado = Estado.Listo;
         }
         catch (Exception ex)
@@ -185,4 +213,53 @@
             confirmButtonText = "Aceptar"
         });
     }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("inicializarDataTable", "#tblListadoUsuarios");
+            dataTableInicializado = true;
+        }
+    }
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        var q = e?.Value?.ToString() ?? string.Empty;
+        await JS.InvokeVoidAsync("inicializarDataTableFiltro", "#tblListadoUsuarios", q);
+    }
+
+    private async Task FiltrarPorPerfil(string perfil)
+    {
+        perfilActivo = perfil;
+        var valor = perfil == "Todos" ? string.Empty : perfil;
+        // Columna Rol es índice 3 (0:#,1:Nombre,2:Correo,3:Rol)
+        await JS.InvokeVoidAsync("aplicarFiltroColumnaExacta", "#tblListadoUsuarios", 3, valor);
+        StateHasChanged();
+    }
 }
+
+<script>
+    window.inicializarDataTableFiltro = function (selector, q) {
+        try { var t = $(selector).DataTable(); if (!t) return; t.search(q || '').draw(); } catch (e) { }
+    }
+    window.aplicarFiltroColumnaExacta = function (selector, colIndex, valor) {
+        try {
+            var t = $(selector).DataTable(); if (!t) return;
+            if (!valor) { t.column(colIndex).search('').draw(); return; }
+            t.column(colIndex).search('^' + valor + '$', true, false).draw();
+        } catch (e) { }
+    }
+    window.inicializarDataTable = function (selector) {
+        try {
+            if (!$.fn.DataTable.isDataTable(selector)) {
+                $(selector).DataTable({
+                    pageLength: 10,
+                    lengthMenu: [5, 10, 25, 50],
+                    responsive: true,
+                    order: []
+                });
+            }
+        } catch (e) { }
+    }
+</script>

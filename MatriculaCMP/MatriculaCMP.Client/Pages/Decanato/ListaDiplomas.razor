@@ -35,27 +35,27 @@
 		</div>
 		<div class="modal-backdrop fade show"></div>
 	}
-	<!-- start page title -->
-	<div class="row">
-		<div class="col-12">
-			<div class="page-title-box d-sm-flex align-items-center justify-content-between">
-				<h4 class="mb-sm-0">Decanato - Listado Diplomas</h4>
+    <!-- start page title -->
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <h4 class="mb-sm-0">Decanato - Listado Diplomas</h4>
 
-				<div class="page-title-right">
-					<ol class="breadcrumb m-0">
-						<li class="breadcrumb-item"><a href="javascript: void(0);">Inicio</a></li>
-						<li class="breadcrumb-item active">Listado Diplomas</li>
-					</ol>
-				</div>
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        <li class="breadcrumb-item"><a href="javascript: void(0);">Inicio</a></li>
+                        <li class="breadcrumb-item active">Listado Diplomas</li>
+                    </ol>
+                </div>
 
-			</div>
-		</div>
-	</div>
+            </div>
+        </div>
+    </div>
 
-	<div class="row">
-		<div class="col-lg-12">
-			<div class="card">
-				<div class="card-body  pt-0">
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-body  pt-0">
 					@if (iniciandoFirma)
 					{
 						<div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index: 1000;display:flex;align-items:center;justify-content:center;color:#fff;">
@@ -65,88 +65,104 @@
 							</div>
 						</div>
 					}
-					<div class="d-flex flex-wrap gap-2 align-items-center mb-3 mt-2">
-						<div class="form-check">
+					<div class="d-flex flex-wrap align-items-center mb-3 mt-2 gap-2">
+						<span class="badge bg-primary d-flex align-items-center">
+							<i class="ri-award-line me-1"></i> Decano
+						</span>
+						<div class="form-check ms-2">
 							<input type="checkbox" id="chkTodos" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
-							<label class="form-check-label" for="chkTodos">Seleccionar todos</label>
+							<label class="form-check-label" for="chkTodos">Seleccionar todos (estado 10)</label>
 						</div>
-						<button type="button" class="btn btn-primary" @onclick="FirmarSeleccionados">
+						<button type="button" class="btn btn-primary d-flex align-items-center" @onclick="FirmarSeleccionados">
 							<i class="ri-fingerprint-fill align-middle me-2"></i> Firmar seleccionados
-						</button>
-						<div class="ms-auto" style="min-width:260px;">
-							<input class="form-control" placeholder="Buscar..." @bind="Filtro" @bind:event="oninput" />
-						</div>
-					</div>
-					<div class="table-responsive">
-						<table class="table table-centered datatable">
-							<thead class="thead-light">
-								<tr>
-									<th>
-										<input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
-									</th>
-									<th>N° Solicitud</th>
-									<th>Fecha Solicitud</th>
-									<th>Estado</th>
-									<th>DNI</th>
-									<th>Nombres Completos</th>
-									<th>N° Colegiatura</th>
-									<th>Fecha Emisión Diploma</th>
-									<th>Acciones</th>
-								</tr>
-							</thead>
-							<tbody>
-								@foreach (var alumno in alumnos)
-								{
-									<tr @onclick="() => alumno.Seleccionado = !alumno.Seleccionado" style="cursor: pointer;">
-										<td>
-											<input type="checkbox" class="form-check-input" @bind="alumno.Seleccionado" @onclick:stopPropagation="true" />
-										</td>
-										<td>@alumno.NumeroSolicitud</td>
-										<td>@alumno.FechaSolicitud.ToString("dd/MM/yyyy")</td>
-										<td><div class="badge bg-success">@alumno.EstadoNombre</div></td>
-										<td>@alumno.NumeroDocumento</td>
-										<td>@alumno.NombreCompleto</td>
-										<td>@alumno.NumeroColegiatura</td>
-										<td>@alumno.DiplomaFechaEmision.ToString("dd/MM/yyyy")</td>
-										<td>
-											<a href="javascript:void(0);" class="me-3 text-info" title="Ver Diploma" @onclick="(async ()=> await VerDiploma(alumno.SolicitudId, true))">
-												<i class="ri-eye-fill font-size-18"></i>
-											</a>
-											@if (alumno.EstadoId == 10)
-											{
-												<a href="javascript:void(0);" class="text-primary" title="Firma Decano" @onclick="(async ()=> await IniciarFirmaRol(alumno.SolicitudId, 4))">
-													<i class="ri-user-2-fill font-size-18"></i>
-												</a>
-											}
-										</td>
-									</tr>
-								}
-							</tbody>
-						</table>
-					</div>
-
-					<!-- Modal Loading -->
-					<div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
-						<div class="modal-dialog modal-dialog-centered">
-							<div class="modal-content text-center p-4">
-								<div class="spinner-border text-primary" role="status">
-									<span class="visualmente-hidden">Cargando...</span>
-								</div>
-								<p class="mt-3">Descargando Formato...</p>
+                                </button>
+						<div class="text-muted small ms-2">Seleccionados: @alumnos.Count(a=>a.Seleccionado)</div>
+						<div class="ms-auto" style="min-width:260px;max-width:340px;">
+							<div class="input-group">
+								<span class="input-group-text"><i class="ri-search-2-line"></i></span>
+								<input class="form-control" placeholder="Buscar DNI, nombre o N° solicitud" @bind="Filtro" @bind:event="oninput" />
 							</div>
-						</div>
-					</div>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+						<table class="table table-hover align-middle mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+									<th style="width:42px">
+                                            <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
+                                        </th>
+									<th>N° Solicitud</th>
+									<th class="d-none d-sm-table-cell">Fecha Solicitud</th>
+									<th>Estado</th>
+									<th class="d-none d-md-table-cell">DNI</th>
+                                        <th>Nombres Completos</th>
+									<th class="d-none d-lg-table-cell">N° Colegiatura</th>
+									<th class="d-none d-md-table-cell">Fecha Emisión Diploma</th>
+									<th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+								@if(!alumnos.Any())
+								{
+									<tr>
+										<td colspan="9" class="text-center text-muted py-4">No hay registros pendientes de firma.</td>
+                                        </tr>
+                                    }
+								else
+								{
+									@foreach (var alumno in alumnos)
+									{
+										<tr>
+											<td>
+												<input type="checkbox" class="form-check-input" @bind="alumno.Seleccionado" disabled="@(alumno.EstadoId != 10)" />
+                                            </td>
+											<td>@alumno.NumeroSolicitud</td>
+											<td class="d-none d-sm-table-cell">@alumno.FechaSolicitud.ToString("dd/MM/yyyy")</td>
+											<td><span class="badge bg-info">@alumno.EstadoNombre</span></td>
+											<td class="d-none d-md-table-cell">@alumno.NumeroDocumento</td>
+                                            <td>@alumno.NombreCompleto</td>
+											<td class="d-none d-lg-table-cell">@alumno.NumeroColegiatura</td>
+											<td class="d-none d-md-table-cell">@alumno.DiplomaFechaEmision.ToString("dd/MM/yyyy")</td>
+											<td class="text-nowrap">
+												<button class="btn btn-sm btn-outline-info me-1" title="Ver Diploma" @onclick="(async ()=> await VerDiploma(alumno.SolicitudId, true))">
+													<i class="ri-eye-fill"></i>
+												</button>
+												@if (alumno.EstadoId == 10)
+												{
+													<button class="btn btn-sm btn-outline-primary" title="Firma Decano" @onclick="(async ()=> await IniciarFirmaRol(alumno.SolicitudId, 4))">
+														<i class="ri-quill-pen-line"></i>
+													</button>
+                                                }
+                                            </td>
+                                        </tr>
+									}
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
 
-				</div>
-			</div>
-		</div>
-	</div>
+                    <!-- Modal Loading -->
+                    <div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content text-center p-4">
+                                <div class="spinner-border text-primary" role="status">
+									<span class="visualmente-hidden">Cargando...</span>
+                                </div>
+                                <p class="mt-3">Descargando Formato...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
 
 </div>
 
 
 @code {
-	private bool seleccionarTodos = false;
+    private bool seleccionarTodos = false;
 	private string? pdfUrl;
 	private bool mostrarPdf = false;
 	private bool iniciandoFirma = false;
@@ -164,23 +180,26 @@
 	protected override async Task OnInitializedAsync()
 	{
 		await CargarParaFirma();
-	}
+    }
 
-	protected override async Task OnAfterRenderAsync(bool firstRender)
-	{
-		if (firstRender)
-		{
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
 			dotNetRef = DotNetObjectReference.Create(this);
 			await JS.InvokeVoidAsync("registrarInstanciaDotNet", dotNetRef);
-		}
-	}
+        }
+    }
 
-	private void SeleccionarTodasFilas(ChangeEventArgs e)
-	{
-		seleccionarTodos = (bool)e.Value;
-		foreach (var alumno in alumnos)
-		{
-			alumno.Seleccionado = seleccionarTodos;
+    private void SeleccionarTodasFilas(ChangeEventArgs e)
+    {
+        seleccionarTodos = (bool)e.Value;
+        foreach (var alumno in alumnos)
+        {
+			if (alumno.EstadoId == 10)
+            alumno.Seleccionado = seleccionarTodos;
+			else
+				alumno.Seleccionado = false;
 		}
 	}
 
@@ -229,20 +248,31 @@
 	{
 		try
 		{
-			// En Decanato (estado 10) mostrar siempre el PDF firmado por SG
-			var item = alumnosMaster.FirstOrDefault(a => a.SolicitudId == solicitudId);
-			var urlFirmado = $"/firmas_digitales/documento_{solicitudId}_firmado.pdf";
-			if (item != null && item.EstadoId >= 10)
+			// Buscar siempre la versión más firmada [F]...[F]
+			var basePath = $"/firmas_digitales/documento_{solicitudId}";
+			string? firmadoMasReciente = null;
+			var candidatos = new[] { "[F][F][F][F]", "[F][F][F]", "[F][F]", "[F]", "_firmado" };
+			foreach (var suf in candidatos)
+			{
+				var url = $"{basePath}{suf}.pdf";
+				var resp = await Http.GetAsync(url);
+				if (resp.IsSuccessStatusCode)
+				{
+					firmadoMasReciente = url;
+					break;
+				}
+			}
+			if (!string.IsNullOrEmpty(firmadoMasReciente))
 			{
 				if (mostrarEnModal)
 				{
-					pdfUrl = urlFirmado;
+					pdfUrl = firmadoMasReciente;
 					mostrarPdf = true;
 					StateHasChanged();
 				}
 				else
 				{
-					await JS.InvokeVoidAsync("open", urlFirmado, "_blank");
+					await JS.InvokeVoidAsync("open", firmadoMasReciente, "_blank");
 				}
 				return;
 			}
@@ -328,11 +358,21 @@
 			if (string.IsNullOrWhiteSpace(codigoFirma) || !int.TryParse(codigoFirma, out var codigo))
 			{
 				await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Código de firma inválido" });
-				return;
-			}
+            return;
+        }
 
-			var uploadRequest = new { IdExpedienteDocumento = firmaActualSolicitudId, IdExpedienteDocumentoFirmante = 0, CodigoFirma = codigo, TipoDocumentoFirmado = 4 };
-			var responseUpload = await Http.PostAsJsonAsync("api/firmadigital/upload", uploadRequest);
+			var seleccionados = alumnos.Where(a => a.Seleccionado && a.EstadoId == 10).Select(a => a.SolicitudId).ToList();
+			HttpResponseMessage responseUpload;
+			if (seleccionados.Count > 1)
+			{
+				// Lote para Decano (tipo 4)
+				responseUpload = await Http.PostAsJsonAsync("api/firmadigital-lote/upload", new { CodigoFirma = codigo, TipoDocumentoFirmado = 4 });
+			}
+			else
+			{
+				var uploadRequest = new { IdExpedienteDocumento = firmaActualSolicitudId, IdExpedienteDocumentoFirmante = 0, CodigoFirma = codigo, TipoDocumentoFirmado = 4 };
+				responseUpload = await Http.PostAsJsonAsync("api/firmadigital/upload", uploadRequest);
+			}
 			if (responseUpload.IsSuccessStatusCode)
 			{
 				var resultadoUpload = await responseUpload.Content.ReadFromJsonAsync<DownloadResponse>();
@@ -340,9 +380,9 @@
 				await CargarParaFirma();
 				iniciandoFirma = false;
 				StateHasChanged();
-			}
-			else
-			{
+        }
+        else
+        {
 				var error = await responseUpload.Content.ReadAsStringAsync();
 				await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error al subir documento firmado", html = error });
 				iniciandoFirma = false;
@@ -380,7 +420,58 @@
 
 	private async Task FirmarSeleccionados()
 	{
-		await JS.InvokeVoidAsync("Swal.fire", new { icon = "info", title = "Use el botón de firma por fila", text = "La firma debe iniciarse individualmente para cada solicitud." });
+		var seleccionados = alumnos.Where(a => a.Seleccionado && a.EstadoId == 10).Select(a => a.SolicitudId).ToList();
+		if (!seleccionados.Any())
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new { icon = "warning", title = "Seleccione al menos un registro" });
+			return;
+		}
+		try
+		{
+			iniciandoFirma = true;
+			StateHasChanged();
+
+			var fallidos = new List<int>();
+			foreach (var id in seleccionados)
+			{
+				var prep = await Http.PostAsync($"api/diploma/preparar-firma/{id}", null);
+				if (!prep.IsSuccessStatusCode) fallidos.Add(id);
+			}
+			if (fallidos.Any())
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "No se pudo preparar algunos PDFs", html = $"IDs: {string.Join(", ", fallidos)}" });
+				iniciandoFirma = false;
+				StateHasChanged();
+				return;
+			}
+
+			// Firma en lote para Decano (tipo 4)
+			var dto = new { Ids = seleccionados, TipoDocumentoFirmado = 4 };
+			var resp = await Http.PostAsJsonAsync("api/firmadigital-lote/firmar", dto);
+			if (!resp.IsSuccessStatusCode)
+			{
+				var err = await resp.Content.ReadAsStringAsync();
+				await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error al iniciar firma en lote", html = err });
+				iniciandoFirma = false;
+				StateHasChanged();
+				return;
+			}
+			var up = await resp.Content.ReadFromJsonAsync<UploadResponse>();
+			if (up?.codigoFirma <= 0)
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Firma Lote", text = up?.descripcion ?? "Sin código de firma" });
+				iniciandoFirma = false;
+				StateHasChanged();
+				return;
+			}
+			await JS.InvokeVoidAsync("mostrarFormularioFirma", up.codigoFirma);
+		}
+		catch (Exception ex)
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error", text = ex.Message });
+			iniciandoFirma = false;
+			StateHasChanged();
+		}
 	}
 }
 

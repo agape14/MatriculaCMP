@@ -50,6 +50,24 @@
                 element.focus();
             }
         };
+
+        // Removed custom toggleMobileMenu to use Bootstrap Collapse default behavior
+
+        // Confirmar cerrar sesión con SweetAlert
+        window.confirmarCerrarSesion = async function () {
+            const result = await Swal.fire({
+                title: '¿Estás seguro?',
+                text: "¿Deseas cerrar sesión?",
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Sí, cerrar sesión',
+                cancelButtonText: 'Cancelar'
+            });
+            
+            return result.isConfirmed;
+        };
     </script>
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>

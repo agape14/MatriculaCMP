@@ -145,8 +145,13 @@ namespace MatriculaCMP.Controller
 
                 // Si ya existe una versión firmada parcial, usarla como base de trabajo; si no, usar el original
                 var firmadosDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "firmas_digitales");
-                var firmadoTrabajo = Path.Combine(firmadosDir, $"documento_{solicitudId}_firmado.pdf");
-                var sourcePath = System.IO.File.Exists(firmadoTrabajo)
+                // Elegir el documento con mayor cantidad de [F] si existe
+                var baseName = $"documento_{solicitudId}";
+                var candidatos = Directory.GetFiles(firmadosDir, baseName + "*.pdf");
+                string? firmadoTrabajo = candidatos
+                    .OrderByDescending(p => Path.GetFileNameWithoutExtension(p).Count(c => c == 'F'))
+                    .FirstOrDefault();
+                var sourcePath = !string.IsNullOrEmpty(firmadoTrabajo) && System.IO.File.Exists(firmadoTrabajo)
                     ? firmadoTrabajo
                     : Path.Combine(Directory.GetCurrentDirectory(), "Resources", "Diplomas", diploma.RutaPdf ?? string.Empty);
                 if (!System.IO.File.Exists(sourcePath))

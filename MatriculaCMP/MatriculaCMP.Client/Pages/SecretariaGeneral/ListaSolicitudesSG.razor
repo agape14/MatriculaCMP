@@ -1,14 +1,14 @@
 ﻿@page "/secretariageneral/lista"
 @using MatriculaCMP.Shared
 @inject IJSRuntime JS
-
+@inject HttpClient Http
 
 <div class="container-fluid">
     <!-- start page title -->
     <div class="row">
         <div class="col-12">
             <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                <h4 class="mb-sm-0">Secretaria General - Listado Solicitudes</h4>
+                <h4 class="mb-sm-0">Secretaría General - Solicitudes</h4>
 
                 <div class="page-title-right">
                     <ol class="breadcrumb m-0">
@@ -25,168 +25,80 @@
         <div class="col-lg-12">
             <div class="card">
                 <div class="card-body  pt-0">
-                    <ul class="nav nav-tabs nav-tabs-custom mb-4">
-                        <li class="nav-item">
-                            <a class="nav-link fw-bold p-3 @(tabActiva == "nacionales" ? "active" : "")"
-                               @onclick='() => CambiarTab("nacionales")'>Solicitudes Nacionales</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link fw-bold p-3 @(tabActiva == "extranjeros" ? "active" : "")"
-                               @onclick='() => CambiarTab("extranjeros")'>Solicitudes Extranjeros</a>
-                        </li>
-                    </ul>
-                    @if (tabActiva == "nacionales")
-                    {
-                        <div class="alert alert-primary mb-2 mt-2" role="alert">
-                            <div class="button-items">
-                                <button class="btn btn-success" @onclick="FirmarDigitalmente">
-                                    <i class="ri-checkbox-circle-line align-middle me-2"></i> Validar Solicitudes
-                                </button>
-                                <button class="btn btn-danger" @onclick="FirmarDigitalmente">
-                                    <i class=" ri-close-circle-line align-middle me-2"></i> Observar Solicitudes
-                                </button>
-                                @* <button type="button" class="btn btn-light">
-                                    <i class="ri-file-text-line align-middle me-2"></i> Firmar Aprobaciones
-                                </button> 
-                               
-                                <button type="button" class="btn btn-info">
-                                    <i class="ri-fingerprint-fill align-middle me-2"></i> Firmar Diplomas
-                            </button>*@
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3 px-2 px-sm-3">
+                        <div class="form-check">
+                            <input type="checkbox" id="chkTodos" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasSolicitudes" />
+                            <label class="form-check-label" for="chkTodos">Seleccionar todos</label>
+                        </div>
+                        <button class="btn btn-success" @onclick="AprobarSeleccionados">
+                            <i class="ri-checkbox-circle-line align-middle me-2"></i> Validar seleccionados
+                        </button>
+                        <button class="btn btn-danger" @onclick="ObservarSeleccionados">
+                            <i class="ri-close-circle-line align-middle me-2"></i> Observar seleccionados
+                        </button>
+                        <span class="text-muted small">Seleccionados: @seleccionados.Count</span>
+                        <div class="ms-auto" style="min-width:260px;max-width:340px;">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="ri-search-2-line"></i></span>
+                                <input class="form-control" placeholder="Buscar..." @oninput="OnSearchInput" />
                             </div>
                         </div>
+                    </div>
 
-                        <div class="table-responsive">
-                            <table class="table table-centered datatable">
-                                <thead class="thead-light">
+                    <div class="table-responsive">
+                        <table id="tblListadoSG" class="table table-hover align-middle datatable">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th style="width:42px">
+                                        <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasSolicitudes" />
+                                    </th>
+                                    <th class="d-none d-sm-table-cell">DNI</th>
+                                    <th>Nombre</th>
+                                    <th class="d-none d-md-table-cell">Fecha Nac.</th>
+                                    <th class="d-none d-lg-table-cell">Lugar Nac.</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var alumno in alumnos)
+                                {
                                     <tr>
-                                        <th>
-                                            <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
-                                        </th>
-                                        <th>DNI</th>
-                                        <th>Nombres Completos</th>
-                                        <th>Fecha Nac.</th>
-                                        <th>Lugar Nac.</th>
-                                        <th>Estado</th>
-                                        <th>Formatos</th>
+                                        <td>
+                                            <input type="checkbox" class="form-check-input" checked="@seleccionados.Contains(alumno.Id)" @onchange="(()=>ToggleSeleccion(alumno.Id))" />
+                                        </td>
+                                        <td class="d-none d-sm-table-cell">@alumno.Numero</td>
+                                        <td>@alumno.NombreCompleto</td>
+                                        <td class="d-none d-md-table-cell">@alumno.FechaNacimiento</td>
+                                        <td class="d-none d-lg-table-cell">@alumno.LugarNacimiento</td>
+                                        <td>
+                                            @if (alumno.Estado == "Registrado")
+                                            {
+                                                <div class="badge bg-info">Registrado</div>
+                                            }
+                                            else if (alumno.Estado == "Por Subsanar")
+                                            {
+                                                <div class="badge bg-warning">Por Subsanar</div>
+                                            }
+                                            else if (alumno.Estado == "Rechazado")
+                                            {
+                                                <div class="badge bg-danger">Rechazado</div>
+                                            }
+                                            else if (alumno.Estado == "Aprobado")
+                                            {
+                                                <div class="badge bg-success">Aprobado</div>
+                                            }
+                                        </td>
+                                        <td class="text-nowrap">
+                                            <button class="btn btn-sm btn-outline-info me-1" title="Ver PDF" @onclick="(async ()=> await VerPdfFirmado(alumno.Id))">
+                                                <i class="ri-eye-fill"></i>
+                                            </button>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var alumno in alumnos)
-                                    {
-                                        <tr @onclick="() => alumno.Seleccionado = !alumno.Seleccionado" style="cursor: pointer;">
-                                            <td>
-                                                <input type="checkbox" class="form-check-input" @bind="alumno.Seleccionado" @onclick:stopPropagation="true" />
-                                            </td>
-                                            <td>@alumno.Numero</td>
-                                            <td>@alumno.NombreCompleto</td>
-                                            <td>@alumno.FechaNacimiento</td>
-                                            <td>@alumno.LugarNacimiento</td>
-                                            <td>
-                                                @if (alumno.Estado == "Registrado")
-                                                {
-                                                    <div class="badge bg-info">Registrado</div>
-                                                }
-                                                else if (alumno.Estado == "Por Subsanar")
-                                                {
-                                                    <div class="badge bg-warning">Por Subsanar</div>
-                                                }
-                                                else if (alumno.Estado == "Rechazado")
-                                                {
-                                                    <div class="badge bg-danger">Rechazado</div>
-                                                }
-                                                else if (alumno.Estado == "Aprobado")
-                                                {
-                                                    <div class="badge bg-success">Aprobado</div>
-                                                }
-                                            </td>
-                                            <td>
-                                                <button class="btn btn-light btn-rounded" @onclick="DescargarFormato">
-                                                    Descargar <i class="mdi mdi-download ms-2"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                    else if (tabActiva == "extranjeros")
-                    {
-                        <div class="alert alert-primary mb-2 mt-2" role="alert">
-                            <div class="button-items">
-                                <button class="btn btn-success" @onclick="FirmarDigitalmente">
-                                    <i class="ri-checkbox-circle-line align-middle me-2"></i> Validar Solicitudes
-                                </button>
-                                <button class="btn btn-danger" @onclick="FirmarDigitalmente">
-                                    <i class=" ri-close-circle-line align-middle me-2"></i> Observar Solicitudes
-                                </button>
-                                <button type="button" class="btn btn-light">
-                                    <i class="ri-file-text-line align-middle me-2"></i> Firmar Aprobaciones
-                                </button>
-                                <button type="button" class="btn btn-warning">
-                                    <i class="ri-file-text-line align-middle me-2"></i> Generar Diplomas
-                                </button>
-                                <button type="button" class="btn btn-info">
-                                    <i class="ri-fingerprint-fill align-middle me-2"></i> Firmar Diplomas
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="table-responsive">
-                            <table class="table table-centered datatable">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th>
-                                            <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
-                                        </th>
-                                        <th>Carnet Ext.</th>
-                                        <th>Nombres Completos</th>
-                                        <th>Fecha Nac.</th>
-                                        <th>Lugar Nac.</th>
-                                        <th>Estado</th>
-                                        <th>Formatos</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var alumno in alumnos2)
-                                    {
-                                        <tr @onclick="() => alumno.Seleccionado = !alumno.Seleccionado" style="cursor: pointer;">
-                                            <td>
-                                                <input type="checkbox" class="form-check-input" @bind="alumno.Seleccionado" @onclick:stopPropagation="true" />
-                                            </td>
-                                            <td>@alumno.Numero</td>
-                                            <td>@alumno.NombreCompleto</td>
-                                            <td>@alumno.FechaNacimiento</td>
-                                            <td>@alumno.LugarNacimiento</td>
-                                            <td>
-                                                @if (alumno.Estado == "Registrado")
-                                                {
-                                                    <div class="badge bg-info">Registrado</div>
-                                                }
-                                                else if (alumno.Estado == "Por Subsanar")
-                                                {
-                                                    <div class="badge bg-warning">Por Subsanar</div>
-                                                }
-                                                else if (alumno.Estado == "Rechazado")
-                                                {
-                                                    <div class="badge bg-danger">Rechazado</div>
-                                                }
-                                                else if (alumno.Estado == "Aprobado")
-                                                {
-                                                    <div class="badge bg-success">Aprobado</div>
-                                                }
-                                            </td>
-                                            <td>
-                                                <button class="btn btn-light btn-rounded" @onclick="DescargarFormato">
-                                                    Descargar <i class="mdi mdi-download ms-2"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
 
                     <!-- Modal Loading -->
                     <div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
@@ -195,7 +107,7 @@
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Cargando...</span>
                                 </div>
-                                <p class="mt-3">Descargando Formato...</p>
+                                <p class="mt-3">Procesando...</p>
                             </div>
                         </div>
                     </div>
@@ -207,105 +119,103 @@
 
 </div>
 
-
 @code {
     private bool seleccionarTodos = false;
-    private string tabActiva = "nacionales";
+    private HashSet<int> seleccionados = new();
 
     private List<ListadoPrematricula> alumnos = new()
     {
-        new ListadoPrematricula {Id=8,  Numero = "89451508", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
-        new ListadoPrematricula {Id=10, Numero = "89451510", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
-        new ListadoPrematricula {Id=12, Numero = "89451512", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
-        // agrega más registros si deseas
-    };
-    private List<ListadoPrematricula> alumnos2 = new()
-    {
-        new ListadoPrematricula {Id=2,  Numero = "000189451515", NombreCompleto = "Estefany Tito",      FechaNacimiento = "22/04/2010", LugarNacimiento = "Junin", Estado = "Aprobado" },
-        new ListadoPrematricula {Id=5,  Numero = "000189451518", NombreCompleto = "Gina Nuñez",         FechaNacimiento = "04/11/1998", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
+        new ListadoPrematricula {Id=1001,  Numero = "89451508", NombreCompleto = "Gerardo Mendez",     FechaNacimiento = "09/10/2021", LugarNacimiento = "Madre de Dios", Estado = "Aprobado" },
+        new ListadoPrematricula {Id=1002, Numero = "89451510", NombreCompleto = "María Pérez",        FechaNacimiento = "11/02/1990", LugarNacimiento = "Lima",         Estado = "Registrado" },
     };
 
-    private async Task ConfirmarEliminacion(int id)
-    {
-        var confirmado = await JS.InvokeAsync<bool>("confirmarSweet", "¿Estás seguro?", "Esta acción no se puede deshacer");
-
-        if (confirmado)
-        {
-            // Eliminar lógica aquí
-            Console.WriteLine($"Eliminado: {id}");
-        }
-    }
-
-    private async Task DescargarFormato()
-    {
-        await JS.InvokeVoidAsync("mostrarModal", "#loadingModal");
-
-        // Simular una descarga
-        await Task.Delay(2000);
-
-        await JS.InvokeVoidAsync("ocultarModal", "#loadingModal");
-
-        // Aquí puedes agregar la lógica real de descarga
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await JS.InvokeVoidAsync("inicializarDataTable", "#tblListadoConsejoRegional");
-        }
-    }
-
-    private void SeleccionarTodasFilas(ChangeEventArgs e)
+    private void SeleccionarTodasSolicitudes(ChangeEventArgs e)
     {
         seleccionarTodos = (bool)e.Value;
-        foreach (var alumno in alumnos)
+        seleccionados.Clear();
+        if (seleccionarTodos)
         {
-            alumno.Seleccionado = seleccionarTodos;
+            foreach (var a in alumnos) seleccionados.Add(a.Id);
         }
     }
 
-    private async Task FirmarDigitalmente()
+    private void ToggleSeleccion(int id)
     {
-        var seleccionados = alumnos.Where(a => a.Seleccionado).ToList();
+        if (seleccionados.Contains(id)) seleccionados.Remove(id); else seleccionados.Add(id);
+    }
 
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        var q = e?.Value?.ToString() ?? string.Empty;
+        await JS.InvokeVoidAsync("inicializarDataTableFiltro", "#tblListadoSG", q);
+    }
+
+    private async Task AprobarSeleccionados()
+    {
         if (!seleccionados.Any())
         {
-            await JS.InvokeVoidAsync("Swal.fire", new
-            {
-                icon = "warning",
-                title = "Seleccione al menos un registro para firmar",
-                showConfirmButton = true
-            });
+            await JS.InvokeVoidAsync("Swal.fire", "Validación", "Seleccione al menos una solicitud", "warning");
             return;
         }
+        var confirm = await JS.InvokeAsync<bool>("confirmarSweet", "¿Aprobar solicitudes seleccionadas?", $"Se aprobarán {seleccionados.Count} solicitudes.");
+        if (!confirm) return;
+        // TODO: Reemplazar por endpoint real de SG
+        await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = "Resultado", html = $"Aprobadas: {seleccionados.Count}" });
+        seleccionados.Clear(); seleccionarTodos = false;
+    }
 
-        if (seleccionados.Count == 1)
+    private async Task ObservarSeleccionados()
+    {
+        if (!seleccionados.Any())
         {
-            await JS.InvokeVoidAsync("Swal.fire", new
+            await JS.InvokeVoidAsync("Swal.fire", "Observación", "Seleccione al menos una solicitud", "warning");
+            return;
+        }
+        var obs = await JS.InvokeAsync<string>("solicitarObservacionUnica");
+        if (string.IsNullOrWhiteSpace(obs)) return;
+        // TODO: Reemplazar por endpoint real de SG
+        await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = "Resultado", html = $"Observadas: {seleccionados.Count}<br/>Obs: {obs}" });
+        seleccionados.Clear(); seleccionarTodos = false;
+    }
+
+    private async Task VerPdfFirmado(int solicitudId)
+    {
+        var basePath = $"/firmas_digitales/documento_{solicitudId}";
+        string? firmadoMasReciente = null;
+        var candidatos = new[] { "[F][F][F][F]", "[F][F][F]", "[F][F]", "[F]", "_firmado" };
+        foreach (var suf in candidatos)
+        {
+            var url = $"{basePath}{suf}.pdf";
+            try
             {
-                icon = "success",
-                title = $"Firma individual para: {seleccionados.First().NombreCompleto}",
-                showConfirmButton = true
-            });
+                var resp = await Http.GetAsync(url);
+                if (resp.IsSuccessStatusCode) { firmadoMasReciente = url; break; }
+            }
+            catch { }
+        }
+        if (!string.IsNullOrEmpty(firmadoMasReciente))
+        {
+            await JS.InvokeVoidAsync("open", firmadoMasReciente, "_blank");
         }
         else
         {
-            await JS.InvokeVoidAsync("Swal.fire", new
-            {
-                icon = "info",
-                title = $"Firma masiva para {seleccionados.Count} alumnos",
-                showConfirmButton = true
-            });
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "info", title = "Sin PDF firmado", text = "Aún no existe un PDF firmado para esta solicitud." });
         }
-
-        // Aquí iría tu lógica real de firma
-    }
-
-
-    private void CambiarTab(string tab)
-    {
-        tabActiva = tab;
     }
 }
+
+<script>
+    window.inicializarDataTableFiltro = function (selector, q) {
+        try { var t = $(selector).DataTable(); if (!t) return; t.search(q || '').draw(); } catch (e) { }
+    }
+    window.solicitarObservacionUnica = async function(){
+        const { value: text } = await Swal.fire({
+            title: 'Observación para las seleccionadas',
+            input: 'text', inputLabel: 'Motivo', inputPlaceholder: 'Ingrese observación',
+            inputValidator: (v)=> !v || v.trim()==='' ? 'Debe ingresar una observación' : null,
+            showCancelButton: true, confirmButtonText: 'Aplicar a todas', cancelButtonText: 'Cancelar'
+        });
+        return text || '';
+    }
+</script>
 
