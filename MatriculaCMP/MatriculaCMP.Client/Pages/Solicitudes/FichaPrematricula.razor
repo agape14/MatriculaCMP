@@ -1335,9 +1335,25 @@
 	{
 		if (paisId > 0)
 		{
-			universidades = await Http.GetFromJsonAsync<List<Universidad>>($"api/universidad/{paisId}");
-			// universidades = await PaisUniversidadesService.ObtenerUniversidadesAsync(paisId);
-         await JS.InvokeVoidAsync("console.log", new { tag = "CargarUniversidades", paisId, universidadesCount = universidades?.Count ?? 0 });
+			try
+			{
+				universidades = await Http.GetFromJsonAsync<List<Universidad>>("api/universidad/" + paisId) ?? new List<Universidad>();
+				if (universidades.Count == 0)
+				{
+					try
+					{
+						await Http.GetAsync("api/universidad/llenaruniversidades");
+						universidades = await Http.GetFromJsonAsync<List<Universidad>>("api/universidad/" + paisId) ?? new List<Universidad>();
+					}
+					catch { }
+				}
+				await JS.InvokeVoidAsync("console.log", new { tag = "CargarUniversidades", paisId, universidadesCount = universidades?.Count ?? 0 });
+			}
+			catch (Exception ex)
+			{
+				await JS.InvokeVoidAsync("console.log", new { tag = "CargarUniversidades-Error", message = ex.Message });
+				universidades = new();
+			}
 		}
 		else
 		{
@@ -1517,7 +1533,7 @@
 			// Agregar archivos (solo si hay nuevos)
 			if (fotoFile != null)
 			{
-				var fotoContent = new StreamContent(fotoFile.OpenReadStream());
+				var fotoContent = new StreamContent(fotoFile.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024));
 				fotoContent.Headers.ContentType = new MediaTypeHeaderValue(fotoFile.ContentType);
 				content.Add(fotoContent, "Foto", fotoFile.Name);
 			}

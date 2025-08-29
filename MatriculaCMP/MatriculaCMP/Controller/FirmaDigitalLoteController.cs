@@ -144,8 +144,8 @@ namespace MatriculaCMP.Controller
                     {
                         int estadoAnterior = solicitud.EstadoSolicitudId;
                         int proximo = estadoAnterior;
-                        // 1: Secretario CR firma => 8 (Pend. Sec CR) -> 9 (Pend. Decano CR)
-                        if (dto.TipoDocumentoFirmado == 1 && estadoAnterior == 8) proximo = 9;
+                        // 1: Secretario CR firma (lote): se mantiene en 8, avance real se hizo 6->8 al iniciar
+                        if (dto.TipoDocumentoFirmado == 1 && estadoAnterior == 6) proximo = 8;
                         // 2: Decano CR firma => 8 (Pend. Sec CR) -> 9 (Pend. Decano CR) -> 10 para SG al completar Decano CR
                         else if (dto.TipoDocumentoFirmado == 2 && estadoAnterior == 8) proximo = 9;
                         // 3: Secretario General firma => 9 -> 10

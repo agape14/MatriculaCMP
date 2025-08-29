@@ -358,5 +358,53 @@ namespace MatriculaCMP.Controller
 
             return Ok(response);
         }
+
+        // Serie mensual por estado basada en historial de cambios
+        [HttpGet("series-estados-mes")]
+        public async Task<IActionResult> GetSeriesEstadosMes([FromQuery] int? personaId, [FromQuery] int? anio)
+        {
+            var year = anio ?? DateTime.Now.Year;
+
+            // Obtener estados visibles en reporte
+            var estadosCatalogo = await _context.EstadoSolicitudes
+                .Where(e => e.VerReporte)
+                .Select(e => new { e.Id, e.Nombre })
+                .ToListAsync();
+
+            // Base query: historial por año (y persona si aplica) con join explícito a Solicitudes
+            var baseQuery = from h in _context.SolicitudHistorialEstados
+                            join s in _context.Solicitudes on h.SolicitudId equals s.Id
+                            where h.FechaCambio.Year == year
+                            select new { h.EstadoNuevoId, h.FechaCambio, s.PersonaId };
+
+            if (personaId.HasValue)
+            {
+                baseQuery = baseQuery.Where(x => x.PersonaId == personaId.Value);
+            }
+
+            var datos = await baseQuery
+                .GroupBy(x => new { x.EstadoNuevoId, Mes = x.FechaCambio.Month })
+                .Select(g => new { EstadoId = g.Key.EstadoNuevoId, Mes = g.Key.Mes, Conteo = g.Count() })
+                .ToListAsync();
+
+            var resultado = new List<EstadoMesSerieDto>();
+            foreach (var e in estadosCatalogo)
+            {
+                var serie = new EstadoMesSerieDto
+                {
+                    EstadoId = e.Id,
+                    EstadoNombre = e.Nombre,
+                    Meses = new int[12]
+                };
+
+                foreach (var d in datos.Where(d => d.EstadoId == e.Id))
+                {
+                    serie.Meses[d.Mes - 1] = d.Conteo;
+                }
+                resultado.Add(serie);
+            }
+
+            return Ok(resultado);
+        }
     }
 }

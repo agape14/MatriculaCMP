@@ -121,7 +121,10 @@
                                     {
                                         <tr>
                                             <td>
-                                                <input type="checkbox" class="form-check-input" @bind="alumno.Seleccionado" />
+                                                @if ((modoFirma == 1 && alumno.EstadoId == 6) || (modoFirma == 2 && alumno.EstadoId == 8))
+                                                {
+                                                    <input type="checkbox" class="form-check-input" @bind="alumno.Seleccionado" />
+                                                }
                                             </td>
                                             <td>@alumno.NumeroSolicitud</td>
                                             <td class="d-none d-sm-table-cell">@alumno.FechaSolicitud.ToString("dd/MM/yyyy")</td>
@@ -688,7 +691,44 @@
             {
                 var resultadoUpload = await responseUpload.Content.ReadFromJsonAsync<DownloadResponse>();
                 await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = resultadoUpload?.descripcion ?? "Documento firmado y registrado", showConfirmButton = true });
+                // Refrescar datos desde el backend
                 await CargarParaFirma();
+                // Ajuste optimista: mover de Sec. CR (6) a Pendiente Firma Sec. CR (8) en firma individual o lote
+                try
+                {
+                    var seleccionadosLocal = alumnosMaster.Where(a => a.Seleccionado).Select(a => a.SolicitudId).ToList();
+                    if (modoFirma == 1)
+                    {
+                        var ids = (seleccionadosLocal.Count > 0) ? seleccionadosLocal : new List<int> { firmaActualSolicitudId ?? 0 };
+                        foreach (var id in ids)
+                        {
+                            var item = alumnosMaster.FirstOrDefault(a => a.SolicitudId == id);
+                            if (item != null && item.EstadoId == 6)
+                            {
+                                item.EstadoId = 8;
+                                item.EstadoNombre = "Pendiente Firma Secretario CR";
+                            }
+                        }
+                        AplicarFiltro();
+                        StateHasChanged();
+                    }
+                    else if (modoFirma == 2)
+                    {
+                        var ids = (seleccionadosLocal.Count > 0) ? seleccionadosLocal : new List<int> { firmaActualSolicitudId ?? 0 };
+                        foreach (var id in ids)
+                        {
+                            var item = alumnosMaster.FirstOrDefault(a => a.SolicitudId == id);
+                            if (item != null && item.EstadoId == 8)
+                            {
+                                item.EstadoId = 9;
+                                item.EstadoNombre = "Pendiente Firma Decano CR";
+                            }
+                        }
+                        AplicarFiltro();
+                        StateHasChanged();
+                    }
+                }
+                catch { }
                 iniciandoFirma = false;
                 StateHasChanged();
             }

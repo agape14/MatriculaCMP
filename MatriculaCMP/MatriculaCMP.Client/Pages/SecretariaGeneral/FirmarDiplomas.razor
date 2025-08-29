@@ -71,7 +71,7 @@
                         </span>
                         <div class="form-check ms-2">
                             <input type="checkbox" id="chkTodos" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
-                            <label class="form-check-label" for="chkTodos">Seleccionar todos</label>
+                            <label class="form-check-label" for="chkTodos">Seleccionar todos (estado 9)</label>
                         </div>
                         <button type="button" class="btn btn-primary d-flex align-items-center" @onclick="FirmarSeleccionados">
                             <i class="ri-fingerprint-fill align-middle me-2"></i> Firmar seleccionados
@@ -115,7 +115,10 @@
                                     {
                                         <tr>
                                             <td>
-                                                <input type="checkbox" class="form-check-input" @bind="alumno.Seleccionado" />
+                                                @if (alumno.EstadoId == 9)
+                                                {
+                                                    <input type="checkbox" class="form-check-input" @bind="alumno.Seleccionado" />
+                                                }
                                             </td>
                                             <td>@alumno.NumeroSolicitud</td>
                                             <td class="d-none d-sm-table-cell">@alumno.FechaSolicitud.ToString("dd/MM/yyyy")</td>
@@ -249,7 +252,10 @@
         seleccionarTodos = (bool)e.Value;
         foreach (var alumno in alumnos)
         {
-            alumno.Seleccionado = seleccionarTodos;
+            if (alumno.EstadoId == 9)
+                alumno.Seleccionado = seleccionarTodos;
+            else
+                alumno.Seleccionado = false;
         }
     }
 
@@ -482,7 +488,8 @@
             }
             else
             {
-                var uploadRequest = new { IdExpedienteDocumento = firmaActualSolicitudId, IdExpedienteDocumentoFirmante = 0, CodigoFirma = codigo, TipoDocumentoFirmado = 3 };
+                var targetId = firmaActualSolicitudId ?? (seleccionados.Count == 1 ? seleccionados[0] : 0);
+                var uploadRequest = new { IdExpedienteDocumento = targetId, IdExpedienteDocumentoFirmante = 0, CodigoFirma = codigo, TipoDocumentoFirmado = 3 };
                 responseUpload = await Http.PostAsJsonAsync("api/firmadigital/upload", uploadRequest);
             }
             if (responseUpload.IsSuccessStatusCode)
@@ -490,6 +497,36 @@
                 var resultadoUpload = await responseUpload.Content.ReadFromJsonAsync<DownloadResponse>();
                 await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = resultadoUpload?.descripcion ?? "Documento firmado y registrado", showConfirmButton = true });
                 await CargarParaFirma();
+                // Ajuste optimista: individual y masivo (9 -> 10)
+                try
+                {
+                    if (seleccionados.Count > 1)
+                    {
+                        foreach (var id in seleccionados)
+                        {
+                            var item = alumnosMaster.FirstOrDefault(a => a.SolicitudId == id);
+                            if (item != null && item.EstadoId == 9)
+                            {
+                                item.EstadoId = 10;
+                                item.EstadoNombre = "Pendiente Firma Secretario General";
+                            }
+                        }
+                        AplicarFiltro();
+                        StateHasChanged();
+                    }
+                    else if (firmaActualSolicitudId.HasValue)
+                    {
+                        var item = alumnosMaster.FirstOrDefault(a => a.SolicitudId == firmaActualSolicitudId.Value);
+                        if (item != null && item.EstadoId == 9)
+                        {
+                            item.EstadoId = 10;
+                            item.EstadoNombre = "Pendiente Firma Secretario General";
+                            AplicarFiltro();
+                            StateHasChanged();
+                        }
+                    }
+                }
+                catch { }
                 iniciandoFirma = false;
                 StateHasChanged();
             }

@@ -55,8 +55,15 @@ namespace MatriculaCMP.Services
                 if (foto.Length > 25 * 1024 * 1024)
                     return (false, "La foto no debe pesar más de 25MB");
 
-                if (Path.GetExtension(foto.FileName).ToLower() != ".jpg")
-                    return (false, "La foto debe estar en formato JPG");
+                var extension = Path.GetExtension(foto.FileName).ToLowerInvariant();
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+                if (!allowedExtensions.Contains(extension))
+                    return (false, "La foto debe estar en formato JPG, JPEG o PNG");
+
+                var contentType = (foto.ContentType ?? string.Empty).ToLowerInvariant();
+                var allowedContentTypes = new[] { "image/jpeg", "image/png" };
+                if (!allowedContentTypes.Contains(contentType))
+                    return (false, "El archivo debe ser una imagen válida (JPEG o PNG)");
 
                 if (educacion.EsExtranjera && resolucionFile == null)
                     return (false, "Debe subir el archivo de resolución para universidades extranjeras");

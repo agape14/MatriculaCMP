@@ -812,16 +812,17 @@
             loadingVerDetalle.Add(solicitudId);
             StateHasChanged();
 
-            // Mostrar directamente el PDF firmado por Decano
-            var url = $"/firmas_digitales/documento_{solicitudId}_firmado.pdf";
-
-            // Validar que el recurso exista accesible
-            var resp = await Http.GetAsync(url);
-            if (!resp.IsSuccessStatusCode)
+            // Preparar/asegurar documento de trabajo (última versión) en firmas_digitales
+            var prep = await Http.PostAsync($"api/diploma/preparar-firma/{solicitudId}", null);
+            if (!prep.IsSuccessStatusCode)
             {
-                await JS.InvokeVoidAsync("Swal.fire", "Error", "No se encontró el PDF firmado por Decano.", "error");
+                var err = await prep.Content.ReadAsStringAsync();
+                await JS.InvokeVoidAsync("Swal.fire", "Error", err, "error");
                 return;
             }
+            var json = await prep.Content.ReadAsStringAsync();
+            var doc = System.Text.Json.JsonDocument.Parse(json);
+            var url = doc.RootElement.GetProperty("url").GetString();
 
             pdfUrl = url;
             nombrePDF = $"Diploma_Firmado_{solicitudId}.pdf";

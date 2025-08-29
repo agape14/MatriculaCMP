@@ -123,3 +123,77 @@
         }
     }, 100); // Pequeño retardo para asegurar que el DOM esté listo
 };
+
+// Grafico apilado por mes y por estado
+window.renderEstadosMensuales = function (seriesData, categories, colorsOverride) {
+    setTimeout(() => {
+        if (typeof ApexCharts === 'undefined') {
+            console.error('ApexCharts no está cargado');
+            return;
+        }
+
+        const el = document.querySelector('#estados-mensuales-chart');
+        if (!el) return;
+
+        // Destruir si existe
+        if (window.estadosMensualesChart) {
+            try { window.estadosMensualesChart.destroy(); } catch { }
+        }
+
+        const options = {
+            series: seriesData,
+            chart: {
+                type: 'area',
+                height: 340,
+                stacked: true,
+                toolbar: { show: true }
+            },
+            dataLabels: { enabled: false },
+            stroke: { curve: 'monotoneCubic', width: 2 },
+            fill: { type: 'gradient', gradient: { opacityFrom: 0.6, opacityTo: 0.8 } },
+            xaxis: { categories: categories },
+            tooltip: { shared: true, intersect: false },
+            legend: { position: 'top', horizontalAlign: 'left' },
+            colors: colorsOverride && colorsOverride.length ? colorsOverride : ['#1cbb8c','#5664d2','#eeb902','#f46a6a','#34c38f','#50a5f1','#343a40'],
+            markers: { size: 0, hover: { size: 5 } },
+            noData: { text: 'Sin datos' }
+        };
+
+        window.estadosMensualesChart = new ApexCharts(el, options);
+        window.estadosMensualesChart.render();
+    }, 100);
+}
+
+// Grafico mixto: columnas por estados y línea total
+window.renderEstadosMixto = function(seriesColumns, lineTotal, categories, colorsOverride) {
+    setTimeout(() => {
+        if (typeof ApexCharts === 'undefined') {
+            console.error('ApexCharts no está cargado');
+            return;
+        }
+
+        const el = document.querySelector('#estados-mensuales-chart');
+        if (!el) return;
+
+        if (window.estadosMensualesChart) {
+            try { window.estadosMensualesChart.destroy(); } catch {}
+        }
+
+        const options = {
+            series: [
+                ...seriesColumns.map(s => ({ name: s.name, type: 'column', data: s.data })),
+                { name: 'Total', type: 'line', data: lineTotal }
+            ],
+            chart: { height: 350, type: 'line', stacked: false, toolbar: { show: true } },
+            dataLabels: { enabled: false },
+            stroke: { width: [1, 1, 4] },
+            xaxis: { categories },
+            legend: { horizontalAlign: 'left', offsetX: 40 },
+            colors: colorsOverride && colorsOverride.length ? colorsOverride : ['#008FFB', '#00E396', '#CED4DC', '#f46a6a', '#eeb902', '#50a5f1', '#343a40'],
+            tooltip: { shared: true, intersect: false }
+        };
+
+        window.estadosMensualesChart = new ApexCharts(el, options);
+        window.estadosMensualesChart.render();
+    }, 100);
+}

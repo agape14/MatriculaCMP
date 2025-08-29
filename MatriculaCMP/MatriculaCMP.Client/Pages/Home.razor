@@ -30,7 +30,32 @@
                     </div>
                 </div>
             }
-            
+        </div>
+        <div class="row mt-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <h4 class="card-title mb-4">Solicitudes por mes (año actual) por estado</h4>
+                        <div id="estados-mensuales-chart" class="apex-charts" style="min-height: 320px;"></div>
+                        <div class="mt-3">
+                            <h6 class="text-muted">Suma por estados (año actual)</h6>
+                            <div class="d-flex flex-wrap">
+                                @if (totalesPorEstado != null && totalesPorEstado.Count > 0)
+                                {
+                                    @foreach (var kv in totalesPorEstado)
+                                    {
+                                        <span class="badge bg-secondary me-2 mb-2">@kv.Key: @kv.Value</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Sin datos</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     }
     else
@@ -136,6 +161,8 @@
             </div>
         </div>
         <!-- end row -->
+
+      
     }
    
 }
@@ -165,6 +192,8 @@ else
     private bool isLoading = true;
     private string errorMessage = string.Empty;
     private EstadoSolicitudConCheckResponse? estadosResponse;
+    private Dictionary<string, int> totalesPorEstado = new();
+    private bool adminChartRendered = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -185,12 +214,32 @@ else
                     await cargartabla(); // Añadido await aquí
                     StateHasChanged();
                 }
+                else
+                {
+                    await RenderizarGraficoEstadosMensualesAdmin();
+                }
             }
         }
         catch (Exception ex)
         {
             errorMessage = $"Error inicial: {ex.Message}";
             Console.WriteLine($"Error en OnInitializedAsync: {ex}");
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender && !string.IsNullOrEmpty(perfilUsuario) && perfilUsuario != "2" && !adminChartRendered)
+            {
+                adminChartRendered = true;
+                await RenderizarGraficoEstadosMensualesAdmin();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error en OnAfterRenderAsync: {ex.Message}");
         }
     }
 
@@ -211,6 +260,7 @@ else
                 {
                     UltimoEstado = estadosResponse.NombreUltimoEstado;
                     await RenderizarGrafico();
+                    await RenderizarGraficoEstadosMensuales();
                 }
             }
             else
@@ -263,6 +313,144 @@ else
         }
     }
 
+    private async Task RenderizarGraficoEstadosMensuales()
+    {
+        try
+        {
+            if (!int.TryParse(PersonaId, out int personaId) || estadosResponse is null)
+                return;
+
+            var solicitudes = await Http.GetFromJsonAsync<List<SolicitudSeguimientoDto>>($"api/personaseducacion/mis-solicitudes/{personaId}")
+                ?? new List<SolicitudSeguimientoDto>();
+
+            var mesesCategorias = new List<string> { "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" };
+
+            var mapaPorEstado = new Dictionary<string, int[]>(StringComparer.OrdinalIgnoreCase);
+            foreach (var e in estadosResponse.Estados)
+            {
+                mapaPorEstado[e.Nombre] = new int[12];
+            }
+
+            var anioActual = DateTime.Now.Year;
+            foreach (var s in solicitudes)
+            {
+                if (s.FechaSolicitud.Year != anioActual) continue;
+                var mesIndex = s.FechaSolicitud.Month - 1;
+                var estado = estadosResponse.Estados.FirstOrDefault(x => x.Id == s.EstadoId);
+                if (estado != null)
+                {
+                    mapaPorEstado[estado.Nombre][mesIndex]++;
+                }
+            }
+
+            var estadosOrdenados = estadosResponse.Estados
+                .OrderBy(e => e.Id)
+                .ToList();
+
+            var series = new List<object>();
+            // Reemplazar por series basadas en historial para exactitud
+            var anioActualLocal = DateTime.Now.Year;
+            var seriesApiLocal = await Http.GetFromJsonAsync<List<EstadoMesSerieDto>>($"api/personaseducacion/series-estados-mes?personaId={personaId}&anio={anioActualLocal}")
+                ?? new List<EstadoMesSerieDto>();
+            foreach (var e in estadosOrdenados)
+            {
+                var match = seriesApiLocal.FirstOrDefault(s => s.EstadoId == e.Id);
+                series.Add(new { name = e.Nombre, data = match?.Meses ?? (mapaPorEstado.TryGetValue(e.Nombre, out var arr) ? arr : new int[12]) });
+            }
+
+            // Guardar totales para mostrarlos en la UI
+            totalesPorEstado = mapaPorEstado.ToDictionary(k => k.Key, v => v.Value.Sum());
+            StateHasChanged();
+
+            var colores = estadosOrdenados.Select(e => ColorPorEstado(e.Id)).ToArray();
+            var totalLinea = new int[12];
+            foreach (dynamic s in series)
+            {
+                int[] data = s.data;
+                for (int i = 0; i < 12; i++) totalLinea[i] += data[i];
+            }
+            await JS.InvokeVoidAsync("renderEstadosMixto", series, totalLinea, mesesCategorias, colores);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al renderizar gráfico mensual por estados: {ex.Message}");
+        }
+    }
+
+    private async Task RenderizarGraficoEstadosMensualesAdmin()
+    {
+        try
+        {
+            var solicitudes = await Http.GetFromJsonAsync<List<SolicitudSeguimientoDto>>("api/personaseducacion/solicitudesdets")
+                ?? new List<SolicitudSeguimientoDto>();
+
+            var mesesCategorias = new List<string> { "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" };
+            var mapaPorEstado = new Dictionary<string, int[]>(StringComparer.OrdinalIgnoreCase);
+
+            // Precargar catálogo de estados (los que tienen VerReporte) para forzar series aunque sean 0
+            var estadosCatalogoResp = await Http.GetFromJsonAsync<EstadoSolicitudConCheckResponse>(
+                "api/personaseducacion/EstadosConCheck/0");
+            var estadosCatalogo = estadosCatalogoResp?.Estados ?? new List<EstadoSolicitudConCheckDto>();
+            foreach (var e in estadosCatalogo.OrderBy(e => e.Id))
+            {
+                if (!mapaPorEstado.ContainsKey(e.Nombre))
+                {
+                    mapaPorEstado[e.Nombre] = new int[12];
+                }
+            }
+
+            var anioActual = DateTime.Now.Year;
+            foreach (var s in solicitudes)
+            {
+                if (s.FechaSolicitud.Year != anioActual) continue;
+                var mesIndex = s.FechaSolicitud.Month - 1;
+                var estadoNombre = string.IsNullOrWhiteSpace(s.Estado) ? "Sin Estado" : s.Estado;
+                if (!mapaPorEstado.TryGetValue(estadoNombre, out var arr))
+                {
+                    arr = new int[12];
+                    mapaPorEstado[estadoNombre] = arr;
+                }
+                arr[mesIndex]++;
+            }
+
+            List<object> series;
+            if (estadosCatalogo.Any())
+            {
+                series = estadosCatalogo
+                    .OrderBy(e => e.Id)
+                    .Select(e => new { name = e.Nombre, data = mapaPorEstado.TryGetValue(e.Nombre, out var arr) ? arr : new int[12] })
+                    .Cast<object>()
+                    .ToList();
+            }
+            else
+            {
+                series = mapaPorEstado
+                    .OrderBy(k => k.Key)
+                    .Select(kvp => new { name = kvp.Key, data = kvp.Value })
+                    .Cast<object>()
+                    .ToList();
+            }
+            totalesPorEstado = mapaPorEstado.ToDictionary(k => k.Key, v => v.Value.Sum());
+            StateHasChanged();
+
+            var colores = (estadosCatalogo.Any()
+                ? estadosCatalogo.OrderBy(e => e.Id).Select(e => ColorPorEstado(e.Id))
+                : mapaPorEstado.Keys.OrderBy(k => k).Select(_ => "#1cbb8c"))
+                .ToArray();
+            var totalLineaAdm = new int[12];
+            foreach (dynamic s in series)
+            {
+                int[] data = s.data;
+                for (int i = 0; i < 12; i++) totalLineaAdm[i] += data[i];
+            }
+            await JS.InvokeVoidAsync("renderEstadosMixto", series, totalLineaAdm, mesesCategorias, colores);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error al renderizar gráfico mensual (admin): {ex.Message}");
+        }
+    }
+
     private string GetTileTextClass(string bg)
     {
         var darks = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -270,6 +458,25 @@ else
             "primary","secondary","dark","info","cmp-primary","morado"
         };
         return darks.Contains(bg) ? "text-white" : "text-dark";
+    }
+
+    private string ColorPorEstado(int id)
+    {
+        return id switch
+        {
+            1 => "#2563EB", // Registrado (si aplica)
+            2 => "#F59E0B", // Aprobado Consejo Regional
+            3 => "#EF4444", // Rechazado Consejo Regional
+            4 => "#10B981", // Aprobado Secretaría General
+            5 => "#B91C1C", // Rechazado Secretaría General
+            6 => "#FB923C", // Aprobado Of. Matrícula
+            7 => "#7F1D1D", // Rechazado Of. Matrícula
+            8 => "#3B82F6", // Pend. Firma Secretario CR
+            9 => "#06B6D4", // Pend. Firma Decano CR
+            10 => "#6366F1", // Pend. Firma Secretario General
+            11 => "#0EA5E9", // Pend. Firma Decano
+            _ => "#5664d2"
+        };
     }
 }
 

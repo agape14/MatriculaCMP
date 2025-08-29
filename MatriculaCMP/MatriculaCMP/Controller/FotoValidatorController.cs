@@ -73,16 +73,26 @@ namespace MatriculaCMP.Controller
 					? BuildMaleValidationPrompt()
 					: BuildFemaleValidationPrompt();
 				var validationAnalysis = await AnalyzeImage(base64Image, validationPrompt);
-				var esValido = ValidateResponse(validationAnalysis.Response);
-				_logger.LogInformation("Validación completada - Género: {Genero}, Válido: {Valido}, Respuesta: {Response}",
-					genero, esValido, validationAnalysis.Response);
+				var (esValido, motivo) = EvaluateResponse(validationAnalysis.Response);
+
+				if (esValido)
+				{
+					_logger.LogInformation("Validación completada - Género: {Genero}, Válido: {Valido}",
+						genero, esValido);
+				}
+				else
+				{
+					_logger.LogWarning("Validación rechazada - Motivo: {Motivo}. Género: {Genero}. Respuesta: {Response}",
+						motivo, genero, validationAnalysis.Response);
+				}
+
 				return Ok(new ValidationResult
 				{
 					Valido = esValido,
 					Genero = genero,
 					Mensaje = esValido
 						? "Imagen válida cumple con todos los requisitos"
-						: "La imagen no cumple con los requisitos",
+						: ($"La imagen no cumple con los requisitos. Motivo: {motivo}"),
 					Detalles = new
 					{
 						RespuestaIA = validationAnalysis.Response,
@@ -203,8 +213,45 @@ namespace MatriculaCMP.Controller
 		{
 			if (string.IsNullOrWhiteSpace(response))
 				return false;
-			var cleanResponse = response.ToLowerInvariant().Trim();
-			return cleanResponse.StartsWith("sí") || cleanResponse.StartsWith("si");
+			var clean = response.ToLowerInvariant().Trim();
+
+			// Negativos explícitos primero
+			if (Regex.IsMatch(clean, @"\bno\s+(cumple|es\s+valida|es\s+válida)")) return false;
+			if (Regex.IsMatch(clean, @"inválid|invalida")) return false;
+
+			// Positivos explícitos
+			if (Regex.IsMatch(clean, @"^(sí|si)\b")) return true;
+			if (clean.Contains("cumple con todos los requisitos") || clean.Contains("cumple todos los requisitos")) return true;
+			if (Regex.IsMatch(clean, @"\bes\s+val[ií]da\b")) return true;
+
+			// Fallback: si aparece 'sí/si' en cualquier parte y no hay negativos contundentes
+			if (Regex.IsMatch(clean, @"\b(sí|si)\b")) return true;
+
+			return false;
+		}
+
+		private (bool valido, string motivo) EvaluateResponse(string? response)
+		{
+			if (string.IsNullOrWhiteSpace(response))
+				return (false, "Respuesta vacía del modelo");
+
+			var clean = response.ToLowerInvariant().Trim();
+
+			// Motivos comunes de rechazo
+			if (Regex.IsMatch(clean, @"fondo no blanco|fondo.*(no)\s+blanco|texturas|objetos|editados"))
+				return (false, "Fondo no blanco o con elementos");
+			if (Regex.IsMatch(clean, "ropa informal|camiseta|deportiva|estampados"))
+				return (false, "Vestimenta no formal");
+			if (Regex.IsMatch(clean, "selfie|inclinaci[oó]n|pose"))
+				return (false, "Postura/ángulo tipo selfie o pose");
+			if (Regex.IsMatch(clean, "obstrucciones|gafas de sol|mascarillas|sombreros|aud[ií]fonos"))
+				return (false, "Rostro obstruido o accesorios no permitidos");
+			if (Regex.IsMatch(clean, "desenfoque|baja iluminaci[oó]n|ruido|filtros"))
+				return (false, "Calidad de imagen insuficiente");
+
+			// Si pasa reglas de rechazo, usar el booleano general
+			var ok = ValidateResponse(response);
+			return ok ? (true, "") : (false, "El modelo no confirmó explícitamente que sea válida");
 		}
 		private string BuildMaleValidationPrompt()
 		{
@@ -222,7 +269,8 @@ namespace MatriculaCMP.Controller
 
 RECHAZA si detectas cualquiera de: fondo no blanco, ropa informal, pose de estudio/fashion, selfie, filtros, recorte inadecuado, ángulo lateral, baja iluminación/ruido, múltiples personas, gestos exagerados.
 
-¿Cumple TODOS los requisitos?";
+¿Cumple TODOS los requisitos?
+Responde únicamente con 'sí' o 'no'. No incluyas ninguna explicación adicional.";
 		}
 
 		private string BuildFemaleValidationPrompt()
@@ -241,7 +289,8 @@ RECHAZA si detectas cualquiera de: fondo no blanco, ropa informal, pose de estud
 
 RECHAZA si detectas cualquiera de: fondo no blanco, ropa informal, pose de estudio/fashion, selfie, filtros, recorte inadecuado, ángulo lateral, baja iluminación/ruido, múltiples personas, gestos exagerados.
 
-¿Cumple TODOS los requisitos?";
+¿Cumple TODOS los requisitos?
+Responde únicamente con 'sí' o 'no'. No incluyas ninguna explicación adicional.";
 		}
 		#endregion
 		#region Clases de Soporte
