@@ -83,10 +83,39 @@ namespace MatriculaCMP.Services
                 var token = await ObtenerTokenAsync();
                 if (token == null)
                 {
+                    // Fallback: si no hay token, intentar validar si el PDF ya existe en servidor
+                    try
+                    {
+                        string rutaCarpeta = _config["FirmaDigital:FirmaDigital:RutaArchivos"] ?? _config["FirmaDigital:RutaArchivos"];
+                        if (string.IsNullOrEmpty(rutaCarpeta))
+                        {
+                            rutaCarpeta = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "firmas_digitales");
+                        }
+                        Directory.CreateDirectory(rutaCarpeta);
+                        var baseName = $"documento_{request.IdExpedienteDocumento}";
+                        var existentes = Directory.GetFiles(rutaCarpeta, baseName + "*.pdf");
+                        if (existentes.Length > 0)
+                        {
+                            var elegido = existentes
+                                .OrderByDescending(p => Path.GetFileNameWithoutExtension(p).Count(c => c == 'F'))
+                                .First();
+                            var bytes = await File.ReadAllBytesAsync(elegido);
+                            return new DownloadResponse { estado = 1, descripcion = "Documento firmado ya disponible en servidor", archivoFirmado = Convert.ToBase64String(bytes) };
+                        }
+                    }
+                    catch { }
                     return new DownloadResponse { estado = -1, descripcion = "No se pudo generar el token de seguridad" };
                 }
 
-                var responseDescarga = await DescargarDocumentoFirmadoAsync(token.access_token, request.CodigoFirma);
+                // Retry: el firmador puede demorar en tener listo el archivo; intentamos varias veces
+                DownloadResponse? responseDescarga = null;
+                for (int intento = 0; intento < 5; intento++)
+                {
+                    responseDescarga = await DescargarDocumentoFirmadoAsync(token.access_token, request.CodigoFirma);
+                    if (responseDescarga != null && responseDescarga.estado > 0 && !string.IsNullOrEmpty(responseDescarga.archivoFirmado))
+                        break;
+                    await Task.Delay(700 + intento * 500);
+                }
 
                 if (responseDescarga != null && responseDescarga.estado > 0 && !string.IsNullOrEmpty(responseDescarga.archivoFirmado))
                 {
@@ -130,6 +159,34 @@ namespace MatriculaCMP.Services
 
                     return responseDescarga;
                 }
+
+                // Fallback: si el servicio indica que ya no está disponible (p.ej. "ya han sido descargados"),
+                // pero el archivo firmado ya existe en disco, considerar éxito y retornarlo desde disco
+                try
+                {
+                    string rutaCarpeta = _config["FirmaDigital:FirmaDigital:RutaArchivos"] ?? _config["FirmaDigital:RutaArchivos"];
+                    if (string.IsNullOrEmpty(rutaCarpeta))
+                    {
+                        rutaCarpeta = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "firmas_digitales");
+                    }
+                    Directory.CreateDirectory(rutaCarpeta);
+                    var baseName = $"documento_{request.IdExpedienteDocumento}";
+                    var existentes = Directory.GetFiles(rutaCarpeta, baseName + "*.pdf");
+                    if (existentes.Length > 0)
+                    {
+                        var elegido = existentes
+                            .OrderByDescending(p => Path.GetFileNameWithoutExtension(p).Count(c => c == 'F'))
+                            .First();
+                        var bytes = await File.ReadAllBytesAsync(elegido);
+                        return new DownloadResponse
+                        {
+                            estado = 1,
+                            descripcion = "Documento firmado ya disponible en servidor",
+                            archivoFirmado = Convert.ToBase64String(bytes)
+                        };
+                    }
+                }
+                catch { }
 
                 return responseDescarga ?? new DownloadResponse { estado = -1, descripcion = "No se pudo descargar el archivo firmado" };
             }

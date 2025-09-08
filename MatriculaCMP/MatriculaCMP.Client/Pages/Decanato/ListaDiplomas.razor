@@ -167,6 +167,7 @@
 	private bool mostrarPdf = false;
 	private bool iniciandoFirma = false;
 	private DotNetObjectReference<ListaDiplomas>? dotNetRef;
+	private bool esFirmaLoteActual = false;
 	private List<ItemFirma> paraFirma = new();
 	private List<ItemFirmaView> alumnos = new();
 	private List<ItemFirmaView> alumnosMaster = new();
@@ -207,7 +208,8 @@
 	{
 		try
 		{
-			paraFirma = await Http.GetFromJsonAsync<List<ItemFirma>>("api/diploma/decanato-para-firma");
+			var url = $"api/diploma/decanato-para-firma?ts={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+			paraFirma = await Http.GetFromJsonAsync<List<ItemFirma>>(url);
 			alumnosMaster = paraFirma.Select(x => new ItemFirmaView
 			{
 				SolicitudId = x.SolicitudId,
@@ -307,6 +309,7 @@
 	{
 		try
 		{
+			esFirmaLoteActual = false;
 			iniciandoFirma = true;
 			StateHasChanged();
 			var preparar = await Http.PostAsync($"api/diploma/preparar-firma/{solicitudId}", null);
@@ -363,22 +366,36 @@
 
 			var seleccionados = alumnos.Where(a => a.Seleccionado && a.EstadoId == 10).Select(a => a.SolicitudId).ToList();
 			HttpResponseMessage responseUpload;
-			if (seleccionados.Count > 1)
+			if (esFirmaLoteActual)
 			{
 				// Lote para Decano (tipo 4)
 				responseUpload = await Http.PostAsJsonAsync("api/firmadigital-lote/upload", new { CodigoFirma = codigo, TipoDocumentoFirmado = 4 });
 			}
 			else
 			{
-				var uploadRequest = new { IdExpedienteDocumento = firmaActualSolicitudId, IdExpedienteDocumentoFirmante = 0, CodigoFirma = codigo, TipoDocumentoFirmado = 4 };
+				var targetId = firmaActualSolicitudId ?? (seleccionados.Count == 1 ? seleccionados[0] : 0);
+				if (targetId <= 0 && seleccionados.Count > 0)
+				{
+					targetId = seleccionados[0];
+				}
+				if (targetId <= 0)
+				{
+					await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "No hay documento objetivo para subir la firma" });
+					iniciandoFirma = false;
+					esFirmaLoteActual = false;
+					StateHasChanged();
+					return;
+				}
+				var uploadRequest = new { IdExpedienteDocumento = targetId, IdExpedienteDocumentoFirmante = 0, CodigoFirma = codigo, TipoDocumentoFirmado = 4 };
 				responseUpload = await Http.PostAsJsonAsync("api/firmadigital/upload", uploadRequest);
 			}
 			if (responseUpload.IsSuccessStatusCode)
 			{
 				var resultadoUpload = await responseUpload.Content.ReadFromJsonAsync<DownloadResponse>();
-				await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = resultadoUpload?.descripcion ?? "Documento firmado y registrado", showConfirmButton = true });
+				await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = "Documento firmado y disponible en el servidor", showConfirmButton = true });
 				await CargarParaFirma();
 				iniciandoFirma = false;
+				esFirmaLoteActual = false;
 				StateHasChanged();
         }
         else
@@ -386,6 +403,7 @@
 				var error = await responseUpload.Content.ReadAsStringAsync();
 				await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error al subir documento firmado", html = error });
 				iniciandoFirma = false;
+				esFirmaLoteActual = false;
 				StateHasChanged();
 			}
 		}
@@ -393,6 +411,7 @@
 		{
 			await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error inesperado", text = ex.Message });
 			iniciandoFirma = false;
+			esFirmaLoteActual = false;
 			StateHasChanged();
 		}
 	}
@@ -402,6 +421,7 @@
 	{
 		await JS.InvokeVoidAsync("Swal.fire", new { icon = "info", title = "Firma cancelada", html = mensaje, showConfirmButton = true });
 		iniciandoFirma = false;
+		esFirmaLoteActual = false;
 		StateHasChanged();
 	}
 
@@ -428,6 +448,7 @@
 		}
 		try
 		{
+			esFirmaLoteActual = true;
 			iniciandoFirma = true;
 			StateHasChanged();
 
@@ -497,8 +518,10 @@
 		componenteRazor = instancia;
 	};
 	window.mostrarFormularioFirma = function (codigoFirma) {
+		console.log("DEC.mostrarFormularioFirma", { codigoFirma });
 		document.getElementById("codigoFirma").value = codigoFirma;
 		$('#dvIframe').modal({ backdrop: 'static', keyboard: false, show: true });
+		console.log("DEC.submit.ssoForm");
 		document.getElementById("ssoForm").submit();
 	}
 	window.obtenerCodigoFirmaDesdeFormulario = function () {
@@ -509,16 +532,21 @@
 	window.addEventListener("message", function (e) {
 		try {
 			var rptJSON = JSON.parse(e.data);
+			console.log("DEC.postMessage recibido", rptJSON);
+			console.log("DEC.postMessage.codigoRespuesta:", rptJSON.resultado);
 			$('#dvIframe').modal('hide');
 			if (componenteRazor && rptJSON.resultado === "0") {
+				console.log("DEC.invocando SubirDocumentoFirmado (OK)");
 				componenteRazor.invokeMethodAsync('SubirDocumentoFirmado', JSON.stringify(rptJSON))
-					.catch(err => console.error("Error al invocar método C#", err));
+					.then(() => console.log("DEC.SubirDocumentoFirmado invocado"))
+					.catch(err => console.error("DEC.error invoke SubirDocumentoFirmado", err));
 			} else if (componenteRazor) {
+				console.warn("DEC.postMessage: Firma fallida o instancia no disponible");
 				componenteRazor.invokeMethodAsync('OnFirmaCancelada', 'La firma fue cancelada por el usuario.')
-					.catch(err => console.error('Error al invocar OnFirmaCancelada', err));
+					.catch(err => console.error('DEC.error invoke OnFirmaCancelada', err));
 			}
 		} catch (ex) {
-			console.error("Error en respuesta del iframe", e.data);
+			console.error("DEC.error parse postMessage", e.data);
 		}
 	});
 </script>

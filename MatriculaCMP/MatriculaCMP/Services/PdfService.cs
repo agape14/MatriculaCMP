@@ -6,6 +6,7 @@ using System.IO;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using System.Globalization;
+using System.Text;
 
 namespace MatriculaCMP.Services
 {
@@ -30,6 +31,7 @@ namespace MatriculaCMP.Services
         private readonly ILogger<PdfService>? _logger;
         private readonly PdfLayoutOptions _layout;
         private readonly Dictionary<string, (int Page, float X1, float Y1, float X2, float Y2)> _signatureRects = new Dictionary<string, (int, float, float, float, float)>();
+        private readonly IConfiguration? _configuration;
 
         public PdfService()
         {
@@ -43,6 +45,7 @@ namespace MatriculaCMP.Services
                     var cfg = new ConfigurationBuilder()
                         .AddJsonFile(cfgPath, optional: true, reloadOnChange: false)
                         .Build();
+                    _configuration = cfg;
                     cfg.GetSection("PdfLayout").Bind(_layout);
                     LoadSignatureRects(cfg);
                 }
@@ -57,6 +60,7 @@ namespace MatriculaCMP.Services
         {
             _logger = logger;
             _layout = new PdfLayoutOptions();
+            _configuration = configuration;
             try
             {
                 configuration.GetSection("PdfLayout").Bind(_layout);
@@ -283,6 +287,16 @@ namespace MatriculaCMP.Services
 
                 // Nota: las etiquetas se dibujan en contenido directo, sin afectar el flujo ni generar página adicional
 
+                // Pie de página con leyenda, link y QR
+                try
+                {
+                    DibujarPieDePagina(writer, document, diploma.SolicitudId);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Error al dibujar pie de página");
+                }
+
                 document.Close();
                 return ms.ToArray();
             }
@@ -402,6 +416,88 @@ namespace MatriculaCMP.Services
             // textos centrados
             ColumnText.ShowTextAligned(canvas, Element.ALIGN_CENTER, new Phrase(titulo.ToUpperInvariant(), titleFont), centerX, titleY, 0);
             ColumnText.ShowTextAligned(canvas, Element.ALIGN_CENTER, new Phrase(subtitulo.ToUpperInvariant(), subFont), centerX, subY, 0);
+        }
+
+        private string ConstruirUrlVerificacion(int solicitudId)
+        {
+            // Usar FrontendUrl si está configurado (p.ej. https://localhost:5181)
+            string baseUrl = _configuration?["FrontendUrl"]
+                ?? _configuration?["Verification:BaseUrl"]
+                ?? "https://sistema.cmp.org.pe";
+            string endpoint = _configuration?["Verification:Endpoint"] ?? "/verificar/documento";
+            string idB64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(solicitudId.ToString()));
+            return string.Format("{0}{1}?id={2}", baseUrl.TrimEnd('/'), endpoint, Uri.EscapeDataString(idB64));
+        }
+
+        private void DibujarPieDePagina(PdfWriter writer, Document document, int solicitudId)
+        {
+            var cb = writer.DirectContent;
+
+            float pageWidth = document.PageSize.Width;
+            float left = document.LeftMargin;
+            float right = document.RightMargin;
+            float usableWidth = pageWidth - left - right;
+
+            // Área reservada inferior: desde y=20 hasta y=20+_layout.BottomReservedHeight
+            float baseY = 20f;
+            float areaHeight = _layout.BottomReservedHeight;
+
+            // Línea/borde inferior (más pegado al borde inferior de la página)
+            cb.SaveState();
+            cb.SetColorStroke(new BaseColor(128, 0, 128));
+            cb.SetLineWidth(1.2f);
+            float lineY = baseY + 6f;
+            cb.MoveTo(left, lineY);
+            cb.LineTo(left + usableWidth, lineY);
+            cb.Stroke();
+            cb.RestoreState();
+
+            // Construir texto y link
+            string url = ConstruirUrlVerificacion(solicitudId);
+            string leyenda = "Esta es una copia auténtica imprimible de un documento electrónico archivado por el CMP. Su autenticidad e integridad puede verificarse en:";
+
+            // Zona de texto (deja espacio para QR a la derecha)
+            float qrMaxSize = 84f;
+            float qrWidth = qrMaxSize;
+            float gap = 12f;
+            float textBoxWidth = usableWidth - qrWidth - gap;
+            var ct = new ColumnText(cb)
+            {
+                Alignment = Element.ALIGN_LEFT
+            };
+
+            var baseFont = BaseFont.CreateFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
+            var small = new Font(baseFont, 8, Font.NORMAL, BaseColor.BLACK);
+            var smallBold = new Font(baseFont, 8, Font.BOLD, BaseColor.BLACK);
+
+            Phrase p = new Phrase();
+            p.Add(new Chunk(leyenda + " ", small));
+            // Link que intenta abrir en nueva ventana/pestaña (según soporte del visor PDF)
+            var linkChunk = new Chunk(url, smallBold);
+            var action = new PdfAction(url);
+            action.Put(PdfName.NEWWINDOW, PdfBoolean.PDFTRUE);
+            linkChunk.SetAction(action);
+            p.Add(linkChunk);
+
+            // Colocar el texto cerca del borde inferior, por encima de la línea
+            ct.SetSimpleColumn(
+                p,
+                left,
+                baseY + 14f,
+                left + textBoxWidth,
+                baseY + 40f,
+                11f,
+                Element.ALIGN_LEFT);
+            ct.Go();
+
+            // Generar y dibujar QR con el link
+            var qr = new BarcodeQRCode(url, (int)qrMaxSize, (int)qrMaxSize, null);
+            var qrImg = qr.GetImage();
+            qrImg.ScaleToFit(qrMaxSize, qrMaxSize);
+            float qrX = left + textBoxWidth + gap;
+            float qrY = baseY + (areaHeight - qrImg.ScaledHeight) / 2f;
+            qrImg.SetAbsolutePosition(qrX, qrY);
+            writer.DirectContent.AddImage(qrImg);
         }
     }
 }

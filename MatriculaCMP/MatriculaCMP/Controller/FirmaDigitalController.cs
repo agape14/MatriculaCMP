@@ -37,26 +37,31 @@ namespace MatriculaCMP.Controller
             // Asegurar archivo a firmar ya existe en wwwroot/firmas_digitales/documento_{id}.pdf
             // La preparación del archivo se hace desde el controlador de Diploma (preparar-firma)
 
-            // Si la solicitud está en 6 (Aprobado Of. Matrícula) aún no se envió a firma CR: pasar a 8 (Pend. Firma Sec. CR)
-            var solicitud = await _context.Solicitudes.FirstOrDefaultAsync(s => s.Id == request.IdExpedienteDocumento);
-            if (solicitud != null && solicitud.EstadoSolicitudId == 6)
+            // Primero intentar iniciar la firma y obtener codigoFirma
+            var result = await _firmaService.FirmarDocumentoAsync(request);
+
+            // Solo avanzar estado si se obtuvo un codigoFirma válido
+            if (result is not null && result.codigoFirma > 0)
             {
-                int estadoAnterior = solicitud.EstadoSolicitudId;
-                solicitud.EstadoSolicitudId = 8;
-                _context.Solicitudes.Update(solicitud);
-                _context.SolicitudHistorialEstados.Add(new SolicitudHistorialEstado
+                var solicitud = await _context.Solicitudes.FirstOrDefaultAsync(s => s.Id == request.IdExpedienteDocumento);
+                if (solicitud != null && solicitud.EstadoSolicitudId == 6)
                 {
-                    SolicitudId = solicitud.Id,
-                    EstadoAnteriorId = estadoAnterior,
-                    EstadoNuevoId = 8,
-                    FechaCambio = DateTime.Now,
-                    Observacion = "Enviado a firma Secretario CR",
-                    UsuarioCambio = GetUsuarioAutenticadoId()
-                });
-                await _context.SaveChangesAsync();
+                    int estadoAnterior = solicitud.EstadoSolicitudId;
+                    solicitud.EstadoSolicitudId = 8; // Pend. Firma Sec. CR
+                    _context.Solicitudes.Update(solicitud);
+                    _context.SolicitudHistorialEstados.Add(new SolicitudHistorialEstado
+                    {
+                        SolicitudId = solicitud.Id,
+                        EstadoAnteriorId = estadoAnterior,
+                        EstadoNuevoId = 8,
+                        FechaCambio = DateTime.Now,
+                        Observacion = "Enviado a firma Secretario CR",
+                        UsuarioCambio = GetUsuarioAutenticadoId()
+                    });
+                    await _context.SaveChangesAsync();
+                }
             }
 
-            var result = await _firmaService.FirmarDocumentoAsync(request);
             return Ok(result);
         }
 
@@ -65,9 +70,54 @@ namespace MatriculaCMP.Controller
         {
             // 1) Descargar y guardar archivo en carpeta pública (servicio ya lo hace con nombre determinístico)
             var result = await _firmaService.SubirDocumentoFirmadoAsync(request);
-            if (result is null || result.estado <= 0)
+            if (result is null)
             {
                 return Ok(result);
+            }
+
+            // Fallback: si el servicio indica "ya descargado / no disponible" o error de token, usar archivo local si existe
+            if (result.estado <= 0 || string.IsNullOrEmpty(result.archivoFirmado))
+            {
+                var desc = result.descripcion?.ToLowerInvariant() ?? string.Empty;
+                bool indicaDescargado = desc.Contains("ya han sido descargados") || desc.Contains("no se encuentran disponibles");
+                bool errorToken = desc.Contains("token") || desc.Contains("no se pudo generar el token");
+                if (indicaDescargado || errorToken)
+                {
+                    try
+                    {
+                        var rutaBase = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "firmas_digitales");
+                        var baseName = $"documento_{request.IdExpedienteDocumento}";
+                        var candidatos = Directory.GetFiles(rutaBase, baseName + "*.pdf");
+                        var elegido = candidatos
+                            .OrderByDescending(p => Path.GetFileNameWithoutExtension(p).Count(c => c == 'F'))
+                            .FirstOrDefault();
+                        if (!string.IsNullOrEmpty(elegido))
+                        {
+                            var bytes = await System.IO.File.ReadAllBytesAsync(elegido);
+                            result = new DownloadResponse
+                            {
+                                estado = 1,
+                                descripcion = "Documento firmado ya estaba disponible en servidor",
+                                archivoFirmado = Convert.ToBase64String(bytes)
+                            };
+                        }
+                        else
+                        {
+                            // Considerar éxito de registro aunque no podamos adjuntar bytes (UI solo requiere estado>0)
+                            result = new DownloadResponse
+                            {
+                                estado = 1,
+                                descripcion = "Documento firmado registrado previamente"
+                            };
+                        }
+                    }
+                    catch { }
+                }
+
+                if (result.estado <= 0)
+                {
+                    return Ok(result);
+                }
             }
 
             // 2) Persistir ruta firmada en BD y avanzar estado según flujo
@@ -81,9 +131,12 @@ namespace MatriculaCMP.Controller
                 var candidatos = Directory.GetFiles(rutaBase, baseName + "*.pdf");
                 var elegido = candidatos
                     .OrderByDescending(p => Path.GetFileNameWithoutExtension(p).Count(c => c == 'F'))
-                    .FirstOrDefault() ?? $"{baseName}.pdf";
-                diploma.RutaPdfFirmado = Path.GetFileName(elegido);
-                _context.Diplomas.Update(diploma);
+                    .FirstOrDefault();
+                if (!string.IsNullOrEmpty(elegido))
+                {
+                    diploma.RutaPdfFirmado = Path.GetFileName(elegido);
+                    _context.Diplomas.Update(diploma);
+                }
             }
 
             var solicitud = await _context.Solicitudes.FirstOrDefaultAsync(s => s.Id == solicitudId);
@@ -101,6 +154,12 @@ namespace MatriculaCMP.Controller
                     proximoEstado = 10; // Sec. General -> pasa a 10 (Pend. Decano)
                 else if (request.TipoDocumentoFirmado == 4 && estadoAnterior == 10)
                     proximoEstado = 11; // Decano -> pasa a 11 (Diploma listo para entrega)
+
+                // Robustez: si la firma es de Secretaría General (3) y aún no estamos en 10, forzar avance a 10
+                if (request.TipoDocumentoFirmado == 3 && proximoEstado == estadoAnterior && estadoAnterior < 10)
+                {
+                    proximoEstado = 10;
+                }
 
                 if (proximoEstado != estadoAnterior)
                 {

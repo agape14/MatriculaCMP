@@ -150,6 +150,8 @@ namespace MatriculaCMP.Controller
                         else if (dto.TipoDocumentoFirmado == 2 && estadoAnterior == 8) proximo = 9;
                         // 3: Secretario General firma => 9 -> 10
                         else if (dto.TipoDocumentoFirmado == 3 && estadoAnterior == 9) proximo = 10;
+                        // Robustez: si es SG (3) y aún no se alcanzó 10, forzar a 10
+                        else if (dto.TipoDocumentoFirmado == 3 && estadoAnterior < 10) proximo = 10;
                         // 4: Decano firma => 10 -> 11
                         else if (dto.TipoDocumentoFirmado == 4 && estadoAnterior == 10) proximo = 11;
                         if (proximo != estadoAnterior)

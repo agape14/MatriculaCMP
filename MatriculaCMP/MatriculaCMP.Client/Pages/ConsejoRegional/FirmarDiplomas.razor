@@ -83,6 +83,7 @@
                         <button type="button" class="btn btn-primary d-flex align-items-center" @onclick="FirmarSeleccionados">
                             <i class="ri-fingerprint-fill align-middle me-2"></i> Firmar seleccionados
                         </button>
+                        <div class="text-muted small ms-2">Seleccionados: @alumnos.Count(a=>a.Seleccionado)</div>
                         <div class="ms-auto" style="min-width:260px;max-width:340px;">
                             <div class="input-group">
                                 <span class="input-group-text"><i class="ri-search-2-line"></i></span>
@@ -248,7 +249,8 @@
     {
         try
         {
-            paraFirma = await Http.GetFromJsonAsync<List<ItemFirma>>("api/diploma/para-firma");
+            var url = $"api/diploma/para-firma?ts={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+            paraFirma = await Http.GetFromJsonAsync<List<ItemFirma>>(url);
             alumnosMaster = paraFirma.Select(x => new ItemFirmaView
             {
                 SolicitudId = x.SolicitudId,
@@ -352,33 +354,43 @@
     private bool firmandoLote = false;
     private int? firmaActualSolicitudId = null;
     private DotNetObjectReference<FirmarDiplomas>? selfRef;
+    private bool esFirmaLoteActual = false;
+    private int? tipoDocumentoFirmadoActual = null;
+    private bool subiendoDocumento = false;
     private async Task VerDiploma(int solicitudId, bool mostrarEnModal = false)
     {
         try
         {
-            var item = alumnosMaster.FirstOrDefault(a => a.SolicitudId == solicitudId);
-            bool intentarFirmado = item != null && item.EstadoId >= 8;
-
-            if (intentarFirmado)
+            // Buscar siempre la versión más firmada [F]...[F] si existe
+            var basePath = $"/firmas_digitales/documento_{solicitudId}";
+            string? firmadoMasReciente = null;
+            var candidatos = new[] { "[F][F][F][F]", "[F][F][F]", "[F][F]", "[F]", "_firmado" };
+            foreach (var suf in candidatos)
             {
-                var urlFirmado = ObtenerRutaFirmada(solicitudId);
-                var resp = await Http.GetAsync(urlFirmado);
+                var url = $"{basePath}{suf}.pdf";
+                var resp = await Http.GetAsync(url);
                 if (resp.IsSuccessStatusCode)
                 {
-                    if (mostrarEnModal)
-                    {
-                        pdfUrl = urlFirmado;
-                        mostrarPdf = true;
-                        StateHasChanged();
-                    }
-                    else
-                    {
-                        await JS.InvokeVoidAsync("open", urlFirmado, "_blank");
-                    }
-                    return;
+                    firmadoMasReciente = url;
+                    break;
                 }
             }
+            if (!string.IsNullOrEmpty(firmadoMasReciente))
+            {
+                if (mostrarEnModal)
+                {
+                    pdfUrl = firmadoMasReciente;
+                    mostrarPdf = true;
+                    StateHasChanged();
+                }
+                else
+                {
+                    await JS.InvokeVoidAsync("open", firmadoMasReciente, "_blank");
+                }
+                return;
+            }
 
+            // Si no hay firmado, preparar el PDF de trabajo
             var prep = await Http.PostAsync($"api/diploma/preparar-firma/{solicitudId}", null);
             if (!prep.IsSuccessStatusCode)
             {
@@ -416,6 +428,8 @@
     {
         try
         {
+            esFirmaLoteActual = false;
+            tipoDocumentoFirmadoActual = null;
             // Asegurar que el PDF de trabajo es el mismo que se visualiza en "Ver Diploma"
             var preparar = await Http.PostAsync($"api/diploma/preparar-firma/{solicitudId}", null);
             if (!preparar.IsSuccessStatusCode)
@@ -461,6 +475,8 @@
     {
         try
         {
+            esFirmaLoteActual = false;
+            tipoDocumentoFirmadoActual = tipoDocumentoFirmado;
             iniciandoFirma = true;
             StateHasChanged();
             // Preparar el PDF de trabajo
@@ -523,6 +539,7 @@
             });
         })();";
         await JS.InvokeVoidAsync("eval", script);
+        await JS.InvokeVoidAsync("eval", "window.__cmpActivePage='CR';");
         await JS.InvokeVoidAsync("eval", "window.__cmpFirmaModalCallback = function(){ DotNet.invokeMethodAsync('MatriculaCMP.Client', 'OnFirmaModalCerrado'); };");
     }
 
@@ -543,6 +560,7 @@
         }
         try
         {
+            esFirmaLoteActual = true;
             iniciandoFirma = true;
             StateHasChanged();
 
@@ -603,7 +621,8 @@
         if (!colaFirmas.Any())
         {
             firmandoLote = false;
-            await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = "Firma masiva finalizada" });
+            await CargarParaFirma();
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = "Documentos firmados y disponibles en el servidor" });
             return;
         }
         var siguienteId = colaFirmas.Dequeue();
@@ -622,8 +641,10 @@
                         console.error('No existe el formulario de firma');
                         return;
                     }
+                    console.log('CR.mostrarFormularioFirma', { codigoFirma: codigoFirma });
                     input.value = codigoFirma;
                     $('#dvIframe').modal({ backdrop: 'static', keyboard: false, show: true });
+                    console.log('CR.submit.ssoForm');
                     form.submit();
                 };
             }
@@ -643,16 +664,20 @@
                 window.addEventListener('message', function(e){
                     try{
                         var rptJSON = JSON.parse(e.data);
+                        console.log('CR.postMessage recibido', rptJSON);
+                        console.log('CR.postMessage.codigoRespuesta:', rptJSON && rptJSON.resultado);
                         if(rptJSON && rptJSON.resultado === '0' && window.__cmpFirmaDotnet){
                             $('#dvIframe').modal('hide');
+                            console.log('CR.invocando SubirDocumentoFirmadoDesdeIframe (OK)');
                             window.__cmpFirmaDotnet.invokeMethodAsync('SubirDocumentoFirmadoDesdeIframe', JSON.stringify(rptJSON));
                         } else if(window.__cmpFirmaDotnet){
                             $('#dvIframe').modal('hide');
                             var msg = (rptJSON && rptJSON.estado) ? rptJSON.estado : 'La firma fue cancelada por el usuario.';
+                            console.warn('CR.postMessage: Firma fallida o cancelada');
                             window.__cmpFirmaDotnet.invokeMethodAsync('OnFirmaCancelada', msg);
                         }
                     }catch(ex){
-                        console.error('Error parseando mensaje de SignNet', e.data);
+                        console.error('CR.error parse postMessage', e.data);
                     }
                 });
             }
@@ -663,6 +688,11 @@
     [JSInvokable]
     public async Task SubirDocumentoFirmadoDesdeIframe(string rptJsonStr)
     {
+        if (subiendoDocumento)
+        {
+            return;
+        }
+        subiendoDocumento = true;
         try
         {
             var codigoFirma = await JS.InvokeAsync<string>("obtenerCodigoFirmaDesdeFormulario");
@@ -674,62 +704,46 @@
 
             var seleccionados = alumnos.Where(a => a.Seleccionado).Select(a => a.SolicitudId).ToList();
             HttpResponseMessage responseUpload;
-            if (seleccionados.Count > 1)
+            if (esFirmaLoteActual)
             {
                 var tipoLote = (modoFirma == 1) ? 1 : 2;
                 responseUpload = await Http.PostAsJsonAsync("api/firmadigital-lote/upload", new { CodigoFirma = codigo, TipoDocumentoFirmado = tipoLote });
             }
             else
             {
-                int tipoDoc = 1;
-                if (alumnos.FirstOrDefault(a => a.SolicitudId == (firmaActualSolicitudId ?? 0))?.EstadoId == 8)
-                    tipoDoc = 2;
-                var uploadRequest = new { IdExpedienteDocumento = firmaActualSolicitudId ?? 0, IdExpedienteDocumentoFirmante = 0, CodigoFirma = codigo, TipoDocumentoFirmado = (int?)tipoDoc };
+                var tipoDoc = tipoDocumentoFirmadoActual ?? (alumnos.FirstOrDefault(a => a.SolicitudId == (firmaActualSolicitudId ?? 0))?.EstadoId == 8 ? 2 : 1);
+                var targetId = firmaActualSolicitudId ?? (seleccionados.Count == 1 ? seleccionados[0] : 0);
+                if (targetId <= 0 && seleccionados.Count > 0)
+                {
+                    // fallback a primer seleccionado si no hay firmaActual set, para evitar falso negativo
+                    targetId = seleccionados[0];
+                }
+                if (targetId <= 0)
+                {
+                    await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "No hay documento objetivo para subir la firma" });
+                    iniciandoFirma = false;
+                    esFirmaLoteActual = false;
+                    StateHasChanged();
+                    return;
+                }
+                var uploadRequest = new { IdExpedienteDocumento = targetId, IdExpedienteDocumentoFirmante = 0, CodigoFirma = codigo, TipoDocumentoFirmado = (int?)tipoDoc };
                 responseUpload = await Http.PostAsJsonAsync("api/firmadigital/upload", uploadRequest);
             }
             if (responseUpload.IsSuccessStatusCode)
             {
                 var resultadoUpload = await responseUpload.Content.ReadFromJsonAsync<DownloadResponse>();
-                await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = resultadoUpload?.descripcion ?? "Documento firmado y registrado", showConfirmButton = true });
-                // Refrescar datos desde el backend
-                await CargarParaFirma();
-                // Ajuste optimista: mover de Sec. CR (6) a Pendiente Firma Sec. CR (8) en firma individual o lote
-                try
+                if (resultadoUpload?.estado > 0)
                 {
-                    var seleccionadosLocal = alumnosMaster.Where(a => a.Seleccionado).Select(a => a.SolicitudId).ToList();
-                    if (modoFirma == 1)
-                    {
-                        var ids = (seleccionadosLocal.Count > 0) ? seleccionadosLocal : new List<int> { firmaActualSolicitudId ?? 0 };
-                        foreach (var id in ids)
-                        {
-                            var item = alumnosMaster.FirstOrDefault(a => a.SolicitudId == id);
-                            if (item != null && item.EstadoId == 6)
-                            {
-                                item.EstadoId = 8;
-                                item.EstadoNombre = "Pendiente Firma Secretario CR";
-                            }
-                        }
-                        AplicarFiltro();
-                        StateHasChanged();
-                    }
-                    else if (modoFirma == 2)
-                    {
-                        var ids = (seleccionadosLocal.Count > 0) ? seleccionadosLocal : new List<int> { firmaActualSolicitudId ?? 0 };
-                        foreach (var id in ids)
-                        {
-                            var item = alumnosMaster.FirstOrDefault(a => a.SolicitudId == id);
-                            if (item != null && item.EstadoId == 8)
-                            {
-                                item.EstadoId = 9;
-                                item.EstadoNombre = "Pendiente Firma Decano CR";
-                            }
-                        }
-                        AplicarFiltro();
-                        StateHasChanged();
-                    }
+                    await JS.InvokeVoidAsync("Swal.fire", new { icon = "success", title = resultadoUpload?.descripcion ?? "Documento firmado y registrado", showConfirmButton = true });
+                    await CargarParaFirma();
                 }
-                catch { }
+                else
+                {
+                    var msg = resultadoUpload?.descripcion ?? "No se pudo registrar la firma";
+                    await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error al registrar firma", html = msg });
+                }
                 iniciandoFirma = false;
+                esFirmaLoteActual = false;
                 StateHasChanged();
             }
             else
@@ -737,6 +751,7 @@
                 var error = await responseUpload.Content.ReadAsStringAsync();
                 await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error al subir documento firmado", html = error });
                 iniciandoFirma = false;
+                esFirmaLoteActual = false;
                 StateHasChanged();
             }
         }
@@ -744,7 +759,12 @@
         {
             await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error inesperado", text = ex.Message });
             iniciandoFirma = false;
+            esFirmaLoteActual = false;
             StateHasChanged();
+        }
+        finally
+        {
+            subiendoDocumento = false;
         }
     }
 
@@ -753,6 +773,7 @@
     {
         await JS.InvokeVoidAsync("Swal.fire", new { icon = "info", title = "Firma cancelada", html = mensaje, showConfirmButton = true });
         iniciandoFirma = false;
+        esFirmaLoteActual = false;
         StateHasChanged();
         if (firmandoLote)
         {
