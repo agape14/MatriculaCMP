@@ -35,7 +35,7 @@
                                     <div class="form-group auth-form-group-custom mb-4">
                                         <i class="ri-user-2-line auti-custom-input-icon"></i>
                                         <label for="username">Usuario</label>
-                                        <input type="text" class="form-control" @bind-value=usuario.Correo @ref="correoInput" @onkeypress="SiguienteEnter" placeholder="Ingrese usuario" />
+                                        <input type="text" class="form-control" @bind-value=usuario.Correo @bind-value:event="oninput" @ref="correoInput" @onkeydown="SiguienteEnter" placeholder="Ingrese usuario" />
                                     </div>
 
                                     <div class="form-group auth-form-group-custom mb-4 position-relative">
@@ -43,8 +43,8 @@
                                         <label for="userpassword">Contraseña</label>
 
                                         <input type="@passwordFieldType" class="form-control"
-                                               @bind-value="usuario.Password"
-                                               @onkeypress="VerificarEnter"
+                                               @bind-value="usuario.Password" @bind-value:event="oninput"
+                                               @onkeydown="VerificarEnter"
                                                @ref="passwordInput" />
 
                                         <button type="button"
@@ -156,6 +156,8 @@
         {
             iniciando = true;
             StateHasChanged();
+            // Asegura que el bind haya actualizado los valores antes de enviar
+            await Task.Yield();
             var resultado = await Http.PostAsJsonAsync("api/Usuario/Login", usuario);
 
             if (resultado.IsSuccessStatusCode)

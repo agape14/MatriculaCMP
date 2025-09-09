@@ -5,6 +5,8 @@ using System.Text;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Drawing;
 
 namespace MatriculaCMP.Controller
 {
@@ -14,8 +16,11 @@ namespace MatriculaCMP.Controller
 	{
 		private readonly HttpClient _httpClient;
 		private readonly ILogger<FotoValidatorController> _logger;
-        private readonly IConfiguration _config;
-		private const string ModelName = "llava:7b";
+		private readonly IConfiguration _config;
+		private const string LlavaModel = "llava:7b";
+		private const string MoondreamModel = "moondream:latest";
+		private static readonly SemaphoreSlim LlavaGate = new SemaphoreSlim(1, 1);
+		private static readonly SemaphoreSlim MoondreamGate = new SemaphoreSlim(3, 3); // más liviano, permitir 3 en paralelo
 		private const int MaxFileSize = 4_000_000; // 4MB
 		public FotoValidatorController(
 			IHttpClientFactory httpClientFactory,
@@ -23,19 +28,16 @@ namespace MatriculaCMP.Controller
 		{
 			_httpClient = httpClientFactory.CreateClient();
 			_logger = logger;
-			_httpClient.Timeout = TimeSpan.FromSeconds(60); // Timeout de 30 segundos
-            _config = config;
-            
-        }
+			_httpClient.Timeout = TimeSpan.FromSeconds(120); // aumentar timeout para primera inferencia
+			_config = config;
+			
+		}
 		[HttpPost("validar")]
 		[RequestSizeLimit(5_000_000)]
 		public async Task<IActionResult> ValidarFoto([FromForm] IFormFile file)
 		{
 			try
 			{
-				// 1. Reiniciar Ollama antes de cada análisis
-				await ResetModel();
-
 				// Validación inicial del archivo
 				var fileValidation = ValidateFile(file);
 				if (fileValidation != null) return fileValidation;
@@ -47,32 +49,80 @@ namespace MatriculaCMP.Controller
 					_logger.LogWarning($"Imagen demasiado grande: {imageBytes.Length} bytes");
 					return BadRequest("La imagen no debe exceder los 4MB");
 				}
-				var base64Image = Convert.ToBase64String(imageBytes);
-				// 1. Análisis de género
-				var generoPrompt = "Responde en el idioma español. Analiza la imagen y responde. " +
-								 "¿La imagen muestra claramente a un hombre(varon) o una mujer(dama)?";
-				var generoAnalysis = await AnalyzeImage(base64Image, generoPrompt);
-				var genero = ParseGeneroResponse(generoAnalysis.Response);
-				if (genero == "indeterminado")
+
+				// Chequeo mínimo de dimensiones (lado menor ≥ 600px) para estilo carnet/pasaporte
+				using (var imgStream = new MemoryStream(imageBytes))
+				using (var img = System.Drawing.Image.FromStream(imgStream))
 				{
-					_logger.LogInformation("No se pudo determinar el género: {Response}", generoAnalysis.Response);
+					var minSide = Math.Min(img.Width, img.Height);
+					if (minSide < 600)
+					{
+						return Ok(new ValidationResult
+						{
+							Valido = false,
+							Genero = null,
+							Mensaje = $"La imagen es muy pequeña ({img.Width}x{img.Height}). Requiere al menos 600px en el lado menor.",
+							Detalles = new { Ancho = img.Width, Alto = img.Height, LadoMenor = minSide, Requerido = 600, Capa = "PreValidacion" }
+						});
+					}
+				}
+
+				var base64Image = Convert.ToBase64String(imageBytes);
+
+				// Capa 1: Moondream (filtro rápido y ligero) con salida estructurada
+				var clipPrompt = "Devuelve SOLO este formato exacto: genero:(hombre|mujer|desconocido); fondo:(blanco|no blanco); selfie:(si|no); vestimenta:(formal|informal); postura:(frontal|no frontal); rostro:(visible|no visible); corbata:(si|no|na).";
+				await MoondreamGate.WaitAsync();
+				AnalysisResult clip;
+				try
+				{
+					clip = await AnalyzeImage(base64Image, clipPrompt, MoondreamModel);
+				}
+				finally
+				{
+					MoondreamGate.Release();
+				}
+				var genero = ParseGeneroResponse(clip.Response);
+
+				// Reglas rápidas de descarte negativo
+				if (ClipDescarta(clip.Response))
+				{
 					return Ok(new ValidationResult
 					{
 						Valido = false,
-						Mensaje = "No se pudo determinar el género",
-						Detalles = new
-						{
-							Genero = genero,
-							RespuestaIA = generoAnalysis.Response,
-							RawResponse = generoAnalysis.RawResponse
-						}
+						Genero = genero == "indeterminado" ? null : genero,
+						Mensaje = "La imagen no cumple requisitos básicos (fondo/ropa/selfie)",
+						Detalles = new { Capa = "Moondream", RespuestaIA = clip.Response, Raw = clip.RawResponse }
 					});
 				}
-				// 2. Validación de requisitos
-				var validationPrompt = genero == "hombre"
-					? BuildMaleValidationPrompt()
-					: BuildFemaleValidationPrompt();
-				var validationAnalysis = await AnalyzeImage(base64Image, validationPrompt);
+
+				// Intento de aceptación rápida si cumple todo
+				var quick = ParseQuickChecks(clip.Response);
+				if (quick != null &&
+					quick.FondoBlanco && quick.RostroVisible && quick.PosturaFrontal && quick.VestimentaFormal && !quick.EsSelfie &&
+					((quick.Genero == "hombre" && quick.Corbata == true) || quick.Genero == "mujer"))
+				{
+					return Ok(new ValidationResult
+					{
+						Valido = true,
+						Genero = quick.Genero,
+						Mensaje = "Imagen válida cumple con todos los requisitos (validación rápida)",
+						Detalles = new { Capa = "Moondream", RespuestaIA = clip.Response, Raw = clip.RawResponse, Quick = quick }
+					});
+				}
+
+				// Capa 2: LLaVA (validación profunda) con control de concurrencia
+				await LlavaGate.WaitAsync();
+				AnalysisResult validationAnalysis;
+				string validationPrompt;
+				try
+				{
+					validationPrompt = genero == "hombre" ? BuildMaleValidationPrompt() : BuildFemaleValidationPrompt();
+					validationAnalysis = await AnalyzeImage(base64Image, validationPrompt, LlavaModel);
+				}
+				finally
+				{
+					LlavaGate.Release();
+				}
 				var (esValido, motivo) = EvaluateResponse(validationAnalysis.Response);
 
 				if (esValido)
@@ -95,6 +145,11 @@ namespace MatriculaCMP.Controller
 						: ($"La imagen no cumple con los requisitos. Motivo: {motivo}"),
 					Detalles = new
 					{
+						CapaRapida = "Moondream",
+						RespuestaMoondream = clip.Response,
+						RawMoondream = clip.RawResponse,
+						Quick = quick,
+						ModeloProfundo = LlavaModel,
 						RespuestaIA = validationAnalysis.Response,
 						RawResponse = validationAnalysis.RawResponse,
 						PromptUsado = validationPrompt
@@ -116,8 +171,8 @@ namespace MatriculaCMP.Controller
 		{
 			try
 			{
-                var OllamaBaseUrl = _config["ValidaimageIA:LinkIA"];
-                var response = await _httpClient.GetAsync(OllamaBaseUrl.Replace("/generate", "/tags"));
+				var OllamaBaseUrl = _config["ValidaimageIA:LinkIA"];
+				var response = await _httpClient.GetAsync(OllamaBaseUrl.Replace("/generate", "/tags"));
 				return response.IsSuccessStatusCode
 					? Ok(new { Status = "OK", Ollama = "Conectado" })
 					: StatusCode(503, new { Status = "Error", Ollama = "No responde" });
@@ -150,22 +205,41 @@ namespace MatriculaCMP.Controller
 			}
 			return null;
 		}
-		private async Task<AnalysisResult> AnalyzeImage(string base64Image, string prompt)
+		private async Task<AnalysisResult> AnalyzeImage(string base64Image, string prompt, string model)
 		{
-            var OllamaBaseUrl = _config["ValidaimageIA:LinkIA"];
-            var request = new
+			var OllamaBaseUrl = _config["ValidaimageIA:LinkIA"];
+			object options;
+			if (model == MoondreamModel)
 			{
-				model = ModelName,
+				options = new
+				{
+					temperature = 0,
+					top_k = 1,
+					num_ctx = 512,
+					num_predict = 96,
+					seed = 42,
+					keep_alive = "1m"
+				};
+			}
+			else // LLaVA u otros
+			{
+				options = new
+				{
+					temperature = 0,
+					top_k = 1,
+					num_ctx = 1024,
+					num_predict = 32,
+					seed = 42,
+					keep_alive = "2m"
+				};
+			}
+			var request = new
+			{
+				model = model,
 				prompt,
 				images = new[] { base64Image },
 				stream = false,
-				options = new
-				{
-					temperature = 0,       // Máxima determinación
-					top_k = 1,            // Solo considerar la opción más probable
-					num_ctx = 2048,       // Contexto amplio
-					seed = 42             // Semilla fija para reproducibilidad
-				}
+				options
 			};
 			var requestContent = new StringContent(
 				JsonSerializer.Serialize(request),
@@ -209,6 +283,19 @@ namespace MatriculaCMP.Controller
 
 			return "indeterminado";
 		}
+
+		private bool ClipDescarta(string? response)
+		{
+			if (string.IsNullOrWhiteSpace(response)) return false;
+			var r = response.ToLowerInvariant();
+			if (Regex.IsMatch(r, "selfie|brazo extendido|m[óo]vil|tel[eé]fono")) return true;
+			if (Regex.IsMatch(r, "camiseta|polo|t-?shirt|deportiva|hoodie|sudadera")) return true;
+			if (Regex.IsMatch(r, "sombrero|gorra|gafas de sol|mascarilla|aud[ií]fonos")) return true;
+			if (Regex.IsMatch(r, "varias personas|grupo|m[uú]ltiples")) return true;
+			if (Regex.IsMatch(r, @"fondo\s+(?!blanco)[a-záéíóú]+|fondo\s+no\s+blanco")) return true;
+			return false;
+		}
+
 		private bool ValidateResponse(string? response)
 		{
 			if (string.IsNullOrWhiteSpace(response))
@@ -229,7 +316,6 @@ namespace MatriculaCMP.Controller
 
 			return false;
 		}
-
 		private (bool valido, string motivo) EvaluateResponse(string? response)
 		{
 			if (string.IsNullOrWhiteSpace(response))
@@ -292,6 +378,36 @@ RECHAZA si detectas cualquiera de: fondo no blanco, ropa informal, pose de estud
 ¿Cumple TODOS los requisitos?
 Responde únicamente con 'sí' o 'no'. No incluyas ninguna explicación adicional.";
 		}
+
+		private class QuickChecks
+		{
+			public string Genero { get; set; } = "indeterminado";
+			public bool FondoBlanco { get; set; }
+			public bool PosturaFrontal { get; set; }
+			public bool RostroVisible { get; set; }
+			public bool VestimentaFormal { get; set; }
+			public bool EsSelfie { get; set; }
+			public bool? Corbata { get; set; }
+		}
+
+		private QuickChecks? ParseQuickChecks(string? response)
+		{
+			if (string.IsNullOrWhiteSpace(response)) return null;
+			var r = response.ToLowerInvariant();
+			var qc = new QuickChecks();
+			qc.Genero = Regex.Match(r, @"genero:(hombre|mujer|desconocido)").Groups.Count > 1 ? Regex.Match(r, @"genero:(hombre|mujer|desconocido)").Groups[1].Value : "indeterminado";
+			qc.FondoBlanco = Regex.IsMatch(r, @"fondo:blanco\b");
+			qc.PosturaFrontal = Regex.IsMatch(r, @"postura:frontal\b");
+			qc.RostroVisible = Regex.IsMatch(r, @"rostro:visible\b");
+			qc.VestimentaFormal = Regex.IsMatch(r, @"vestimenta:formal\b");
+			qc.EsSelfie = Regex.IsMatch(r, @"selfie:si\b");
+			if (Regex.IsMatch(r, @"corbata:(si|no|na)"))
+			{
+				var v = Regex.Match(r, @"corbata:(si|no|na)").Groups[1].Value;
+				qc.Corbata = v == "si" ? true : v == "no" ? false : (bool?)null;
+			}
+			return qc;
+		}
 		#endregion
 		#region Clases de Soporte
 		private class AnalysisResult
@@ -309,8 +425,8 @@ Responde únicamente con 'sí' o 'no'. No incluyas ninguna explicación adiciona
 		[HttpGet("model-info")]
 		public async Task<IActionResult> GetModelInfo()
 		{
-            var OllamaBaseUrl = _config["ValidaimageIA:LinkIA"];
-            try
+			var OllamaBaseUrl = _config["ValidaimageIA:LinkIA"];
+			try
 			{
 				var response = await _httpClient.GetAsync(OllamaBaseUrl.Replace("/generate", "/tags"));
 				if (!response.IsSuccessStatusCode)
@@ -325,7 +441,7 @@ Responde únicamente con 'sí' o 'no'. No incluyas ninguna explicación adiciona
 				return Ok(new
 				{
 					Status = "OK",
-					ModeloSolicitado = ModelName,
+					ModeloSolicitado = LlavaModel,
 					ModelosDisponibles = models
 				});
 			}
@@ -387,10 +503,10 @@ Responde únicamente con 'sí' o 'no'. No incluyas ninguna explicación adiciona
 		[HttpPost("reset-model")]
 		public async Task<IActionResult> ResetModel()
 		{
-            var OllamaBaseUrl = _config["ValidaimageIA:LinkIA"];
-            var resetRequest = new
+			var OllamaBaseUrl = _config["ValidaimageIA:LinkIA"];
+			var resetRequest = new
 			{
-				model = ModelName,
+				model = LlavaModel,
 				prompt = "/reset",
 				stream = false
 			};

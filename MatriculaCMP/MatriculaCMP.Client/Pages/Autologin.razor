@@ -31,24 +31,35 @@
     protected override async Task OnInitializedAsync()
     {
         Console.WriteLine($"[autologin] Token recibido: {Token}");
-
-        if (!string.IsNullOrEmpty(Token))
-        {
-            var response = await Http.GetAsync($"api/usuario/validate?token={Token}");
-            isTokenValid = response.IsSuccessStatusCode;
-            shouldRedirect = true;
-        }
-        else
-        {
-            Console.WriteLine("[autologin] Token vacío, redirigiendo a /");
-            Nav.NavigateTo("/", true);
-        }
+        // Nota: no llamar API aquí para evitar errores durante prerender en el servidor
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
         {
+            Console.WriteLine("[autologin] Iniciando validación en cliente tras prerender.");
+
+            if (string.IsNullOrEmpty(Token))
+            {
+                Console.WriteLine("[autologin] Token vacío, redirigiendo a /");
+                Nav.NavigateTo("/", true);
+                return;
+            }
+
+            try
+            {
+                var encodedToken = Uri.EscapeDataString(Token);
+                var apiUrl = new Uri(new Uri(Nav.BaseUri), $"api/usuario/validate?token={encodedToken}").ToString();
+                var response = await Http.GetAsync(apiUrl);
+                isTokenValid = response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[autologin] Error validando token (cliente): {ex.Message}");
+                isTokenValid = false;
+            }
+
             Console.WriteLine($"[autologin] Ejecutando redirección. Token válido: {isTokenValid}");
 
             if (isTokenValid)

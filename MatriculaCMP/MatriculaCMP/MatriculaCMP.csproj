@@ -12,6 +12,8 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="System.Drawing.Common" Version="9.0.8" />
+    <PackageReference Include="System.Threading" Version="4.3.0" />
     <ProjectReference Include="..\MatriculaCMP.Client\MatriculaCMP.Client.csproj" />
     <PackageReference Include="HtmlAgilityPack" Version="1.12.1" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.15" />
@@ -25,5 +27,21 @@
     <Folder Include="Resources\EducacionDocumentos\" />
     <Folder Include="Resources\ReferenceImages\" />
   </ItemGroup>
+
+  <!-- Copiar todo el contenido de Resources/** al publicar/salidas -->
+  <ItemGroup>
+    <Content Include="Resources\**\*.*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Garantiza que las carpetas necesarias existan en el artefacto publicado (IIS) aunque estén vacías -->
+  <Target Name="CreateRequiredFoldersOnPublish" AfterTargets="Publish">
+    <PropertyGroup>
+      <_OutDir>$(PublishDir)</_OutDir>
+    </PropertyGroup>
+    <MakeDir Directories="$(_OutDir)Resources\Diplomas;$(_OutDir)Resources\EducacionDocumentos;$(_OutDir)Resources\ReferenceImages;$(_OutDir)wwwroot\firmas_digitales" />
+  </Target>
 
 </Project>
