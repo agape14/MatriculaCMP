@@ -1,4 +1,4 @@
-﻿@using MatriculaCMP.Client.Layout
+@using MatriculaCMP.Client.Layout
 @using MatriculaCMP.Client.Services
 @using MatriculaCMP.Shared
 @using Microsoft.AspNetCore.Components.Authorization
@@ -102,6 +102,22 @@
             var perfilId = int.TryParse(perfilUsuario, out var pid) ? pid : 0;
             if (perfilId <= 0) return;
             var menus = await Http.GetFromJsonAsync<List<Menu>>($"api/menu/por-perfil/{perfilId}") ?? new List<Menu>();
+            
+            // Si es administrador (perfilId == 1), filtrar menús del módulo SOLICITANTE
+            if (perfilId == 1)
+            {
+                menus = menus.Where(m => 
+                    string.IsNullOrWhiteSpace(m.Modulo) || 
+                    !m.Modulo.Trim().Equals("SOLICITANTE", StringComparison.OrdinalIgnoreCase)
+                ).ToList();
+            }
+            
+            // Filtrar menú /consejoregional/lista para todos los perfiles (ya no se usa)
+            menus = menus.Where(m => 
+                string.IsNullOrWhiteSpace(m.Ruta) || 
+                !m.Ruta.Trim().Equals("/consejoregional/lista", StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+            
             menusAgrupados = menus
                 .GroupBy(m => string.IsNullOrWhiteSpace(m.Modulo) ? "General" : m.Modulo)
                 .ToDictionary(

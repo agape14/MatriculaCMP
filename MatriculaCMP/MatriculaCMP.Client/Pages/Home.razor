@@ -70,10 +70,25 @@
 
                 <div class="card">
                     <div class="card-body">
-                        <div class="float-right d-none d-md-inline-block">
-                            <div class="btn-group mb-2">...</div>
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h4 class="card-title mb-0"></h4>
+                            <div class="d-flex gap-2">
+                                @if (mostrarBotonObservaciones)
+                                {
+                                    <button type="button" class="btn btn-warning btn-sm shadow-sm animate-pulse" @onclick="IrACorregirObservacion">
+                                        <i class="ri-alert-line me-1"></i>
+                                        ⚠️ Corregir Observación
+                                    </button>
+                                }
+                                @if (mostrarBotonRegistrar)
+                                {
+                                    <button type="button" class="btn btn-primary btn-sm" @onclick="IrARegistro">
+                                        <i class="ri-add-circle-line me-1"></i>
+                                        Iniciar Solicitud
+                                    </button>
+                                }
+                            </div>
                         </div>
-                        <h4 class="card-title mb-4">Estados de la colegiatura</h4>
                         <div>
                             <div class="table-responsive">
                                 @if (isLoading)
@@ -194,6 +209,9 @@ else
     private EstadoSolicitudConCheckResponse? estadosResponse;
     private Dictionary<string, int> totalesPorEstado = new();
     private bool adminChartRendered = false;
+    private bool mostrarBotonRegistrar = false;
+    private bool mostrarBotonObservaciones = false;
+    private int solicitudObservadaId = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -252,8 +270,42 @@ else
 
             if (int.TryParse(PersonaId, out int personaId))
             {
+                // Verificar si hay solicitudes activas
+                var solicitudesActivas = await Http.GetFromJsonAsync<List<SolicitudSeguimientoDto>>(
+                    $"api/personaseducacion/mis-solicitudes/{personaId}");
+                
+                if (solicitudesActivas != null && solicitudesActivas.Any())
+                {
+                    // Buscar solicitud con observación (estados 3, 5, 7)
+                    var solicitudObservada = solicitudesActivas
+                        .FirstOrDefault(s => s.EstadoId == 3 || s.EstadoId == 5 || s.EstadoId == 7);
+                    
+                    if (solicitudObservada != null)
+                    {
+                        // Hay observación pendiente
+                        mostrarBotonObservaciones = true;
+                        solicitudObservadaId = solicitudObservada.Id;
+                        mostrarBotonRegistrar = false; // Ocultar botón de iniciar
+                    }
+                    else
+                    {
+                        // No hay observaciones, verificar si debe mostrar botón de iniciar
+                        mostrarBotonObservaciones = false;
+                        solicitudObservadaId = 0;
+                        // Mostrar botón solo si NO hay solicitudes activas (estado != 13 que es completado/rechazado)
+                        mostrarBotonRegistrar = !solicitudesActivas.Any(s => s.EstadoId != 13);
+                    }
+                }
+                else
+                {
+                    // No hay solicitudes, mostrar botón de iniciar
+                    mostrarBotonObservaciones = false;
+                    solicitudObservadaId = 0;
+                    mostrarBotonRegistrar = true;
+                }
+
                 estadosResponse = await Http.GetFromJsonAsync<EstadoSolicitudConCheckResponse>(
-                    $"api/personaseducacion/EstadosConCheck/{personaId}");
+                    $"api/personaseducacion/EstadosConCheck/{personaId}?vistaSimplificada=true");
 
                 // Renderizar el gráfico después de cargar los datos
                 if (estadosResponse != null)
@@ -477,6 +529,19 @@ else
             11 => "#0EA5E9", // Pend. Firma Decano
             _ => "#5664d2"
         };
+    }
+
+    private void IrARegistro()
+    {
+        Navigation.NavigateTo("/solicitudes/prematricula");
+    }
+    
+    private void IrACorregirObservacion()
+    {
+        if (solicitudObservadaId > 0)
+        {
+            Navigation.NavigateTo($"/solicitudes/prematricula/{solicitudObservadaId}");
+        }
     }
 }
 

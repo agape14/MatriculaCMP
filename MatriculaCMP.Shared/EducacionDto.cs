@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -8,7 +8,7 @@ namespace MatriculaCMP.Shared
 {
     public class EducacionDto
     {
-        public int UniversidadId { get; set; }
+        public int? UniversidadId { get; set; }
         public DateTime? FechaEmision { get; set; }
     }
 }

@@ -92,6 +92,9 @@ namespace MatriculaCMP.Migrations
                     b.Property<DateTime>("FechaEmision")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("FechaEntrega")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("NombreCompleto")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -138,6 +141,12 @@ namespace MatriculaCMP.Migrations
                     b.Property<DateTime>("FechaEmisionTitulo")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("FechaReconocimiento")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("FechaRevalidacion")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("NombreUniversidadExtranjera")
                         .HasColumnType("nvarchar(max)");
 
@@ -156,7 +165,7 @@ namespace MatriculaCMP.Migrations
                     b.Property<string>("TipoValidacion")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("UniversidadId")
+                    b.Property<int?>("UniversidadId")
                         .HasColumnType("int");
 
                     b.Property<string>("UniversidadOrigen")
@@ -639,11 +648,23 @@ namespace MatriculaCMP.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("AceptaPoliticasPrivacidad")
+                        .HasColumnType("bit");
+
                     b.Property<int?>("AreaId")
                         .HasColumnType("int");
 
+                    b.Property<bool>("DDJJFirmadaIdPeru")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("DocumentoFirmanteDDJJ")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("EstadoSolicitudId")
                         .HasColumnType("int");
+
+                    b.Property<DateTime?>("FechaFirmaDDJJ")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("FechaSolicitud")
                         .HasColumnType("datetime2");
@@ -656,6 +677,9 @@ namespace MatriculaCMP.Migrations
 
                     b.Property<int>("PersonaId")
                         .HasColumnType("int");
+
+                    b.Property<string>("RutaDDJJFirmada")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("TipoSolicitud")
                         .IsRequired()
@@ -883,9 +907,7 @@ namespace MatriculaCMP.Migrations
 
                     b.HasOne("MatriculaCMP.Shared.Universidad", "Universidad")
                         .WithMany()
-                        .HasForeignKey("UniversidadId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("UniversidadId");
 
                     b.Navigation("Persona");
 

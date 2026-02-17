@@ -1,4 +1,4 @@
-﻿using System.Net.Mail;
+using System.Net.Mail;
 using System.Net;
 using Microsoft.Extensions.Configuration;
 
@@ -13,10 +13,18 @@ namespace MatriculaCMP.Services
             _configuration = configuration;
         }
 
-        public static async Task EnviarCorreoCambioEstadoAsync(string destinatario, string nombre, string apellido, string estado, string? observacion = null)
+        public static async Task EnviarCorreoCambioEstadoAsync(string destinatario, string nombre, string apellido, int estadoId, string? observacion = null)
         {
-            string asunto = $"Estado de solicitud - {estado.ToUpper()}";
-            string contenidoHtml = GetPlantillaHtml(nombre, apellido, estado, observacion);
+            // Solo enviar correos para estados específicos: 1, 6, 7, 9, 11, 13
+            var estadosPermitidos = new[] { 1, 6, 7, 9, 11, 13 };
+            if (!estadosPermitidos.Contains(estadoId))
+            {
+                return; // No enviar correo para estados no permitidos
+            }
+
+            string nombreEstado = ObtenerNombreEstado(estadoId);
+            string asunto = $"Estado de solicitud - {nombreEstado.ToUpper()}";
+            string contenidoHtml = GetPlantillaHtml(nombre, apellido, estadoId, nombreEstado, observacion);
 
             using var message = new MailMessage();
             message.To.Add(new MailAddress(destinatario));
@@ -34,27 +42,54 @@ namespace MatriculaCMP.Services
             await smtp.SendMailAsync(message);
         }
 
-        private static string GetPlantillaHtml(string nombre, string apellido, string estado, string? observacion = null)
+        private static string ObtenerNombreEstado(int estadoId)
+        {
+            return estadoId switch
+            {
+                1 => "Registrado",
+                6 => "Aprobado por Of. Matrícula",
+                7 => "Rechazado por Of. Matrícula",
+                9 => "Pendiente Firma Decano CR",
+                11 => "Pendiente Firma Decano",
+                13 => "Proceso finalizado - Entregado",
+                _ => "Sin Estado"
+            };
+        }
+
+        private static string GetPlantillaHtml(string nombre, string apellido, int estadoId, string nombreEstado, string? observacion = null)
         {
             string plataformaUrl = _configuration?["AppSettings:PlataformaUrl"] ?? "https://sistema.cmp.org.pe";
+            // Usar URL absoluta del logo - URL pública del CMP que es accesible desde correos
+            string logoUrl = "https://www.cmp.org.pe/wp-content/uploads/2020/01/logotipo-cmp.png";
             
-            // Determinar el tipo de estado
-            bool esAprobacion = estado.ToLower().Contains("aprobado") || estado.ToLower().Contains("aprobada");
-            bool esRechazo = estado.ToLower().Contains("rechazado") || estado.ToLower().Contains("rechazada") || estado.ToLower().Contains("observado") || estado.ToLower().Contains("observada");
-            bool esReenvio = estado.ToLower().Contains("reenviada") || estado.ToLower().Contains("reenviado");
+            // Determinar el tipo de estado según el ID
+            bool esAprobacion = estadoId == 6;
+            bool esRechazo = estadoId == 7;
+            bool esRegistrado = estadoId == 1;
+            bool esFirmaDecanoCR = estadoId == 9;
+            bool esFirmaDecano = estadoId == 11;
+            bool esEntregado = estadoId == 13;
             bool tieneObservacion = !string.IsNullOrEmpty(observacion);
             
-            // Para estados de aprobación (2 y 6): contenido informativo con colores de éxito
-            string contenidoEstado = esAprobacion 
-                ? $@"<p>Su solicitud ha sido <strong style='color: #2e7d32;'>{estado}</strong>.</p>
-                     <p>Su solicitud ha sido procesada exitosamente y continuará con el siguiente paso del proceso.</p>"
-                : esReenvio
-                ? $@"<p>Su solicitud ha sido <strong style='color: #1976d2;'>{estado}</strong>.</p>
-                     <p>Su solicitud ha sido reenviada y será procesada nuevamente.</p>"
-                : $@"<p>Su solicitud ha sido <strong style='color: #d32f2f;'>{estado}</strong>.</p>
-                     <p>Es necesario que pueda subsanar las observaciones para continuar con el proceso.</p>";
+            // Contenido del estado según el ID
+            string contenidoEstado = estadoId switch
+            {
+                1 => $@"<p>Su solicitud está en estado <strong style='color: #ff9800;'>{nombreEstado}</strong>.</p>
+                     <p>Su solicitud ha sido registrada y está en proceso de revisión por la oficina de matrícula.</p>",
+                6 => $@"<p>Su solicitud ha sido <strong style='color: #2e7d32;'>{nombreEstado}</strong>.</p>
+                     <p>Su solicitud ha sido procesada exitosamente y continuará con el siguiente paso del proceso de firmas.</p>",
+                7 => $@"<p>Su solicitud ha sido <strong style='color: #d32f2f;'>{nombreEstado}</strong>.</p>
+                     <p>Es necesario que pueda subsanar las observaciones para continuar con el proceso.</p>",
+                9 => $@"<p>Su solicitud está en estado <strong style='color: #1976d2;'>{nombreEstado}</strong>.</p>
+                     <p>Su diploma está siendo firmado por el Decano del Consejo Regional. Continuará con el siguiente paso del proceso.</p>",
+                11 => $@"<p>Su solicitud está en estado <strong style='color: #1976d2;'>{nombreEstado}</strong>.</p>
+                     <p>Su diploma está siendo firmado por el Decano. Una vez completada la firma, su diploma estará listo para entrega.</p>",
+                13 => $@"<p>Su solicitud ha alcanzado el estado <strong style='color: #2e7d32;'>{nombreEstado}</strong>.</p>
+                     <p>¡Felicidades! Su proceso de colegiatura ha sido completado exitosamente. Su diploma ha sido entregado.</p>",
+                _ => $@"<p>Su solicitud está en estado <strong>{nombreEstado}</strong>.</p>"
+            };
 
-            // Solo mostrar observaciones para rechazos, no para reenvíos
+            // Solo mostrar observaciones para rechazos
             string contenidoObservacion = (tieneObservacion && esRechazo) 
                 ? $@"<div style='background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 20px 0;'>
                         <h4 style='color: #856404; margin: 0 0 10px 0;'>📋 Observaciones:</h4>
@@ -183,7 +218,7 @@ namespace MatriculaCMP.Services
         <body>
             <div class='email-container'>
                 <div class='header'>
-                    <img src='https://cmpchiclayo.org.pe/sistema/archivos/ckfinder/userfiles/images/logo.png' alt='Logo CMP' class='logo'>
+                    <img src='{logoUrl}' alt='Logo CMP' class='logo' style='max-width: 120px; height: auto; display: block; margin: 0 auto 15px;'>
                     <h1>Colegio Médico del Perú</h1>
                     <p style='margin: 10px 0 0 0; opacity: 0.9;'>Sistema de Matrícula</p>
                 </div>
@@ -193,16 +228,16 @@ namespace MatriculaCMP.Services
                     
                     {contenidoEstado}
                     
-                    <div class='status-badge {(esAprobacion ? "status-approved" : esReenvio ? "status-approved" : "status-observed")}'>
-                        Estado: {estado.ToUpper()}
+                    <div class='status-badge {(esAprobacion || esRegistrado || esFirmaDecanoCR || esFirmaDecano || esEntregado ? "status-approved" : "status-observed")}'>
+                        Estado: {nombreEstado.ToUpper()}
                     </div>
                     
                     {contenidoObservacion}
                     
-                    {(esRechazo ? "" : @"<div class='info-box'>
+                    {(!esRechazo ? @"<div class='info-box'>
                         <h4>📋 Información Importante</h4>
                         <p>Sirvase a acceder a nuestra plataforma para revisar los detalles de su solicitud y realizar las acciones correspondientes.</p>
-                    </div>")}
+                    </div>" : "")}
                     
                     {(esRechazo ? "<div style='text-align: center;'>" + botonAccion + "</div>" : "")}
                     

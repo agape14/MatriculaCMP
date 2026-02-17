@@ -1,4 +1,4 @@
-﻿using MatriculaCMP.Services;
+using MatriculaCMP.Services;
 using MatriculaCMP.Server.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
@@ -34,42 +34,31 @@ namespace MatriculaCMP.Controller
         [HttpPost("firmar")]
         public async Task<ActionResult<UploadResponse>> FirmarDocumento([FromBody] FirmaRequest request)
         {
-            // Asegurar archivo a firmar ya existe en wwwroot/firmas_digitales/documento_{id}.pdf
-            // La preparación del archivo se hace desde el controlador de Diploma (preparar-firma)
-
-            // Primero intentar iniciar la firma y obtener codigoFirma
-            var result = await _firmaService.FirmarDocumentoAsync(request);
-
-            // Solo avanzar estado si se obtuvo un codigoFirma válido
-            if (result is not null && result.codigoFirma > 0)
+            try
             {
-                var solicitud = await _context.Solicitudes.FirstOrDefaultAsync(s => s.Id == request.IdExpedienteDocumento);
-                if (solicitud != null && solicitud.EstadoSolicitudId == 6)
-                {
-                    int estadoAnterior = solicitud.EstadoSolicitudId;
-                    solicitud.EstadoSolicitudId = 8; // Pend. Firma Sec. CR
-                    _context.Solicitudes.Update(solicitud);
-                    _context.SolicitudHistorialEstados.Add(new SolicitudHistorialEstado
-                    {
-                        SolicitudId = solicitud.Id,
-                        EstadoAnteriorId = estadoAnterior,
-                        EstadoNuevoId = 8,
-                        FechaCambio = DateTime.Now,
-                        Observacion = "Enviado a firma Secretario CR",
-                        UsuarioCambio = GetUsuarioAutenticadoId()
-                    });
-                    await _context.SaveChangesAsync();
-                }
+                // Asegurar archivo a firmar ya existe en wwwroot/firmas_digitales/documento_{id}.pdf
+                // La preparación del archivo se hace desde el controlador de Diploma (preparar-firma)
+                var result = await _firmaService.FirmarDocumentoAsync(request);
+                // NO actualizar estado aquí - se actualizará cuando se complete la firma en el método SubirDocumentoFirmado
+                return Ok(result);
             }
-
-            return Ok(result);
+            catch (Exception ex)
+            {
+                return Ok(new UploadResponse
+                {
+                    codigoFirma = -1,
+                    descripcion = $"No se pudo iniciar la firma. Verifique el firmador o la aplicación Biuen. Detalle: {ex.Message}"
+                });
+            }
         }
 
         [HttpPost("upload")]
         public async Task<ActionResult<DownloadResponse>> SubirDocumentoFirmado([FromBody] UploadRequest request)
         {
-            // 1) Descargar y guardar archivo en carpeta pública (servicio ya lo hace con nombre determinístico)
-            var result = await _firmaService.SubirDocumentoFirmadoAsync(request);
+            try
+            {
+                // 1) Descargar y guardar archivo en carpeta pública (servicio ya lo hace con nombre determinístico)
+                var result = await _firmaService.SubirDocumentoFirmadoAsync(request);
             if (result is null)
             {
                 return Ok(result);
@@ -146,8 +135,10 @@ namespace MatriculaCMP.Controller
                 // Avance de estado por actor/etapa usando TipoDocumentoFirmado del request
                 // 1: Sec. CR, 2: Decano CR, 3: Sec. General, 4: Decano
                 int proximoEstado = estadoAnterior;
-                if (request.TipoDocumentoFirmado == 1 && estadoAnterior == 8)
-                    proximoEstado = 8; // Firma solo ratifica estado 8; avance real se hace al iniciar (6->8)
+                if (request.TipoDocumentoFirmado == 1 && estadoAnterior == 6)
+                    proximoEstado = 8; // Secretario CR completa firma: 6 -> 8 (Pend. Decano CR)
+                else if (request.TipoDocumentoFirmado == 1 && estadoAnterior == 8)
+                    proximoEstado = 8; // Firma solo ratifica estado 8
                 else if (request.TipoDocumentoFirmado == 2 && estadoAnterior == 8)
                     proximoEstado = 9; // Decano CR completa CR -> pasa a 9 (Pend. SG)
                 else if (request.TipoDocumentoFirmado == 3 && estadoAnterior == 9)
@@ -176,12 +167,33 @@ namespace MatriculaCMP.Controller
                     };
                     _context.SolicitudHistorialEstados.Add(historial);
                     _context.Solicitudes.Update(solicitud);
+                    await _context.SaveChangesAsync();
+
+                    // Enviar correo solo para estados permitidos: 9, 11
+                    if (proximoEstado == 9 || proximoEstado == 11)
+                    {
+                        var destinatario = solicitud.Persona?.Email ?? "adelacruzcarlos@gmail.com";
+                        var nombre = solicitud.Persona?.Nombres ?? "Nombre";
+                        var apellido = solicitud.Persona?.ApellidoPaterno ?? "Apellido";
+                        await EmailHelper.EnviarCorreoCambioEstadoAsync(destinatario, nombre, apellido, proximoEstado, null);
+                    }
                 }
             }
+            else
+            {
+                await _context.SaveChangesAsync();
+            }
 
-            await _context.SaveChangesAsync();
-
-            return Ok(result);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return Ok(new DownloadResponse
+                {
+                    estado = -1,
+                    descripcion = $"Error al subir documento firmado. Si recargó la página (F5), vuelva al listado e intente de nuevo. Detalle: {ex.Message}"
+                });
+            }
         }
     }
 }

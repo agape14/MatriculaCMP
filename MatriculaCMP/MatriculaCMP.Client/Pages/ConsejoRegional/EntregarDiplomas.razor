@@ -1,0 +1,393 @@
+@page "/consejoregional/entregar-diplomas"
+@using MatriculaCMP.Shared
+@inject IJSRuntime JS
+@inject HttpClient Http
+
+<div class="container-fluid">
+    <!-- start page title -->
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <h4 class="mb-sm-0">Consejo Regional - Entregar Diplomas</h4>
+
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        <li class="breadcrumb-item"><a href="javascript: void(0);">Inicio</a></li>
+                        <li class="breadcrumb-item active">Entregar Diplomas</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-body pt-0">
+                    <div class="d-flex flex-wrap align-items-center mb-3 mt-2 gap-2">
+                        <div class="form-check">
+                            <input type="checkbox" id="chkTodos" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
+                            <label class="form-check-label" for="chkTodos">Seleccionar todos</label>
+                        </div>
+                        <button type="button" class="btn btn-success d-flex align-items-center" @onclick="RegistrarEntregaSeleccionados" disabled="@(seleccionados.Count == 0 || guardando)">
+                            @if (guardando)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            else
+                            {
+                                <i class="ri-checkbox-circle-line align-middle me-2"></i>
+                            }
+                            Registrar Entrega (@seleccionados.Count)
+                        </button>
+                        <div class="ms-auto" style="min-width:260px;max-width:340px;">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="ri-search-2-line"></i></span>
+                                <input class="form-control" placeholder="Buscar DNI, nombre o N° solicitud" @bind="Filtro" @bind:event="oninput" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th style="width:42px">
+                                        <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
+                                    </th>
+                                    <th>N° Solicitud</th>
+                                    <th class="d-none d-sm-table-cell">Fecha Solicitud</th>
+                                    <th>Estado</th>
+                                    <th class="d-none d-md-table-cell">DNI</th>
+                                    <th>Nombre</th>
+                                    <th class="d-none d-lg-table-cell">N° Colegiatura</th>
+                                    <th class="d-none d-md-table-cell">Fecha Emisión</th>
+                                    <th>Fecha Entrega</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!alumnos.Any())
+                                {
+                                    <tr>
+                                        <td colspan="10" class="text-center text-muted py-4">No hay diplomas listos para entrega.</td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    @foreach (var alumno in alumnos)
+                                    {
+                                        <tr>
+                                            <td>
+                                                @if (!alumno.FechaEntrega.HasValue)
+                                                {
+                                                    <input type="checkbox" class="form-check-input" 
+                                                           checked="@alumno.Seleccionado" 
+                                                           @onchange="@((e) => { alumno.Seleccionado = (bool)e.Value; 
+                                                                                  if (alumno.Seleccionado) seleccionados.Add(alumno.SolicitudId); 
+                                                                                  else seleccionados.Remove(alumno.SolicitudId); })" />
+                                                }
+                                            </td>
+                                            <td>@alumno.NumeroSolicitud</td>
+                                            <td class="d-none d-sm-table-cell">@alumno.FechaSolicitud.ToString("dd/MM/yyyy")</td>
+                                            <td>
+                                                @if (alumno.FechaEntrega.HasValue)
+                                                {
+                                                    <span class="badge bg-success">Entregado</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge bg-warning">Pendiente Entrega</span>
+                                                }
+                                            </td>
+                                            <td class="d-none d-md-table-cell">@alumno.NumeroDocumento</td>
+                                            <td>@alumno.NombreCompleto</td>
+                                            <td class="d-none d-lg-table-cell">@alumno.NumeroColegiatura</td>
+                                            <td class="d-none d-md-table-cell">@alumno.DiplomaFechaEmision.ToString("dd/MM/yyyy")</td>
+                                            <td>
+                                                @if (alumno.FechaEntrega.HasValue)
+                                                {
+                                                    <span class="text-success">@alumno.FechaEntrega.Value.ToString("dd/MM/yyyy")</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-muted">-</span>
+                                                }
+                                            </td>
+                                            <td class="text-nowrap">
+                                                <button class="btn btn-sm btn-outline-info me-1" title="Ver Diploma" @onclick="(async ()=> await VerDiploma(alumno.SolicitudId))">
+                                                    <i class="ri-eye-fill"></i>
+                                                </button>
+                                                @if (!alumno.FechaEntrega.HasValue)
+                                                {
+                                                    <button class="btn btn-sm btn-outline-success" title="Registrar Entrega" @onclick="(() => RegistrarEntregaIndividual(alumno.SolicitudId))">
+                                                        <i class="ri-check-line"></i>
+                                                    </button>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (mostrarPdf)
+{
+    <div class="modal fade show" style="display:block;" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Vista previa del Diploma</h5>
+                    <button type="button" class="btn-close" @onclick="CerrarModalPdf"></button>
+                </div>
+                <div class="modal-body" style="height:75vh;background-color:#f8f9fa;">
+                    @if (!string.IsNullOrEmpty(pdfUrl))
+                    {
+                        <object data="@pdfUrl" type="application/pdf" width="100%" height="100%">
+                            <embed src="@pdfUrl" type="application/pdf" width="100%" height="100%" />
+                        </object>
+                    }
+                    else
+                    {
+                        <div class="text-center p-4">Cargando PDF...</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CerrarModalPdf">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    private bool mostrarPdf = false;
+    private string? pdfUrl;
+    private bool seleccionarTodos = false;
+    private List<ItemEntregaView> alumnos = new();
+    private List<ItemEntregaView> alumnosMaster = new();
+    private string filtro = string.Empty;
+    private string Filtro
+    {
+        get => filtro;
+        set
+        {
+            filtro = value ?? string.Empty;
+            AplicarFiltro();
+        }
+    }
+    private HashSet<int> seleccionados = new();
+    private bool guardando = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarParaEntrega();
+    }
+
+    private async Task CargarParaEntrega()
+    {
+        try
+        {
+            var url = $"api/diploma/para-entrega?ts={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+            var paraEntrega = await Http.GetFromJsonAsync<List<ItemEntrega>>(url) ?? new List<ItemEntrega>();
+            alumnosMaster = paraEntrega.Select(x => new ItemEntregaView
+            {
+                SolicitudId = x.SolicitudId,
+                NumeroSolicitud = x.NumeroSolicitud,
+                FechaSolicitud = x.FechaSolicitud,
+                EstadoId = x.EstadoId,
+                EstadoNombre = x.EstadoNombre,
+                NumeroDocumento = x.NumeroDocumento,
+                NombreCompleto = x.NombreCompleto,
+                NumeroColegiatura = x.NumeroColegiatura,
+                DiplomaFechaEmision = x.DiplomaFechaEmision,
+                FechaEntrega = x.FechaEntrega,
+                Seleccionado = false
+            }).ToList();
+            AplicarFiltro();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error", text = $"Error al cargar diplomas: {ex.Message}" });
+        }
+    }
+
+    private void AplicarFiltro()
+    {
+        if (string.IsNullOrWhiteSpace(filtro))
+        {
+            alumnos = alumnosMaster.ToList();
+            return;
+        }
+        var f = filtro.Trim().ToLowerInvariant();
+        alumnos = alumnosMaster.Where(a =>
+            a.NumeroSolicitud.ToString().Contains(f) ||
+            (!string.IsNullOrEmpty(a.NumeroDocumento) && a.NumeroDocumento.ToLower().Contains(f)) ||
+            (!string.IsNullOrEmpty(a.NombreCompleto) && a.NombreCompleto.ToLower().Contains(f)) ||
+            (!string.IsNullOrEmpty(a.NumeroColegiatura) && a.NumeroColegiatura.ToLower().Contains(f))
+        ).ToList();
+    }
+
+    private void SeleccionarTodasFilas(ChangeEventArgs e)
+    {
+        seleccionarTodos = (bool)e.Value;
+        foreach (var alumno in alumnos.Where(a => !a.FechaEntrega.HasValue))
+        {
+            alumno.Seleccionado = seleccionarTodos;
+            if (seleccionarTodos)
+                seleccionados.Add(alumno.SolicitudId);
+            else
+                seleccionados.Remove(alumno.SolicitudId);
+        }
+        StateHasChanged();
+    }
+
+    private async Task VerDiploma(int solicitudId)
+    {
+        try
+        {
+            var basePath = $"/firmas_digitales/documento_{solicitudId}";
+            string? firmadoMasReciente = null;
+            var candidatos = new[] { "[F][F][F][F]", "[F][F][F]", "[F][F]", "[F]", "_firmado" };
+            foreach (var suf in candidatos)
+            {
+                var url = $"{basePath}{suf}.pdf";
+                var resp = await Http.GetAsync(url);
+                if (resp.IsSuccessStatusCode)
+                {
+                    firmadoMasReciente = url;
+                    break;
+                }
+            }
+            if (!string.IsNullOrEmpty(firmadoMasReciente))
+            {
+                pdfUrl = firmadoMasReciente;
+                mostrarPdf = true;
+                StateHasChanged();
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("Swal.fire", new { icon = "warning", title = "Diploma no encontrado", text = "No se encontró el diploma firmado." });
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error", text = ex.Message });
+        }
+    }
+
+    private void CerrarModalPdf()
+    {
+        mostrarPdf = false;
+        pdfUrl = null;
+        StateHasChanged();
+    }
+
+    private async Task RegistrarEntregaIndividual(int solicitudId)
+    {
+        var confirm = await JS.InvokeAsync<bool>("confirmarSweet", 
+            "¿Registrar entrega de diploma?", 
+            "Se registrará la fecha de entrega como hoy.");
+        if (!confirm) return;
+
+        await RegistrarEntrega(new List<int> { solicitudId });
+    }
+
+    private async Task RegistrarEntregaSeleccionados()
+    {
+        if (seleccionados.Count == 0)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "warning", title = "Seleccione al menos un diploma", showConfirmButton = true });
+            return;
+        }
+
+        var confirm = await JS.InvokeAsync<bool>("confirmarSweet", 
+            $"¿Registrar entrega de {seleccionados.Count} diploma(s)?", 
+            "Se registrará la fecha de entrega como hoy para los diplomas seleccionados.");
+        if (!confirm) return;
+
+        await RegistrarEntrega(seleccionados.ToList());
+    }
+
+    private async Task RegistrarEntrega(List<int> solicitudesIds)
+    {
+        try
+        {
+            guardando = true;
+            StateHasChanged();
+
+            var ok = new List<int>();
+            var fail = new List<int>();
+
+            foreach (var id in solicitudesIds)
+            {
+                var dto = new { SolicitudId = id, FechaEntrega = (DateTime?)DateTime.Now };
+                var resp = await Http.PostAsJsonAsync("api/diploma/registrar-entrega", dto);
+                if (resp.IsSuccessStatusCode)
+                {
+                    ok.Add(id);
+                }
+                else
+                {
+                    fail.Add(id);
+                }
+            }
+
+            await CargarParaEntrega();
+            seleccionados.Clear();
+            seleccionarTodos = false;
+
+            if (fail.Count > 0)
+            {
+                await JS.InvokeVoidAsync("Swal.fire", new { 
+                    icon = "warning", 
+                    title = "Resultado parcial", 
+                    html = $"Registrados: {ok.Count}<br/>Fallidos: {fail.Count}" 
+                });
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("Swal.fire", new { 
+                    icon = "success", 
+                    title = "Éxito", 
+                    text = $"Se registró la entrega de {ok.Count} diploma(s) correctamente." 
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error", text = ex.Message });
+        }
+        finally
+        {
+            guardando = false;
+            StateHasChanged();
+        }
+    }
+
+    public class ItemEntrega
+    {
+        public int SolicitudId { get; set; }
+        public int NumeroSolicitud { get; set; }
+        public DateTime FechaSolicitud { get; set; }
+        public int EstadoId { get; set; }
+        public string EstadoNombre { get; set; } = string.Empty;
+        public string NumeroDocumento { get; set; } = string.Empty;
+        public string NombreCompleto { get; set; } = string.Empty;
+        public string NumeroColegiatura { get; set; } = string.Empty;
+        public DateTime DiplomaFechaEmision { get; set; }
+        public DateTime? FechaEntrega { get; set; }
+    }
+
+    public class ItemEntregaView : ItemEntrega
+    {
+        public bool Seleccionado { get; set; }
+    }
+}

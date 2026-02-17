@@ -1,10 +1,12 @@
-﻿@page "/consejoregional/firmar-diplomas"
+@page "/consejoregional/firmar-diplomas"
 @using MatriculaCMP.Shared
 @using static MatriculaCMP.Shared.FirmaDigitalDTO
 @inject IJSRuntime JS
 @inject HttpClient Http
+@inject NavigationManager Nav
 
-
+<ErrorBoundary>
+    <ChildContent>
 <div class="container-fluid">
     @if (iniciandoFirma)
     {
@@ -192,7 +194,21 @@
         </div>
     </center>
 </div>
-
+    </ChildContent>
+    <ErrorContent>
+        <div class="container-fluid py-5">
+            <div class="card border-warning">
+                <div class="card-body text-center">
+                    <h4 class="text-warning"><i class="ri-error-warning-line"></i> Ha ocurrido un error</h4>
+                    <p class="text-muted">Si estaba firmando o recargó la página (F5), vuelva al listado para continuar.</p>
+                    <button class="btn btn-primary" @onclick="VolverAlListado">
+                        <i class="ri-arrow-left-line me-1"></i> Volver al listado de diplomas
+                    </button>
+                </div>
+            </div>
+        </div>
+    </ErrorContent>
+</ErrorBoundary>
 
 @code {
     private bool mostrarPdf = false;
@@ -812,5 +828,9 @@
         public bool Seleccionado { get; set; }
     }
 
+    private void VolverAlListado()
+    {
+        Nav.NavigateTo("/consejoregional/firmar-diplomas", forceLoad: true);
+    }
 }
 

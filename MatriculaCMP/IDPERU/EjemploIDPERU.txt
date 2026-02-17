@@ -1,0 +1,297 @@
+generar uRL para boton al iniciar la vista 
+
+[HttpGet]
+public IActionResult Login()
+{
+    try
+    {
+        int IdUsuario = Convert.ToInt32(HttpContext.Session.GetString("IdUsuario") == null ? 0 : HttpContext.Session.GetString("IdUsuario"));
+        int IdEmpleadoPerfil = Convert.ToInt32(HttpContext.Session.GetString("IdEmpleadoPerfil") == null ? 0 : HttpContext.Session.GetString("IdEmpleadoPerfil"));
+        Random rd = new Random();
+        int rand_num = rd.Next(1000, 9999);
+        int[] array = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, };
+
+        //int array =  { 0, "1", "2", "3" , "4", "5", "6", "7", "8", "9" };
+        int[] captcha_numbers = MatrixUtilitarios.Utilitario.Shuffle(array); ;
+
+        ViewBag.captcha_numbers = captcha_numbers;
+        ViewBag.captcha_value = rand_num.ToString();
+        ViewBag.current_captcha_codificado = MatrixUtilitarios.Utilitario.Encriptar(rand_num.ToString());
+
+
+
+        if (IdUsuario > 0)
+        {
+            return RedirectToAction("Cuenta", "Usuario");
+        }
+        else
+        {
+
+
+            try
+            {
+                ReniecIdaasClient oReniecClient = getClient();
+
+                HttpContext.Session.SetString("state", oReniecClient.state);
+                ViewData["url"] = oReniecClient.getLoginUrl();
+            }
+            catch (Exception)
+            {
+                ViewData["url"] = "";
+            }
+
+        }
+
+        return View();
+    }
+    catch (Exception ex)
+    {
+
+        return RedirectToAction("PaginaError", new { DescripcionError = ex.Message });
+    }
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@if (!@ViewData["url"].Equals(""))
+ {
+     <div class="d-grid mt-3">
+         <button id="btnIdPeru" type="button" onclick="window.location.href='@ViewData["url"]'" class="btn btn-outline-danger waves-effect waves-light">
+             <div class="d-flex align-items-center">
+                 @Html.Partial("VistaIDPeru")
+                 <span class="flex-grow-1">
+                     Iniciar sesión con ID PERÚ
+                 </span>
+             </div>
+         </button>
+     </div>
+ }
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ @using System.Configuration
+@{
+    Layout = null;
+}
+<?xml version="1.0" encoding="UTF-8" ?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="25px" height="25px" viewBox="0 0 25 25" version="1.1">
+    <g id="surface1">
+        <path class="idperu" d="M 18.75 12.027344 C 18.621094 12.027344 18.535156 12.027344 18.40625 12.027344 C 14.570312 11.898438 12.457031 9.699219 12.371094 9.613281 C 12.285156 9.527344 12.285156 9.351562 12.371094 9.265625 C 12.457031 9.179688 12.628906 9.179688 12.714844 9.265625 C 12.757812 9.308594 14.785156 11.421875 18.363281 11.507812 C 21.984375 11.636719 24.398438 9.785156 24.441406 9.742188 C 24.527344 9.65625 24.699219 9.65625 24.785156 9.785156 C 24.871094 9.871094 24.871094 10.042969 24.742188 10.128906 C 24.65625 10.214844 22.371094 12.027344 18.75 12.027344 Z M 18.75 12.027344 " />
+        <path class="idperu" d="M 12.199219 22.328125 C 12.070312 22.328125 11.941406 22.242188 11.941406 22.070312 C 11.941406 21.898438 12.027344 21.808594 12.199219 21.808594 C 19.007812 21.808594 22.714844 17.5 23.921875 13.449219 C 25.214844 9.050781 23.921875 4.65625 20.601562 2.414062 C 17.5 0.34375 14.351562 0.214844 11.207031 2.070312 C 8.792969 3.40625 7.328125 5.386719 7.328125 5.429688 C 7.242188 5.515625 7.113281 5.558594 6.984375 5.472656 C 6.898438 5.386719 6.851562 5.257812 6.941406 5.128906 C 6.984375 5.042969 8.492188 3.015625 10.949219 1.636719 C 13.277344 0.34375 16.851562 -0.691406 20.90625 2.027344 C 24.398438 4.351562 25.820312 9.007812 24.441406 13.578125 C 23.148438 17.84375 19.222656 22.328125 12.199219 22.328125 Z M 12.199219 22.328125 " />
+        <path class="idperu" d="M 20.34375 21.59375 C 19.050781 21.59375 17.542969 21.421875 16.164062 20.863281 C 11.207031 18.921875 9.957031 16.25 9.914062 16.121094 C 9.914062 16.078125 9.914062 16.078125 9.914062 16.035156 C 9.828125 15.429688 10.601562 11.078125 13.664062 7.714844 C 14.785156 6.464844 16.121094 5.472656 17.542969 4.871094 C 12.414062 3.363281 7.242188 5.515625 7.15625 5.515625 C 7.027344 5.558594 6.898438 5.515625 6.851562 5.386719 C 6.808594 5.257812 6.851562 5.128906 6.984375 5.085938 C 7.070312 5.042969 8.878906 4.265625 11.464844 3.964844 C 13.277344 3.75 15.734375 3.707031 18.191406 4.570312 C 19.527344 4.09375 21.035156 3.835938 22.628906 3.835938 C 22.757812 3.835938 22.886719 3.964844 22.886719 4.09375 C 22.886719 4.222656 22.757812 4.351562 22.628906 4.351562 C 21.335938 4.351562 20.042969 4.527344 18.921875 4.871094 C 19.484375 5.085938 20.042969 5.386719 20.558594 5.734375 C 26.808594 9.65625 26.898438 14.007812 26.898438 14.179688 C 26.898438 14.308594 26.808594 14.398438 26.679688 14.441406 C 26.035156 14.484375 25.257812 14.65625 25.128906 14.828125 C 25.128906 14.828125 25.128906 14.828125 25.128906 14.871094 C 25.171875 15.085938 25.34375 15.34375 25.472656 15.558594 C 25.691406 15.90625 25.90625 16.25 25.648438 16.507812 C 25.472656 16.679688 25.214844 16.808594 25 16.941406 C 25.085938 17.113281 25.171875 17.328125 25.085938 17.542969 C 25 17.714844 24.785156 17.84375 24.613281 17.972656 C 24.527344 18.015625 24.398438 18.101562 24.351562 18.191406 C 24.351562 18.277344 24.398438 18.449219 24.398438 18.621094 C 24.527344 19.441406 24.742188 20.992188 23.664062 21.25 C 22.84375 21.421875 21.679688 21.59375 20.34375 21.59375 Z M 10.386719 15.949219 C 10.558594 16.25 11.898438 18.664062 16.335938 20.386719 C 19.09375 21.464844 22.070312 21.078125 23.621094 20.734375 C 24.222656 20.601562 24.09375 19.613281 23.964844 18.664062 C 23.921875 18.449219 23.921875 18.277344 23.921875 18.148438 C 23.921875 17.886719 24.179688 17.714844 24.398438 17.542969 C 24.484375 17.457031 24.65625 17.371094 24.65625 17.328125 C 24.65625 17.285156 24.570312 17.113281 24.441406 16.984375 C 24.398438 16.941406 24.351562 16.851562 24.398438 16.765625 C 24.398438 16.679688 24.484375 16.636719 24.527344 16.59375 C 24.65625 16.550781 25.085938 16.335938 25.257812 16.207031 C 25.214844 16.121094 25.128906 15.949219 25.042969 15.820312 C 24.871094 15.558594 24.699219 15.257812 24.613281 14.957031 C 24.570312 14.828125 24.613281 14.65625 24.699219 14.527344 C 25 14.136719 25.90625 14.007812 26.378906 13.964844 C 26.292969 13.058594 25.515625 9.398438 20.300781 6.121094 C 19.613281 5.691406 18.921875 5.34375 18.191406 5.085938 C 16.636719 5.691406 15.171875 6.679688 13.964844 8.015625 C 11.164062 11.207031 10.34375 15.300781 10.386719 15.949219 Z M 10.386719 15.949219 " />
+        <path class="idperu" d="M 24.265625 20.34375 C 24.136719 20.34375 24.050781 20.257812 24.050781 20.171875 C 24.050781 20.128906 23.234375 16.507812 19.570312 15.042969 C 14.050781 12.800781 10.386719 16.164062 10.34375 16.207031 C 10.257812 16.292969 10.085938 16.292969 10 16.207031 C 9.914062 16.121094 9.914062 15.949219 10 15.863281 C 10.042969 15.820312 10.992188 14.957031 12.671875 14.351562 C 14.222656 13.792969 16.722656 13.40625 19.742188 14.613281 C 23.664062 16.164062 24.484375 19.914062 24.527344 20.085938 C 24.570312 20.214844 24.484375 20.34375 24.351562 20.386719 C 24.308594 20.34375 24.308594 20.34375 24.265625 20.34375 Z M 24.265625 20.34375 " />
+        <path class="idperu" d="M 18.621094 24.65625 C 18.578125 24.65625 18.578125 24.65625 18.535156 24.65625 L 12.070312 22.328125 C 11.941406 22.285156 11.898438 22.15625 11.941406 22.027344 C 11.984375 21.898438 12.113281 21.851562 12.242188 21.898438 L 18.363281 24.09375 C 18.363281 23.492188 18.40625 22.199219 19.007812 21.550781 C 19.265625 21.292969 19.527344 21.164062 19.914062 21.164062 C 20.042969 21.164062 20.171875 21.25 20.171875 21.421875 C 20.171875 21.550781 20.085938 21.679688 19.914062 21.679688 C 19.699219 21.679688 19.527344 21.765625 19.398438 21.898438 C 18.878906 22.457031 18.878906 23.921875 18.921875 24.441406 C 18.921875 24.527344 18.878906 24.613281 18.835938 24.65625 C 18.75 24.65625 18.707031 24.65625 18.621094 24.65625 Z M 18.621094 24.65625 " />
+        <path class="idperu" d="M 8.148438 5 C 8.148438 4.5 7.742188 4.09375 7.242188 4.09375 C 6.742188 4.09375 6.335938 4.5 6.335938 5 C 6.335938 5.5 6.742188 5.90625 7.242188 5.90625 C 7.742188 5.90625 8.148438 5.5 8.148438 5 Z M 8.148438 5 " />
+        <path class="idperu" d="M 18.878906 4.65625 C 18.878906 4.15625 18.472656 3.75 17.972656 3.75 C 17.472656 3.75 17.070312 4.15625 17.070312 4.65625 C 17.070312 5.15625 17.472656 5.558594 17.972656 5.558594 C 18.472656 5.558594 18.878906 5.15625 18.878906 4.65625 Z M 18.878906 4.65625 " />
+        <path class="idperu" d="M 25.558594 9.527344 C 25.558594 9.027344 25.15625 8.621094 24.65625 8.621094 C 24.15625 8.621094 23.75 9.027344 23.75 9.527344 C 23.75 10.027344 24.15625 10.429688 24.65625 10.429688 C 25.15625 10.429688 25.558594 10.027344 25.558594 9.527344 Z M 25.558594 9.527344 " />
+        <path class="idperu" d="M 11.679688 15.863281 C 11.679688 15.101562 11.0625 14.484375 10.300781 14.484375 C 9.539062 14.484375 8.921875 15.101562 8.921875 15.863281 C 8.921875 16.625 9.539062 17.242188 10.300781 17.242188 C 11.0625 17.242188 11.679688 16.625 11.679688 15.863281 Z M 11.679688 15.863281 " />
+        <path class="idperu" d="M 9.308594 9.265625 C 9.308594 8.625 8.789062 8.101562 8.148438 8.101562 C 7.503906 8.101562 6.984375 8.625 6.984375 9.265625 C 6.984375 9.910156 7.503906 10.429688 8.148438 10.429688 C 8.789062 10.429688 9.308594 9.910156 9.308594 9.265625 Z M 9.308594 9.265625 " />
+        <path class="idperu" d="M 6.335938 12.757812 C 6.335938 12.234375 5.910156 11.808594 5.386719 11.808594 C 4.863281 11.808594 4.441406 12.234375 4.441406 12.757812 C 4.441406 13.28125 4.863281 13.707031 5.386719 13.707031 C 5.910156 13.707031 6.335938 13.28125 6.335938 12.757812 Z M 6.335938 12.757812 " />
+        <path class="idperu" d="M 4.398438 9.613281 C 4.398438 9.183594 4.050781 8.835938 3.621094 8.835938 C 3.191406 8.835938 2.84375 9.183594 2.84375 9.613281 C 2.84375 10.039062 3.191406 10.386719 3.621094 10.386719 C 4.050781 10.386719 4.398438 10.039062 4.398438 9.613281 Z M 4.398438 9.613281 " />
+        <path class="idperu" d="M 4.527344 16.679688 C 4.527344 16.253906 4.179688 15.90625 3.75 15.90625 C 3.320312 15.90625 2.972656 16.253906 2.972656 16.679688 C 2.972656 17.109375 3.320312 17.457031 3.75 17.457031 C 4.179688 17.457031 4.527344 17.109375 4.527344 16.679688 Z M 4.527344 16.679688 " />
+        <path class="idperu" d="M 1.851562 13.535156 C 1.851562 13.105469 1.507812 12.757812 1.078125 12.757812 C 0.648438 12.757812 0.300781 13.105469 0.300781 13.535156 C 0.300781 13.964844 0.648438 14.308594 1.078125 14.308594 C 1.507812 14.308594 1.851562 13.964844 1.851562 13.535156 Z M 1.851562 13.535156 " />
+        <path class="idperu" d="M 9.308594 19.265625 C 9.308594 18.625 8.789062 18.101562 8.148438 18.101562 C 7.503906 18.101562 6.984375 18.625 6.984375 19.265625 C 6.984375 19.910156 7.503906 20.429688 8.148438 20.429688 C 8.789062 20.429688 9.308594 19.910156 9.308594 19.265625 Z M 9.308594 19.265625 " />
+        <path class="idperu" d="M 13.792969 9.265625 C 13.792969 8.625 13.273438 8.101562 12.628906 8.101562 C 11.988281 8.101562 11.464844 8.625 11.464844 9.265625 C 11.464844 9.910156 11.988281 10.429688 12.628906 10.429688 C 13.273438 10.429688 13.792969 9.910156 13.792969 9.265625 Z M 13.792969 9.265625 " />
+        <path class="idperu" d="M 18.40625 21.078125 C 18.40625 20.578125 18 20.171875 17.5 20.171875 C 17 20.171875 16.59375 20.578125 16.59375 21.078125 C 16.59375 21.578125 17 21.984375 17.5 21.984375 C 18 21.984375 18.40625 21.578125 18.40625 21.078125 Z M 18.40625 21.078125 " />
+        <path class="idperu" d="M 23.621094 16.679688 C 23.621094 16.179688 23.214844 15.777344 22.714844 15.777344 C 22.214844 15.777344 21.808594 16.179688 21.808594 16.679688 C 21.808594 17.179688 22.214844 17.585938 22.714844 17.585938 C 23.214844 17.585938 23.621094 17.179688 23.621094 16.679688 Z M 23.621094 16.679688 " />
+        <path class="idperu" d="M 12.800781 22.070312 C 12.800781 21.734375 12.53125 21.464844 12.199219 21.464844 C 11.863281 21.464844 11.59375 21.734375 11.59375 22.070312 C 11.59375 22.402344 11.863281 22.671875 12.199219 22.671875 C 12.53125 22.671875 12.800781 22.402344 12.800781 22.070312 Z M 12.800781 22.070312 " />
+    </g>
+</svg>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+la redireccion:
+
+[HttpGet]
+public async Task<IActionResult> Login2(String token, String code, String error, String state)
+{
+    string ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Dirección IP no disponible";
+    User oUser = new User();
+    if (!string.IsNullOrEmpty(token))
+    {
+        try
+        {
+            // 1. Obtener secretKey
+            string secretKey = ConfigurationManager.AppSettings["SecreyKeyApi"];
+            // 2. Desencriptar token
+            var principal = MatrixUtilitarios.TokenHelper.DesencriptarToken(token, secretKey, out var validatedToken);
+            var numeroDocumentoClaim = principal.Claims.FirstOrDefault(c => c.Type == "NumeroDocumento");
+            if (numeroDocumentoClaim == null)
+            {
+                return RedirectToAction("Error", new { DescripcionError = "El token no contiene el claim numeroDocumentoClaim" });
+            }
+            // 3. Buscar usuario y setear sesión
+            oUser.doc = numeroDocumentoClaim.Value.ToString();
+        }
+        catch (Exception ex)
+        {
+            return RedirectToAction("Error", new { DescripcionError = $"Token inválido: {ex.Message}" });
+        }
+    }
+    else
+    {
+        // Datos recibidos desde el servicio IDPERU
+        if (error != null || code == null)
+        {
+            return RedirectToAction("PaginaError", new { DescripcionError = "No se pudo identificar al usuario" });
+        }
+
+        if (!HttpContext.Session.GetString("state").Equals(state))
+        {
+            return RedirectToAction("PaginaError", new { DescripcionError = "Sesión caducada" });
+        }
+
+        System.Net.ServicePointManager.Expect100Continue = false;
+
+        ReniecIdaasClient oReniecClient = getClient();
+        Console.WriteLine(oReniecClient.ToString());
+        IDPeru.dto.TokenResponse tokenResponse = await oReniecClient.getTokens(code);
+        Console.WriteLine(tokenResponse.ToString());
+        if (tokenResponse == null)
+        {
+            return RedirectToAction("PaginaError", new { DescripcionError = "Token inválido" });
+        }
+
+        oUser = await oReniecClient.getUserInfo(tokenResponse.accessToken);
+
+
+    }
+
+    if (oUser == null)
+    {
+        return RedirectToAction("PaginaError", new { DescripcionError = "No se obtuvo los datos del usuario del servicio" });
+    }
+
+    var UsuarioLogueado = await iusuario.AutenticarUsuarioDocumentoAsync(oUser.doc, ipAddress);
+
+    if (UsuarioLogueado.mensaje.CodigoMensaje == 0)
+    {
+        HttpContext.Session.SetString("Login", UsuarioLogueado.Logueo);
+
+        HttpContext.Session.SetString("Email", UsuarioLogueado.Email);
+        HttpContext.Session.SetString("NumeroDocumento", UsuarioLogueado.persona.NumeroDocumento);
+        HttpContext.Session.SetString("RutaFotoUsuario", UsuarioLogueado.RutaArchivoFoto);
+        HttpContext.Session.SetString("IdPersona", UsuarioLogueado.persona.IdPersona.ToString());
+        HttpContext.Session.SetString("NombreCompleto", UsuarioLogueado.persona.NombreCompleto);
+        HttpContext.Session.SetString("IdUsuario", UsuarioLogueado.IdUsuario.ToString());
+
+        HttpContext.Session.SetString("NumeroCelular", UsuarioLogueado.persona.Celular);
+        HttpContext.Session.SetString("TelefonoFijo", UsuarioLogueado.persona.TelefonoFijo);
+        HttpContext.Session.SetString("Direccion", UsuarioLogueado.persona.Direccion);
+        HttpContext.Session.SetString("IdCatalogoTipoDocumento", UsuarioLogueado.persona.catalogotipodocumentopersonal.IdCatalogo.ToString());
+        /PIDE/
+        string IdCatalogoTipoDocumentoPIDE = "";
+        if (UsuarioLogueado.persona.catalogotipodocumentopersonal.IdCatalogo == 2) { IdCatalogoTipoDocumentoPIDE = "1"; }
+        if (UsuarioLogueado.persona.catalogotipodocumentopersonal.IdCatalogo == 3) { IdCatalogoTipoDocumentoPIDE = "2"; }
+        HttpContext.Session.SetString("IdCatalogoTipoDocumentoPIDE", IdCatalogoTipoDocumentoPIDE);
+
+        HttpContext.Session.SetString("IdArea", "0");
+        HttpContext.Session.SetString("IdCargo", "0");
+        HttpContext.Session.SetString("TipoCargo", "0");
+        HttpContext.Session.SetString("Area", "");
+        HttpContext.Session.SetString("AbreviaturaArea", "");
+        HttpContext.Session.SetString("Cargo", "");
+        HttpContext.Session.SetString("IdEmpleadoPerfil", "0");
+        HttpContext.Session.SetString("IdEmpleado", "0");
+        HttpContext.Session.SetString("NombreEmpleadoPerfil", "");
+        HttpContext.Session.SetString("Idsede", "0");
+        HttpContext.Session.SetString("NombreSede", "");
+        HttpContext.Session.SetString("IdEmpresa", "0");
+        HttpContext.Session.SetString("IdEmpresaPadre", "0");
+        HttpContext.Session.SetString("NombreEmpresa", MatrixUtilitarios.DatosGlobales.NombreInstitucion);
+
+        HttpContext.Session.SetString("IdCatalogoTipoEmpleado", "");
+        HttpContext.Session.SetString("CatalogoTipoEmpleado", "");
+
+
+        //Generar tokens gratuitos para los médicos
+        var medico = await ConsultarMedicoPorDocumentoAsync(UsuarioLogueado.persona.NumeroDocumento);
+        if (medico != null)
+        {
+            if (medico.status.Equals("success") && medico.data.Length > 0)
+            {
+                await iusuario.GenerarTokensGratuitosAsync(UsuarioLogueado.IdUsuario, UsuarioLogueado.IdUsuario);
+            }
+        }
+
+
+
+    }
+    else
+    {
+        return RedirectToAction("PaginaError", new { DescripcionError = $"No se encontró ningún usuario con el número de documento {oUser.doc}" });
+    }
+
+    try
+    {
+        return View(UsuarioLogueado);
+    }
+    catch (Exception ex)
+    {
+        return RedirectToAction("PaginaError", new { DescripcionError = "Hubo un error [" + ex.Message + "]" });
+    }
+}

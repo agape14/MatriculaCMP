@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
@@ -21,10 +21,10 @@ namespace MatriculaCMP.Shared
 		public bool EsExtranjera { get; set; }
 		public int PaisUniversidadId { get; set; }
 
-		[Required(ErrorMessage = "La universidad es requerida")]
-		public int UniversidadId { get; set; }
+		// UniversidadId es nullable porque puede ser universidad extranjera (no registrada en BD)
+		public int? UniversidadId { get; set; }
         // 🆕 Propiedad de navegación hacia Universidad
-        public Universidad Universidad { get; set; }
+        public Universidad? Universidad { get; set; }
 
         [Required(ErrorMessage = "La fecha de emisión del título es requerida")]
 		public DateTime FechaEmisionTitulo { get; set; }
@@ -35,6 +35,8 @@ namespace MatriculaCMP.Shared
         public int? UniversidadPeruanaId { get; set; } // Solo para revalidación
         public string? NumeroResolucion { get; set; }
         public string? ResolucionPath { get; set; }
+        public DateTime? FechaReconocimiento { get; set; }
+        public DateTime? FechaRevalidacion { get; set; }
 
         public EducacionDocumento? Documento { get; set; }
 

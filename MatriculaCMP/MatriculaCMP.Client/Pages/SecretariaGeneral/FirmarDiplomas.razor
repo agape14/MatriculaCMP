@@ -1,11 +1,13 @@
-﻿@page "/secretariageneral/firmar-diplomas"
+@page "/secretariageneral/firmar-diplomas"
 @using MatriculaCMP.Shared
 @using static MatriculaCMP.Shared.FirmaDigitalDTO
 @using System.Text.Json;
 @inject HttpClient Http
 @inject IJSRuntime JS
+@inject NavigationManager Nav
 
-
+<ErrorBoundary>
+    <ChildContent>
 <div class="container-fluid">
     @if (iniciandoFirma)
     {
@@ -172,6 +174,21 @@
         </div>
     </div>
 </center>
+    </ChildContent>
+    <ErrorContent>
+        <div class="container-fluid py-5">
+            <div class="card border-warning">
+                <div class="card-body text-center">
+                    <h4 class="text-warning"><i class="ri-error-warning-line"></i> Ha ocurrido un error</h4>
+                    <p class="text-muted">Si estaba firmando o recargó la página (F5), vuelva al listado para continuar.</p>
+                    <button class="btn btn-primary" @onclick="VolverAlListado">
+                        <i class="ri-arrow-left-line me-1"></i> Volver al listado de diplomas
+                    </button>
+                </div>
+            </div>
+        </div>
+    </ErrorContent>
+</ErrorBoundary>
 <script>
     let componenteRazor;
     window.registrarInstanciaDotNet = function (instancia) {
@@ -642,6 +659,11 @@
         public string NumeroColegiatura { get; set; }
         public DateTime DiplomaFechaEmision { get; set; }
         public bool Seleccionado { get; set; }
+    }
+
+    private void VolverAlListado()
+    {
+        Nav.NavigateTo("/secretariageneral/firmar-diplomas", forceLoad: true);
     }
 }
 

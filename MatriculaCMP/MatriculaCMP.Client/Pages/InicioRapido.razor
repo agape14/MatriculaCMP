@@ -1,4 +1,4 @@
-﻿@page "/"
+@page "/"
 @layout LoginLayout
 @using MatriculaCMP.Client.Layout
 @using MatriculaCMP.Shared
@@ -45,10 +45,10 @@
                 INICIAR CON USUARIO Y CONTRASEÑA
             </button>
         </div>
+        
     </div>
     
 </div>
-
 
 @code {
     private string mensaje;
@@ -65,32 +65,107 @@
     {
         try
         {
+            // Validar que el número de documento no esté vacío
+            if (string.IsNullOrWhiteSpace(NumeroDocumento))
+            {
+                await JS.InvokeVoidAsync("Swal.fire", new
+                {
+                    icon = "warning",
+                    title = "Datos incompletos",
+                    text = "Por favor, ingrese su DNI.",
+                    confirmButtonText = "Aceptar"
+                });
+                return;
+            }
+
+            // Validar que el DNI tenga 8 dígitos
+            if (NumeroDocumento.Length != 8 || !NumeroDocumento.All(char.IsDigit))
+            {
+                await JS.InvokeVoidAsync("Swal.fire", new
+                {
+                    icon = "warning",
+                    title = "DNI inválido",
+                    text = "El DNI debe tener 8 dígitos.",
+                    confirmButtonText = "Aceptar"
+                });
+                return;
+            }
+
             loginSgdCargando = true;
             StateHasChanged();
-            // Mostrar spinner mientras se procesa
+            
+            // 1. Verificar que el DNI NO sea de un médico colegiado CMP (antes de consultar SGD/BD)
+            await JS.InvokeVoidAsync("mostrarSpinnerLogin", "Verificando documento...");
+            await Task.Delay(100);
+            
+            var consultaEsMedicoResp = await Http.GetAsync($"api/reniec/consulta-es-medico/{NumeroDocumento}");
+            if (consultaEsMedicoResp.IsSuccessStatusCode)
+            {
+                var consultaJson = await consultaEsMedicoResp.Content.ReadFromJsonAsync<JsonElement>();
+                if (consultaJson.TryGetProperty("esMedico", out var esMedicoEl) && esMedicoEl.GetBoolean())
+                {
+                    await JS.InvokeVoidAsync("Swal.close");
+                    await JS.InvokeVoidAsync("Swal.fire", new
+                    {
+                        icon = "warning",
+                        title = "Acceso no permitido",
+                        text = "El DNI ingresado corresponde a un médico colegiado del CMP. Para iniciar sesión utilice la opción 'Iniciar con usuario y contraseña'.",
+                        confirmButtonText = "Aceptar"
+                    });
+                    return;
+                }
+            }
+            
+            // 2. Continuar con login SGD (DNI no es médico o no se pudo verificar)
             await JS.InvokeVoidAsync("mostrarSpinnerLogin", "Validando usuario...");
+            await Task.Delay(100);
+            
             string tipoEncriptado = await JS.InvokeAsync<string>("btoa", TipoDocumento);
             string numeroEncriptado = await JS.InvokeAsync<string>("btoa", NumeroDocumento);
 
             var dto = new UsuarioLoginEncryptedDTO
-                {
-                    TipoDocumentoEncrypted = tipoEncriptado,
-                    NumeroDocumentoEncrypted = numeroEncriptado
-                };
+            {
+                TipoDocumentoEncrypted = tipoEncriptado,
+                NumeroDocumentoEncrypted = numeroEncriptado,
+                PerfilId = 2
+            };
 
             var response = await Http.PostAsJsonAsync("api/usuario/LoginSgd", dto);
-            await JS.InvokeVoidAsync("Swal.close");
+            
             if (response.IsSuccessStatusCode)
             {
-                //Nav.NavigateTo("/home");
                 var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-                var token = json.GetProperty("token").GetString();
-
-                // Redirigir manualmente a /autologin con el token
-                Nav.NavigateTo($"/autologin?token={token}", forceLoad: true);
+                
+                if (json.TryGetProperty("token", out JsonElement tokenElement))
+                {
+                    var token = tokenElement.GetString();
+                    
+                    if (!string.IsNullOrEmpty(token))
+                    {
+                        await JS.InvokeVoidAsync("Swal.close");
+                        
+                        // Guardar el token directamente en localStorage
+                        await JS.InvokeVoidAsync("localStorage.setItem", "Token", token);
+                        
+                        // Pequeña pausa antes de navegar
+                        await Task.Delay(100);
+                        
+                        // Navegar directamente a home
+                        Nav.NavigateTo("/home", forceLoad: true);
+                    }
+                    else
+                    {
+                        throw new Exception("Token vacío recibido del servidor.");
+                    }
+                }
+                else
+                {
+                    throw new Exception("No se recibió un token válido del servidor.");
+                }
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
+                await JS.InvokeVoidAsync("Swal.close");
                 await JS.InvokeVoidAsync("Swal.fire", new
                 {
                     icon = "error",
@@ -101,11 +176,13 @@
             }
             else
             {
+                await JS.InvokeVoidAsync("Swal.close");
+                var errorContent = await response.Content.ReadAsStringAsync();
                 await JS.InvokeVoidAsync("Swal.fire", new
                 {
                     icon = "error",
                     title = "Error al iniciar sesión",
-                    text = $"Código: {(int)response.StatusCode}",
+                    text = $"Código: {(int)response.StatusCode}. {errorContent}",
                     confirmButtonText = "Cerrar"
                 });
             }
@@ -117,9 +194,10 @@
             {
                 icon = "error",
                 title = "Error inesperado",
-                text = ex.Message,
+                text = $"Detalles: {ex.Message}",
                 confirmButtonText = "Cerrar"
             });
+            Console.WriteLine($"Error en IniciarSesion: {ex}");
         }
         finally
         {

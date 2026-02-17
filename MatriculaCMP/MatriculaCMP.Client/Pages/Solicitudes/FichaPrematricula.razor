@@ -1,4 +1,4 @@
-﻿@page "/solicitudes/prematricula"
+@page "/solicitudes/prematricula"
 @page "/solicitudes/prematricula/{SolicitudId:int}"
 @using MatriculaCMP.Client.Services
 @using System.Net.Http.Headers;
@@ -8,6 +8,8 @@
 @using Microsoft.AspNetCore.Components.Web
 @using MatriculaCMP.Shared
 @using System.Text.Json
+@using System.IO
+@using System.Threading
 
 
 @inject IJSRuntime JS
@@ -38,6 +40,18 @@
 			<span class="visually-hidden">Cargando...</span>
 		</div>
 	</div>
+}
+
+<!-- Botón flotante para ver observaciones -->
+@if (esCorreccionPorObservacion && !mostrarObservaciones)
+{
+	<button type="button" class="btn btn-warning position-fixed shadow" 
+			style="bottom: 20px; right: 20px; z-index: 1000; border-radius: 50px;"
+			@onclick="() => mostrarObservaciones = true">
+		<i class="ri-alert-line me-1"></i>
+		<span class="d-none d-md-inline">Ver Observaciones</span>
+		<span class="d-inline d-md-none">⚠️</span>
+	</button>
 }
 
 <!-- Modal para mostrar observaciones -->
@@ -102,119 +116,610 @@
 				<div class="card-body">
 					<div class="container-contact100">
 						<div class="wrap-contact100">
-							<EditForm Model="@formData" OnValidSubmit="@HandleValidSubmit">		
-								
-								 <div class="row">
-									<div class="col-md-12">
-										<div class="form-group">
-											<label for="lblConsejoRegional">Consejo Regional *</label>
-											<InputSelect @bind-Value="formData.ConsejoRegional" class="form-control" id="cbxConsejoRegional" requiered>
-												<option value="">Seleccione...</option>
-												@foreach (var consejo in consejos)
+							@* Callout Consulta Es Médico: arriba de todo, antes del stepper. Mensaje indica si el DNI es médico o no. *@
+							@if (mostrarCalloutEsMedico)
+							{
+								<div class="mb-3 @(resultadoEsMedico == true ? "bd-callout bd-callout-danger" : "bd-callout bd-callout-info")">
+									<strong>@(resultadoEsMedico == true ? "⚠️ Atención:" : "ℹ️ Información:")</strong>
+									@mensajeConsultaMedico
+								</div>
+							}
+
+							<!-- Stepper -->
+							<div class="cmp-stepper mb-3">
+								<ol class="cmp-steps">
+									<li class="@StepClass(1)">
+										<span class="cmp-step-circle">
+											@if (ShouldShowCheck(1))
+											{
+												<i class="ri-check-line" aria-hidden="true"></i>
+											}
+										</span>
+										<span class="cmp-step-label">1. Registro inicial</span>
+									</li>
+									<li class="@StepClass(2)">
+										<span class="cmp-step-circle">
+											@if (ShouldShowCheck(2))
+											{
+												<i class="ri-check-line" aria-hidden="true"></i>
+											}
+										</span>
+										<span class="cmp-step-label">2. Curso de Ética</span>
+									</li>
+									<li class="@StepClass(3)">
+										<span class="cmp-step-circle">
+											@if (ShouldShowCheck(3))
+											{
+												<i class="ri-check-line" aria-hidden="true"></i>
+											}
+										</span>
+										<span class="cmp-step-label">3. Completar datos</span>
+									</li>
+									<li class="@StepClass(4)">
+										<span class="cmp-step-circle">
+											@if (ShouldShowCheck(4))
+											{
+												<i class="ri-check-line" aria-hidden="true"></i>
+											}
+										</span>
+										<span class="cmp-step-label">4. Pago</span>
+									</li>
+									<li class="@StepClass(5)">
+										<span class="cmp-step-circle">
+											@if (ShouldShowCheck(5))
+											{
+												<i class="ri-check-line" aria-hidden="true"></i>
+											}
+										</span>
+										<span class="cmp-step-label">5. Solicitud enviada</span>
+									</li>
+								</ol>
+							</div>
+
+							@* Banner de observaciones si viene de corrección *@
+							@if (esCorreccionPorObservacion)
+							{
+								<div class="alert alert-warning d-flex align-items-start mb-3">
+									<div class="me-2">⚠️</div>
+									<div class="flex-grow-1">
+										<div class="fw-bold">Esta solicitud tiene observaciones</div>
+										<div class="small">Revise y corrija los campos indicados según las observaciones del revisor.</div>
+									</div>
+									<button type="button" class="btn btn-sm btn-outline-warning" @onclick="() => mostrarObservaciones = true">
+										<i class="ri-eye-line"></i> Ver Observaciones
+									</button>
+								</div>
+							}
+
+							@* PASO 1: Registro inicial *@
+							@if (currentStep == 1)
+							{
+								<div>
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group">
+												<label class="fw-bold">Seleccione su perfil *</label>
+												<InputSelect TValue="string"
+															 Value="@perfilSeleccionado"
+															 ValueChanged="@((string val) => OnPerfilSeleccionado(val))"
+															 ValueExpression="@(() => perfilSeleccionado)"
+															 class="@($"form-control {(string.IsNullOrWhiteSpace(perfilSeleccionado) && intentadoEnviar ? "is-invalid" : "")}")">
+													<option value="">Seleccione perfil</option>
+													<option value="1">1. Profesional peruano con título de universidad peruana</option>
+													<option value="2">2. Profesional peruano con título de universidad extranjera</option>
+													<option value="3">3. Profesional extranjero con título otorgado en el Perú</option>
+													<option value="4">4. Profesional extranjero con título otorgado en el extranjero</option>
+												</InputSelect>
+												@if (string.IsNullOrWhiteSpace(perfilSeleccionado) && intentadoEnviar)
 												{
-													<option value="@consejo.ConsejoRegional_Key">@consejo.Nombre</option>
+													<div class="invalid-feedback d-block">Seleccione un perfil.</div>
 												}
-											</InputSelect>
-											<ValidationMessage For="@(() => formData.ConsejoRegional)" />
+												<div class="small text-muted mt-1">
+													Perfil guía los requisitos del curso de Ética y la documentación a presentar.
+												</div>
+											</div>
 										</div>
 									</div>
+									<div class="row">
+										<div class="col-md-12">
+											<div class="form-group">
+												<label for="lblConsejoRegional">Consejo Regional *</label>
+												<InputSelect @bind-Value="formData.ConsejoRegional" class="@($"form-control {(EsConsejoInvalido() && intentadoEnviar ? "is-invalid" : "")}")" id="cbxConsejoRegional" requiered>
+													<option value="">Seleccione...</option>
+													@foreach (var consejo in consejos)
+													{
+														<option value="@consejo.ConsejoRegional_Key">@consejo.Nombre</option>
+													}
+												</InputSelect>
+												@if (EsConsejoInvalido() && intentadoEnviar)
+												{
+													<div class="invalid-feedback d-block">Seleccione Consejo Regional.</div>
+												}
+											</div>
+										</div>
+									</div>
+
+									<div class="card">
+										<h5 class="card-header card-title bg-morado ">Datos Personales</h5>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-4">
+													<div class="form-group">
+														<label for="td">Tipo de Documento *</label>
+														<InputSelect TValue="string"
+																	 Value="@formData.TipoDocumento"
+																	 ValueChanged="@((string val) => OnTipoDocSeleccionado(val))"
+																	 ValueExpression="@(() => formData.TipoDocumento)"
+																	 class="@($"form-control {(string.IsNullOrWhiteSpace(formData.TipoDocumento) && intentadoEnviar ? "is-invalid" : "")}")">
+															<option value="">Seleccione Tipo de Documento</option>
+															@foreach (var td in tipodoc)
+															{
+																<option value="@td.MaestroRegistro_Key.ToString()">@td.Nombre</option>
+															}
+														</InputSelect>
+														@if (string.IsNullOrWhiteSpace(formData.TipoDocumento) && intentadoEnviar)
+														{
+															<div class="invalid-feedback d-block">Seleccione tipo de documento.</div>
+														}
+													</div>
+												</div>
+												<div class="col-md-4">
+													<div class="form-group">
+														<label for="nd">Nro. documento *</label>
+														<InputText @bind-Value="formData.NumeroDocumento" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.NumeroDocumento) && intentadoEnviar ? "is-invalid" : "")}")" id="nd" @onblur="OnNumeroDocumentoBlur" disabled="@consultandoReniec" />
+														@if (string.IsNullOrWhiteSpace(formData.NumeroDocumento) && intentadoEnviar)
+														{
+															<div class="invalid-feedback d-block">Ingrese número de documento.</div>
+														}
+														@if (consultandoReniec)
+														{
+															<small class="text-muted"><span class="spinner-border spinner-border-sm" role="status"></span> Consultando RENIEC…</small>
+														}
+													</div>
+												</div>
+												<div class="col-md-4">
+													<div class="form-group">
+														<label for="gs">Grupo Sanguineo *</label>
+														<InputSelect @bind-Value="formData.GrupoSanguineo" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.GrupoSanguineo) && intentadoEnviar ? "is-invalid" : "")}")" id="gs">
+															<option value="">Seleccione...</option>
+															@foreach (var gs in gruposang)
+															{
+																<option value="@gs.MaestroRegistro_Key">@gs.Nombre</option>
+															}
+														</InputSelect>
+														@if (string.IsNullOrWhiteSpace(formData.GrupoSanguineo) && intentadoEnviar)
+														{
+															<div class="invalid-feedback d-block">Seleccione grupo sanguíneo.</div>
+														}
+													</div>
+												</div>
+												<div class="col-md-4">
+													<div class="form-group">
+														<label for="nombres">Nombres Completos *</label>
+														<InputText @bind-Value="formData.Nombres" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.Nombres) && intentadoEnviar ? "is-invalid" : "")}")" id="nombres" requiered />
+														@if (string.IsNullOrWhiteSpace(formData.Nombres) && intentadoEnviar)
+														{
+															<div class="invalid-feedback d-block">Ingrese nombres.</div>
+														}
+													</div>
+												</div>
+												<div class="col-md-4">
+													<div class="form-group">
+														<label for="nombres">Apellido Paterno *</label>
+														<InputText @bind-Value="formData.ApellidoPaterno" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.ApellidoPaterno) && intentadoEnviar ? "is-invalid" : "")}")" id="apaterno" requiered />
+														@if (string.IsNullOrWhiteSpace(formData.ApellidoPaterno) && intentadoEnviar)
+														{
+															<div class="invalid-feedback d-block">Ingrese apellido paterno.</div>
+														}
+													</div>
+												</div>
+												<div class="col-md-4">
+													<div class="form-group">
+														<label for="nombres">Apellido Materno *</label>
+														<InputText @bind-Value="formData.ApellidoMaterno" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.ApellidoMaterno) && intentadoEnviar ? "is-invalid" : "")}")" id="amaterno" requiered />
+														@if (string.IsNullOrWhiteSpace(formData.ApellidoMaterno) && intentadoEnviar)
+														{
+															<div class="invalid-feedback d-block">Ingrese apellido materno.</div>
+														}
+													</div>
+												</div>
+
+												<div class="col-md-6">
+													<div class="form-group">
+														<label for="sexo">Sexo *</label>
+														<InputSelect @bind-Value="formData.Sexo" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.Sexo) && intentadoEnviar ? "is-invalid" : "")}")" id="sexo">
+															<option value="">Seleccione...</option>
+															<option value="1">Masculino</option>
+															<option value="0">Femenino</option>
+														</InputSelect>
+														@if (string.IsNullOrWhiteSpace(formData.Sexo) && intentadoEnviar)
+														{
+															<div class="invalid-feedback d-block">Seleccione sexo.</div>
+														}
+													</div>
+												</div>
+												<div class="col-md-6">
+													<div class="form-group">
+														<label for="ec">Estado Civil *</label>
+														<InputSelect @bind-Value="formData.EstadoCivil" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.EstadoCivil) && intentadoEnviar ? "is-invalid" : "")}")" id="ec">
+															<option value="">Seleccione...</option>
+															@foreach (var ec in estacivil)
+															{
+																<option value="@ec.MaestroRegistro_Key">@ec.Nombre</option>
+															}
+														</InputSelect>
+														@if (string.IsNullOrWhiteSpace(formData.EstadoCivil) && intentadoEnviar)
+														{
+															<div class="invalid-feedback d-block">Seleccione estado civil.</div>
+														}
+													</div>
+												</div>
+
+												@* Carnet de Extranjería: pedir PDF escaneado y mostrar ejemplo *@
+												@if (tipoDocSeleccionado == "64")
+												{
+													<div class="col-12 mt-2">
+														<div class="alert alert-info d-flex align-items-start mb-2" role="alert">
+															<span class="me-2">ℹ️</span>
+															<div>
+																<strong>Ejemplo de cómo cargar el PDF:</strong> escaneado de ambas caras del carnet de extranjería.
+															</div>
+														</div>
+														<div class="form-group">
+															<label class="fw-bold">Carnet de Extranjería – PDF escaneado *</label>
+															<div class="input-group">
+																<div class="custom-file" style="flex-grow: 1;">
+																	<InputFile @bind-Value="formData.CarnetExtranjeriaPath" OnChange="@(async e => await OnFileSelected(e, nameof(formData.CarnetExtranjeriaPath)))" class="custom-file-input form-control" accept=".pdf" />
+																	<label class="custom-file-label form-control">@(pdfCarnetExtranjeria != null ? pdfCarnetExtranjeria.Name : "Seleccione PDF (ambas caras del carnet)")</label>
+																</div>
+															</div>
+														</div>
+													</div>
+												}
+											</div>
+										</div>
+									</div>
+
+									<div class="card mt-3">
+										<h5 class="card-header card-title bg-morado">Datos de Universidad</h5>
+										<div class="card-body">
+											<div class="row">
+												<div class="col-md-6">
+													<div class="form-group">
+														<label for="uniori">Origen de Universidad *</label>
+														<InputSelect TValue="string"
+																	 Value="@formData.UniversidadOrigen"
+																	 ValueChanged="@((string val) => OnTipoSeleccionado(val))"
+																	 ValueExpression="@(() => formData.UniversidadOrigen)"
+																	 class="form-control">
+															<option value="">Seleccione Universidad</option>
+															<option value="1">Nacional</option>
+															<option value="0">Extranjera</option>
+														</InputSelect>
+													</div>
+												</div>
+
+												<div class="col-md-6">
+													<div class="form-group">
+														<label for="pais_uni_paso1">País de universidad *</label>
+														<select id="pais_uni_paso1"
+																class="form-control"
+																value="@formData.PaisUniversidad"
+																disabled="@paisBloqueado"
+																@onchange="@(async (ChangeEventArgs e) => await OnPaisSeleccionadoAsync(e.Value?.ToString() ?? ""))">
+															<option value="">Seleccione país</option>
+															@foreach (var pais in paisesFiltrados)
+															{
+																<option value="@pais.Id.ToString()" selected="@(formData.PaisUniversidad == pais.Id.ToString())">
+																	@pais.Nombre
+																</option>
+															}
+														</select>
+													</div>
+												</div>
+
+												@if (tipoSeleccionado == "1")
+												{
+													<div class="col-md-6">
+														<div class="form-group">
+															<label for="nombre_uni">Nombre de Universidad*</label>
+															<InputSelect @bind-Value="formData.Universidad" class="form-control" id="nombre_uni">
+																<option value="">Seleccione Universidad</option>
+																@foreach (var uni in universidades)
+																{
+																	<option value="@uni.Id">@uni.Nombre</option>
+																}
+															</InputSelect>
+														</div>
+													</div>
+												}
+												else
+												{
+													<div class="col-md-6">
+														<div class="form-group">
+															<label for="nombre_uni_ext">Nombre de Universidad*</label>
+															
+															@if (cargandoUniversidadesExtranjeras)
+															{
+																<div class="form-control">
+																	<span class="spinner-border spinner-border-sm me-2"></span>
+																	Cargando universidades...
+																</div>
+															}
+															else if (universidadesExtranjeras.Count > 0 && !mostrarCampoTextoUniversidadExtranjera)
+															{
+																<!-- Select2 con universidades de la API -->
+																<select id="select_universidad_extranjera_paso1" 
+																		class="form-control"
+																		@onchange="@((ChangeEventArgs e) => { formData.NombreUniversidadExtranjera = e.Value?.ToString(); })">
+																	<option value="">Seleccione o escriba para buscar...</option>
+																	@foreach (var uni in universidadesExtranjeras)
+																	{
+																		<option value="@uni.name" selected="@(formData.NombreUniversidadExtranjera == uni.name)">@uni.name</option>
+																	}
+																</select>
+																<div class="small text-muted mt-1">
+																	<button type="button" class="btn btn-link btn-sm p-0" @onclick="CambiarATextoManualPaso1">
+																		¿No encuentra su universidad? Haga clic aquí para escribirla manualmente
+																	</button>
+																</div>
+															}
+															else
+															{
+																<!-- Campo de texto manual -->
+																<InputText @bind-Value="formData.NombreUniversidadExtranjera"
+																		   class="form-control" 
+																		   id="nombre_uni_ext_paso1"
+																		   placeholder="Escriba el nombre de la universidad" />
+																
+																@if (universidadesExtranjeras.Count > 0 && mostrarCampoTextoUniversidadExtranjera)
+																{
+																	<div class="small text-muted mt-1">
+																		<button type="button" class="btn btn-link btn-sm p-0" @onclick="VolverABusquedaAutomaticaPaso1">
+																			Volver a la búsqueda automática
+																		</button>
+																	</div>
+																}
+															}
+														</div>
+													</div>
+												}
+
+												@if (tipoSeleccionado == "0" || tipoDocSeleccionado == "64")
+												{
+													<div class="col-md-6">
+														<div class="form-group">
+															<label for="tipo_validacion">Tipo de validación *</label>
+															<InputSelect TValue="string"
+																		 Value="@formData.TipoValidacion"
+																		 ValueChanged="@((string val) => OnTipoValidacionSeleccionado(val))"
+																		 ValueExpression="@(() => formData.TipoValidacion)"
+																		 class="@($"form-control {(esExtranjeroSinTipoValidacion && intentadoEnviar ? "is-invalid" : "")}")">
+																<option value="">Seleccione Tipo de validación</option>
+																<option value="reconocimiento">Reconocimiento de Sunedu</option>
+																<option value="revalidacion">Revalidación</option>
+															</InputSelect>
+															@if (esExtranjeroSinTipoValidacion && intentadoEnviar)
+															{
+																<div class="invalid-feedback d-block">Seleccione Tipo de validación.</div>
+															}
+														</div>
+													</div>
+													@if (tipoValidacionExtranjera == "reconocimiento")
+													{
+														<div class="col-md-6">
+															<div class="form-group">
+																<label>Resolución de Reconocimiento Universidad Nacional *</label>
+																<InputText @bind-Value="formData.NumeroResolucion" class="form-control" />
+															</div>
+														</div>
+														<div class="col-md-6">
+															<div class="form-group">
+																<label>Fecha de reconocimiento *</label>
+																<InputDate TValue="DateTime?" @bind-Value="formData.FechaReconocimiento" class="form-control" />
+															</div>
+														</div>
+													}
+													else if (tipoValidacionExtranjera == "revalidacion")
+													{
+														<div class="col-md-6">
+															<div class="form-group">
+																<label>Resolución de Revalidación Universidad Nacional *</label>
+																<InputText @bind-Value="formData.NumeroResolucion" class="form-control" />
+															</div>
+														</div>
+														<div class="col-md-6">
+															<div class="form-group">
+																<label>Universidad Peruana *</label>
+																<InputSelect @bind-Value="formData.UniversidadPeruana" class="form-control">
+																	<option value="">Seleccione universidad</option>
+																	@foreach (var uniper in universidadesperuanas)
+																	{
+																		<option value="@uniper.Id">@uniper.Nombre</option>
+																	}
+																</InputSelect>
+															</div>
+														</div>
+														<div class="col-md-6">
+															<div class="form-group">
+																<label>Fecha de revalidación *</label>
+																<InputDate TValue="DateTime?" @bind-Value="formData.FechaRevalidacion" class="form-control" />
+															</div>
+														</div>
+													}
+												}
+											</div>
+										</div>
+									</div>
+
+								<div class="d-flex justify-content-end mt-3 gap-2">
+									@if (esCorreccionPorObservacion)
+									{
+										<!-- Solo mostrar botón para volver al paso 3 cuando está en corrección -->
+										<button type="button" class="btn btn-primary btn-lg" @onclick="() => currentStep = 3">
+											<i class="ri-arrow-right-line"></i>
+											<span>Ir a Paso 3</span>
+										</button>
+									}
+									else
+									{
+										<!-- Solo mostrar botón de registro cuando NO está en corrección -->
+										<button type="button" class="btn btn-primary btn-lg btn-action" disabled="@isSavingInicial" @onclick="RegistrarInicialAsync">
+											@if (isSavingInicial)
+											{
+												<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+												<span class="ms-2">Registrando...</span>
+											}
+											else
+											{
+												<i class="ri-save-3-line" aria-hidden="true"></i>
+												<span>Registrar</span>
+											}
+										</button>
+									}
+								</div>
+								</div>
+							}
+
+							@* PASO 2: Aula Virtual *@
+							@if (currentStep == 2)
+							{
+								<div class="d-flex justify-content-start mb-3">
+									<button type="button" class="btn btn-outline-primary" @onclick="VolverAPaso1">
+										<i class="ri-arrow-left-line"></i> Volver a Paso 1
+									</button>
+								</div>
+								<div class="alert alert-info d-flex align-items-start">
+									<div class="me-2">📘</div>
+									<div>
+										<div class="fw-bold">Estado de la solicitud: @(!string.IsNullOrWhiteSpace(estadoActual) ? estadoActual : "Pendiente de curso Ética")</div>
+										<div class="small text-muted">Complete el curso de Ética en el Aula Virtual para continuar.</div>
+										@if (!string.IsNullOrEmpty(avanceCursoDetalle))
+										{
+											<div class="mt-2 small">
+												<strong>Avance actual:</strong> @avanceCursoDetalle
+											</div>
+										}
+									</div>
+								</div>
+								<div class="d-flex gap-2">
+									<button type="button" class="btn btn-primary" disabled="@abriendonAulaVirtual" @onclick="IrAlAulaVirtual">
+										@if (abriendonAulaVirtual)
+										{
+											<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+											<span class="ms-2">Abriendo...</span>
+										}
+										else
+										{
+											<span>Ir al Aula Virtual</span>
+										}
+									</button>
+									<button type="button" class="btn btn-outline-secondary" disabled="@verificandoCurso" @onclick="VerificarCursoEticaAsync">
+										@if (verificandoCurso)
+										{
+											<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+											<span class="ms-2">Verificando...</span>
+										}
+										else
+										{
+											<span>Verificar avance</span>
+										}
+									</button>
+									@* Botón fallback para desarrollo 
+									@if (esAmbienteDesarrollo)
+									{*@
+										<button type="button" class="btn btn-warning" @onclick="SimularCursoCompletado">
+											<i class="ri-test-tube-line"></i>
+											<span>Simular Curso Completado (DEV)</span>
+										</button>
+									@*}*@
+								</div>
+							}
+
+							@* PASO 3: Formulario completo y envío *@
+							@if (currentStep == 3)
+							{
+							<EditForm Model="@formData" OnValidSubmit="@HandleValidSubmit">
+								<div class="d-flex justify-content-start mb-3">
+									@if (cursoEticaCompletado)
+									{
+										<button type="button" class="btn btn-outline-primary" @onclick="() => currentStep = 2">
+											<i class="ri-arrow-left-line"></i> Volver a Paso 2
+										</button>
+									}
+									else
+									{
+										<button type="button" class="btn btn-outline-primary" @onclick="VolverAPaso1">
+											<i class="ri-arrow-left-line"></i> Volver a Paso 1
+										</button>
+									}
 								</div>
 								<div class="card">
-									<h5 class="card-header card-title bg-morado ">Datos Personales</h5>
+									<h5 class="card-header card-title bg-morado ">Resumen de Registro Inicial</h5>
 									<div class="card-body">
 										<div class="row">
-											<div class="col-md-4">
-												<div class="form-group">
-													<label for="td">Tipo de Documento *</label>
-													@* <InputSelect @bind-Value="formData.TipoDocumento" class="form-control" id="td">
-														<option value="">Seleccione...</option>
-														@foreach (var td in tipodoc)
-														{
-															<option value="@td.MaestroRegistro_Key">@td.Nombre</option>
-														}
-													</InputSelect> *@
-
-													<InputSelect TValue="string"
-																 Value="@formData.TipoDocumento"
-																 ValueChanged="@((string val) => OnTipoDocSeleccionado(val))"
-																 ValueExpression="@(() => formData.TipoDocumento)"
-																 class="form-control">
-														<option value="">Seleccione Tipo de Documento</option>
-														@foreach (var td in tipodoc)
-														{
-															<option value="@td.MaestroRegistro_Key">@td.Nombre</option>
-														}
-													</InputSelect>
-
-													<ValidationMessage For="@(() => formData.TipoDocumento)" />
-												</div>
+											<div class="col-md-6 mb-2">
+												<strong>Consejo Regional:</strong>
+												<div>@GetConsejoNombre(formData.ConsejoRegional)</div>
 											</div>
-											<div class="col-md-4">
-												<div class="form-group">
-													<label for="nd">Nro. documento *</label>
-													<InputText @bind-Value="formData.NumeroDocumento" class="form-control" id="nd" />
-													<ValidationMessage For="@(() => formData.NumeroDocumento)" />
-												</div>
+											<div class="col-md-6 mb-2">
+												<strong>Tipo de Documento:</strong>
+												<div>@GetMaestroNombre(tipodoc, formData.TipoDocumento)</div>
 											</div>
-											<div class="col-md-4">
-												<div class="form-group">
-													<label for="gs">Grupo Sanguineo *</label>
-													<InputSelect @bind-Value="formData.GrupoSanguineo" class="form-control" id="gs">
-														<option value="">Seleccione...</option>
-														@foreach (var gs in gruposang)
-														{
-															<option value="@gs.MaestroRegistro_Key">@gs.Nombre</option>
-														}
-													</InputSelect>
-													<ValidationMessage For="@(() => formData.GrupoSanguineo)" />
-												</div>
+											<div class="col-md-6 mb-2">
+												<strong>Nro. Documento:</strong>
+												<div>@(formData.NumeroDocumento)</div>
 											</div>
-											<div class="col-md-4">
-												<div class="form-group">
-													<label for="nombres">Nombres Completos *</label>
-													<InputText @bind-Value="formData.Nombres" class="form-control" id="nombres" requiered />
-													<ValidationMessage For="@(() => formData.Nombres)" />
-												</div>
+											<div class="col-md-6 mb-2">
+												<strong>Grupo Sanguíneo:</strong>
+												<div>@GetMaestroNombre(gruposang, formData.GrupoSanguineo)</div>
 											</div>
-											<div class="col-md-4">
-												<div class="form-group">
-													<label for="nombres">Apellido Paterno *</label>
-													<InputText @bind-Value="formData.ApellidoPaterno" class="form-control" id="apaterno" requiered />
-													<ValidationMessage For="@(() => formData.ApellidoPaterno)" />
-												</div>
+											<div class="col-md-6 mb-2">
+												<strong>Nombres:</strong>
+												<div>@(formData.Nombres)</div>
 											</div>
-											<div class="col-md-4">
-												<div class="form-group">
-													<label for="nombres">Apellido Materno *</label>
-													<InputText @bind-Value="formData.ApellidoMaterno" class="form-control" id="amaterno" requiered />
-													<ValidationMessage For="@(() => formData.ApellidoMaterno)" />
-												</div>
+											<div class="col-md-6 mb-2">
+												<strong>Apellido Paterno:</strong>
+												<div>@(formData.ApellidoPaterno)</div>
 											</div>
-
-											<div class="col-md-6">
-												<div class="form-group">
-													<label for="sexo">Sexo *</label>
-													<InputSelect @bind-Value="formData.Sexo" class="form-control" id="sexo">
-														<option value="">Seleccione...</option>
-														<option value="1">Masculino</option>
-														<option value="0">Femenino</option>
-													</InputSelect>
-													<ValidationMessage For="@(() => formData.Sexo)" />
-												</div>
+											<div class="col-md-6 mb-2">
+												<strong>Apellido Materno:</strong>
+												<div>@(formData.ApellidoMaterno)</div>
 											</div>
-											<div class="col-md-6">
-												<div class="form-group">
-													<label for="ec">Estado Civil *</label>
-													<InputSelect @bind-Value="formData.EstadoCivil" class="form-control" id="ec">
-														<option value="">Seleccione...</option>
-														@foreach (var ec in estacivil)
-														{
-															<option value="@ec.MaestroRegistro_Key">@ec.Nombre</option>
-														}
-													</InputSelect>
-													<ValidationMessage For="@(() => formData.EstadoCivil)" />
-												</div>
+											<div class="col-md-6 mb-2">
+												<strong>Sexo:</strong>
+												<div>@(formData.Sexo == "1" ? "Masculino" : formData.Sexo == "0" ? "Femenino" : "-")</div>
 											</div>
+											<div class="col-md-6 mb-2">
+												<strong>Estado Civil:</strong>
+												<div>@GetMaestroNombre(estacivil, formData.EstadoCivil)</div>
+											</div>
+										</div>
+										@if (!string.IsNullOrWhiteSpace(perfilSeleccionado))
+										{
+											<div class="alert alert-info mt-3">
+												<strong>Perfil seleccionado:</strong>
+												<div>
+													@perfilSeleccionadoTexto
+												</div>
+												@if (perfilSeleccionado == "1" || perfilSeleccionado == "2")
+												{
+													<div class="mt-2">
+														• La validación se realizará con ID Perú durante la Declaración Jurada.<br />
+														• Asegúrese de contar con su identidad verificada para continuar el trámite.
+													</div>
+												}
+												else if (perfilSeleccionado == "3" || perfilSeleccionado == "4")
+												{
+													<div class="mt-2">
+														• Debe adjuntar el PDF del título y certificado (paso 3).<br />
+														• Además, deberá presentar los documentos físicos en mesa de partes.
+													</div>
+												}
+											</div>
+										}
+										<div class="alert alert-info mt-2">
+											Los datos anteriores provienen del registro inicial y no son editables en este paso.
 										</div>
 									</div>
 								</div>
@@ -225,7 +730,7 @@
 											<div class="col-md-3">
 												<div class="form-group">
 													<label for="pais">País *</label>
-													<InputSelect @bind-Value="formData.PaisNacimiento" class="form-control" id="pais">
+													<InputSelect @bind-Value="formData.PaisNacimiento" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.PaisNacimiento) && intentadoEnviar ? "is-invalid" : "")}")" id="pais">
 														<option value="">Seleccione Pais Nacimiento</option>
 														@foreach (var pais in matpaises)
 														{
@@ -244,7 +749,7 @@
 													 Value="@formData.DepartamentoNacimiento"
 													 ValueChanged="@((string val) => OnLoadProvincias(val))"
 													 ValueExpression="@(() => formData.DepartamentoNacimiento)"
-													 class="form-control">
+													 class="@($"form-control {(string.IsNullOrWhiteSpace(formData.DepartamentoNacimiento) && intentadoEnviar ? "is-invalid" : "")}")">
 														<option value="">Seleccione Departamento Nacimiento</option>
 														@foreach (var depto in departamentos)
 														{
@@ -262,7 +767,7 @@
 																 Value="@formData.ProvinciaNacimiento"
 																 ValueChanged="@((string prov) => OnLoadDistritos(prov))"
 																 ValueExpression="@(() => formData.ProvinciaNacimiento)"
-																 class="form-control">
+																 class="@($"form-control {(string.IsNullOrWhiteSpace(formData.ProvinciaNacimiento) && intentadoEnviar ? "is-invalid" : "")}")">
 														<option value="">Seleccione Provincia Nacimiento</option>
 														@foreach (var prov in provincias)
 														{
@@ -275,7 +780,7 @@
 											<div class="col-md-3">
 												<div class="form-group">
 													<label for="distrito">Distrito *</label>
-													<InputSelect @bind-Value="formData.DistritoNacimiento" class="form-control" id="distrito">
+													<InputSelect @bind-Value="formData.DistritoNacimiento" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.DistritoNacimiento) && intentadoEnviar ? "is-invalid" : "")}")" id="distrito">
 														<option value="">Seleccione Distrito Nacimiento</option>
 														@foreach (var dist in distritos)
 														{
@@ -307,7 +812,7 @@
 											<div class="col-md-6">
 												<div class="form-group">
 													<label for="zona">Zona *</label>
-													<InputSelect @bind-Value="formData.ZonaDomicilio" class="form-control" id="zona">
+													<InputSelect @bind-Value="formData.ZonaDomicilio" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.ZonaDomicilio) && intentadoEnviar ? "is-invalid" : "")}")" id="zona">
 														<option value="">Seleccione Zona Domicilio</option>
 														@foreach (var zona in zonas)
 														{
@@ -320,14 +825,14 @@
 											<div class="col-md-6">
 												<div class="form-group">
 													<label for="domicilio1">Descripción Zona *</label>
-													<InputText @bind-Value="formData.DescripcionZona" class="form-control" id="domicilio1" />
+													<InputText @bind-Value="formData.DescripcionZona" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.DescripcionZona) && intentadoEnviar ? "is-invalid" : "")}")" id="domicilio1" />
 													<ValidationMessage For="@(() => formData.DescripcionZona)" />
 												</div>
 											</div>
 											<div class="col-md-6">
 												<div class="form-group">
 													<label for="via">Vía *</label>
-													<InputSelect @bind-Value="formData.ViaDomicilio" class="form-control" id="via">
+													<InputSelect @bind-Value="formData.ViaDomicilio" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.ViaDomicilio) && intentadoEnviar ? "is-invalid" : "")}")" id="via">
 														<option value="">Seleccione Via Domicilio</option>
 														@foreach (var via in vias)
 														{
@@ -340,7 +845,7 @@
 											<div class="col-md-6">
 												<div class="form-group">
 													<label for="domicilio1">Descripción Vía *</label>
-													<InputText @bind-Value="formData.DescripcionVia" class="form-control" id="domicilio2" />
+													<InputText @bind-Value="formData.DescripcionVia" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.DescripcionVia) && intentadoEnviar ? "is-invalid" : "")}")" id="domicilio2" />
 													<ValidationMessage For="@(() => formData.DescripcionVia)" />
 												</div>
 											</div>
@@ -351,7 +856,7 @@
 																 Value="@formData.DepartamentoDomicilio"
 																 ValueChanged="@((string val) => OnLoadProvinciasdm(val))"
 																 ValueExpression="@(() => formData.DepartamentoDomicilio)"
-																 class="form-control">
+																 class="@($"form-control {(string.IsNullOrWhiteSpace(formData.DepartamentoDomicilio) && intentadoEnviar ? "is-invalid" : "")}")">
 														<option value="">Seleccione Departamento Domicilio</option>
 														@foreach (var deptodm in departamentosdm)
 														{
@@ -370,7 +875,7 @@
 																 Value="@formData.ProvinciaDomicilio"
 																 ValueChanged="@((string prov) => OnLoadDistritosdm(prov))"
 																 ValueExpression="@(() => formData.ProvinciaDomicilio)"
-																 class="form-control">
+																 class="@($"form-control {(string.IsNullOrWhiteSpace(formData.ProvinciaDomicilio) && intentadoEnviar ? "is-invalid" : "")}")">
 														<option value="">Seleccione Provincia Domicilio</option>
 														@foreach (var provdm in provinciasdm)
 														{
@@ -383,7 +888,7 @@
 											<div class="col-md-4">
 												<div class="form-group">
 													<label for="distrito_id">Distrito *</label>
-													<InputSelect @bind-Value="formData.DistritoDomicilio" class="form-control" id="distrito">
+													<InputSelect @bind-Value="formData.DistritoDomicilio" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.DistritoDomicilio) && intentadoEnviar ? "is-invalid" : "")}")" id="distrito">
 														<option value="">Seleccione Distrito Domicilio</option>
 														@foreach (var distdn in distritosdm)
 														{
@@ -403,14 +908,14 @@
 											<div class="col-md-4">
 												<div class="form-group">
 													<label for="celular">Teléfono celular *</label>
-													<InputText @bind-Value="formData.Celular" class="form-control" id="celular" />
+													<InputText @bind-Value="formData.Celular" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.Celular) && intentadoEnviar ? "is-invalid" : "")}")" id="celular" />
 													<ValidationMessage For="@(() => formData.Celular)" />
 												</div>
 											</div>
 											<div class="col-md-4">
 												<div class="form-group">
 													<label for="email">Correo *</label>
-													<InputText @bind-Value="formData.Email" class="form-control" id="email" />
+													<InputText @bind-Value="formData.Email" class="@($"form-control {(string.IsNullOrWhiteSpace(formData.Email) && intentadoEnviar ? "is-invalid" : "")}")" id="email" />
 													<ValidationMessage For="@(() => formData.Email)" />
 												</div>
 											</div>
@@ -419,151 +924,30 @@
 								</div>
 
 								<div class="card">
-									<h5 class="card-header card-title bg-morado">Datos de Universidad</h5>
+									<h5 class="card-header card-title bg-morado">Documentos a adjuntar</h5>
 									<div class="card-body">
-										<div class="row">
+										<p class="text-muted small mb-3">Los datos de universidad (origen, país, nombre, tipo de validación, etc.) se completaron en el Paso 1. Debe indicar la fecha de titulación a continuación.</p>
+										<div class="row mb-3">
 											<div class="col-md-6">
 												<div class="form-group">
-													<label for="uniori">Origen de Universidad *</label>
-													<InputSelect TValue="string"
-																 Value="@formData.UniversidadOrigen"
-																 ValueChanged="@((string val) => OnTipoSeleccionado(val))"
-																 ValueExpression="@(() => formData.UniversidadOrigen)"
-																 class="form-control">
-														<option value="">Seleccione Universidad</option>
-														<option value="1">Nacional</option>
-														<option value="0">Extranjera</option>
-													</InputSelect>
-													<ValidationMessage For="@(() => formData.UniversidadOrigen)" />
+													<label for="fegreso_paso3">Fecha de titulación *</label>
+													<InputDate @bind-Value="formData.FechaEmisionTitulo" class="@($"form-control {(formData.FechaEmisionTitulo == default(DateTime) && intentadoEnviar ? "is-invalid" : "")}")" id="fegreso_paso3" />
+													@if (formData.FechaEmisionTitulo == default(DateTime) && intentadoEnviar)
+													{
+														<div class="invalid-feedback d-block">Seleccione la fecha de titulación.</div>
+													}
 												</div>
 											</div>
-
-											<div class="col-md-6">
-												<div class="form-group">
-													<label for="pais_uni">País de universidad *</label>
-                                                    <InputSelect @bind-Value="formData.PaisUniversidad" class="form-control" @onchange="OnPaisSeleccionado" id="pais_uni" disabled="@paisBloqueado">
-														<option value="">Seleccione país</option>
-														@foreach (var pais in paisesFiltrados)
-														{
-                                                            <option value="@pais.Id">
-																@pais.Nombre
-															</option>
-														}
-													</InputSelect>
-													<ValidationMessage For="@(() => formData.PaisUniversidad)" />
-												</div>
-											</div>
-											<!-- CAMBIO PRINCIPAL: Campo condicional para nombre de universidad -->
-											@if (tipoSeleccionado == "1")
-											{
-												<!-- Nacional: Mostrar selector de universidades -->
-												<div class="col-md-6">
-													<div class="form-group">
-														<label for="nombre_uni">Nombre de Universidad*</label>
-														<InputSelect @bind-Value="formData.Universidad" class="form-control" id="nombre_uni">
-															<option value="">Seleccione Universidad</option>
-															@foreach (var uni in universidades)
-															{
-																<option value="@uni.Id">@uni.Nombre</option>
-															}
-														</InputSelect>
-														<ValidationMessage For="@(() => formData.Universidad)" />
-													</div>
-												</div>
-											}
-											else
-											{
-												<!-- Extranjera: Mostrar campo de texto -->
-												<div class="col-md-6">
-													<div class="form-group">
-														<label for="nombre_uni_ext">Nombre de Universidad*</label>
-														<InputText @bind-Value="formData.NombreUniversidadExtranjera"
-																   class="form-control" id="nombre_uni_ext" />
-														<ValidationMessage For="@(() => formData.NombreUniversidadExtranjera)" />
-													</div>
-												</div>
-											}
-											<div class="col-md-6">
-												<div class="form-group">
-													<label for="fegreso">Fecha de emisón del Título</label>
-													<InputDate @bind-Value="formData.FechaEmisionTitulo" class="form-control" id="fegreso" />
-													<ValidationMessage For="@(() => formData.FechaEmisionTitulo)" />
-												</div>
-											</div>
-											@if (tipoSeleccionado == "0")
-											{
-												<div class="col-md-6">
-													<div class="form-group">
-														<label for="tipo_validacion">Tipo de validación *</label>
-														<InputSelect TValue="string"
-																	 Value="@formData.TipoValidacion"
-																	 ValueChanged="@((string val) => OnTipoValidacionSeleccionado(val))"
-																	 ValueExpression="@(() => formData.TipoValidacion)"
-																	 class="form-control">
-															<option value="">Seleccione Tipo de validación</option>
-															<option value="reconocimiento">Reconocimiento de Sunedu</option>
-															<option value="revalidacion">Revalidación</option>
-														</InputSelect>
-														<ValidationMessage For="@(() => formData.TipoValidacion)" />
-													</div>
-												</div>
-												@if (tipoValidacionExtranjera == "reconocimiento")
-												{
-													<div class="col-md-6">
-														<div class="form-group">
-															<label>Resolucion de Reconocimiento Universidad Nacional *</label>
-															<InputText @bind-Value="formData.NumeroResolucion" class="form-control" />
-															<ValidationMessage For="@(() => formData.NumeroResolucion)" />
-														</div>
-														@* <div class="form-group">
-															<label>Archivo Resolución PDF *</label>
-															<InputFile  OnChange="@OnResolucionSelected" class="form-control" accept=".pdf" />
-															<ValidationMessage For="@(() => formData.ResolucionPath)" />
-														</div> *@
-													</div>
-												}
-												else if (tipoValidacionExtranjera == "revalidacion")
-												{
-													<div class="col-md-6">
-														<div class="form-group">
-															<label>Resolucion de Revalidacion Universidad Nacional *</label>
-															<InputText @bind-Value="formData.NumeroResolucion" class="form-control" />
-															<ValidationMessage For="@(() => formData.NumeroResolucion)" />
-														</div>
-														@* <div class="form-group">
-															<label>Archivo Resolución PDF *</label>
-															<InputFile OnChange="@OnResolucionSelected" class="form-control" accept=".pdf" />
-															<ValidationMessage For="@(() => formData.ResolucionPath)" />
-														</div> *@
-													</div>
-													<div class="col-md-6">
-														<div class="form-group">
-															<label>Universidad Peruana *</label>
-															<InputSelect @bind-Value="formData.UniversidadPeruana" class="form-control">
-																<option value="">Seleccione universidad</option>
-																@foreach (var uniper in universidadesperuanas)
-																{
-																	<option value="@uniper.Id">@uniper.Nombre</option>
-																}
-															</InputSelect>
-															<ValidationMessage For="@(() => formData.UniversidadPeruana)" />
-														</div>
-													</div>
-												}
-											}
 										</div>
 										<div class="row">
 											@* Para los nacionales y extranjeros*@
 											<div class="col-md-6">
 												<div class="form-group">
-													<h4 class="card-title">Titulo Medico Cirujano</h4>
-													<div class="custom-file">
-														<div class="input-group">
-															<div class="custom-file" style="flex-grow: 1;">
-																<InputFile @bind-Value="formData.TituloMedicoCirujanoPath" OnChange="@(args => OnFileSelected(args, nameof(formData.TituloMedicoCirujanoPath)))" class="custom-file-input form-control" accept=".pdf" />
-																<label class="custom-file-label form-control" for="customFile">@(pdfTituloMedicoCirujano != null ? pdfTituloMedicoCirujano.Name : "Seleccione Titulo Medico Cirujano")</label>
-															</div>
-														</div>
+													<h4 class="card-title">Titulo Medico Cirujano (escaneado por ambas caras)</h4>
+													<div class="prema-file-wrap d-flex align-items-center gap-2 flex-wrap">
+														<span class="text-muted small">@TextoArchivo("TituloMedicoCirujano", pdfTituloMedicoCirujano, "Titulo Medico Cirujano")</span>
+														<InputFile Id="file_titulo" @bind-Value="formData.TituloMedicoCirujanoPath" OnChange="@(async args => await OnFileSelected(args, nameof(formData.TituloMedicoCirujanoPath)))" accept=".pdf" />
+														<label class="btn btn-outline-secondary btn-sm mb-0" for="file_titulo">Examinar</label>
 													</div>
 												</div>
 											</div>
@@ -573,7 +957,7 @@
 													<div class="custom-file">
 														<div class="input-group">
 															<div class="custom-file" style="flex-grow: 1;">
-																<InputFile @bind-Value="formData.ConstanciaInscripcionSuneduPath" OnChange="@(args => OnFileSelected(args, nameof(formData.ConstanciaInscripcionSuneduPath)))" class="custom-file-input form-control" accept=".pdf" />
+																<InputFile @bind-Value="formData.ConstanciaInscripcionSuneduPath" OnChange="@(async args => await OnFileSelected(args, nameof(formData.ConstanciaInscripcionSuneduPath)))" class="custom-file-input form-control" accept=".pdf" />
 																<label class="custom-file-label form-control" for="customFile">@(pdfConstanciaInscripcionSunedu != null ? pdfConstanciaInscripcionSunedu.Name : "Seleccione Constancia Inscripcion Sunedu")</label>
 															</div>
 														</div>
@@ -585,13 +969,10 @@
 												<div class="col-md-6">
 													<div class="form-group">
 														<h4 class="card-title">Certificado Antecedentes Penales o Certificado Único Laboral </h4>
-														<div class="custom-file">
-															<div class="input-group">
-																<div class="custom-file" style="flex-grow: 1;">
-																	<InputFile @bind-Value="formData.CertificadoAntecedentesPenalesPath" OnChange="@(args => OnFileSelected(args, nameof(formData.CertificadoAntecedentesPenalesPath)))" class="custom-file-input form-control" accept=".pdf" />
-																	<label class="custom-file-label form-control" for="customFile">@(pdfCertificadoAntecedentesPenales != null ? pdfCertificadoAntecedentesPenales.Name : "Seleccione Certificado Antecedentes Penales")</label>
-																</div>
-															</div>
+														<div class="prema-file-wrap d-flex align-items-center gap-2 flex-wrap">
+															<span class="text-muted small">@TextoArchivo("CertificadoAntecedentesPenales", pdfCertificadoAntecedentesPenales, "Certificado Antecedentes Penales")</span>
+															<InputFile Id="file_cert" @bind-Value="formData.CertificadoAntecedentesPenalesPath" OnChange="@(async args => await OnFileSelected(args, nameof(formData.CertificadoAntecedentesPenalesPath)))" accept=".pdf" />
+															<label class="btn btn-outline-secondary btn-sm mb-0" for="file_cert">Examinar</label>
 														</div>
 													</div>
 												</div>
@@ -600,64 +981,38 @@
 											{
 												<div class="col-md-6">
 													<div class="form-group">
-														<h4 class="card-title">Declaracion Jurada Notariada</h4>
-														<div class="custom-file">
-															<div class="input-group">
-																<div class="custom-file" style="flex-grow: 1;">
-																	<InputFile @bind-Value="formData.CertificadoAntecedentesPenalesPath" OnChange="@(args => OnFileSelected(args, nameof(formData.CertificadoAntecedentesPenalesPath)))" class="custom-file-input form-control" accept=".pdf" />
-																	<label class="custom-file-label form-control" for="customFile">@(pdfCertificadoAntecedentesPenales != null ? pdfCertificadoAntecedentesPenales.Name : "Seleccione Certificado Antecedentes Penales")</label>
-																</div>
-															</div>
+														<h4 class="card-title">Antecedentes de Pais de origen O INTERPOL</h4>
+														<div class="prema-file-wrap d-flex align-items-center gap-2 flex-wrap">
+															<span class="text-muted small">@TextoArchivo("CertificadoAntecedentesPenales", pdfCertificadoAntecedentesPenales, "Antecedentes de Pais de origen O INTERPOL")</span>
+															<InputFile Id="file_dj" @bind-Value="formData.CertificadoAntecedentesPenalesPath" OnChange="@(async args => await OnFileSelected(args, nameof(formData.CertificadoAntecedentesPenalesPath)))" accept=".pdf" />
+															<label class="btn btn-outline-secondary btn-sm mb-0" for="file_dj">Examinar</label>
 														</div>
 													</div>
 												</div>
 											}
 
-											@* Solo para extranjeros*@
+											@* Solo para extranjeros (Carnet se sube en Paso 1 cuando tipo doc = Carnet) *@
 											@if (tipoSeleccionado == "0")
 											{
-												@if (tipoDocSeleccionado=="64")
-												{
-													<div class="col-md-6">
-														<div class="form-group">
-															<h4 class="card-title">Carnet Extranjeria</h4>
-															<div class="custom-file">
-																<div class="input-group">
-																	<div class="custom-file" style="flex-grow: 1;">
-																		<InputFile @bind-Value="formData.CarnetExtranjeriaPath" OnChange="@(args => OnFileSelected(args, nameof(formData.CarnetExtranjeriaPath)))" class="custom-file-input form-control" accept=".pdf" />
-																		<label class="custom-file-label form-control" for="customFile">@(pdfCarnetExtranjeria != null ? pdfCarnetExtranjeria.Name : "Seleccione Carnet Extranjeria")</label>
-																	</div>
-																</div>
-															</div>
-														</div>
-													</div>
-												}
-												
 												@if (tipoValidacionExtranjera == "reconocimiento")
 												{
 													<div class="col-md-6">
 														<div class="form-group">
 															<h4 class="card-title">Constancia Inscripcion Reconocimiento Sunedu</h4>
-															<div class="custom-file">
-																<div class="input-group">
-																	<div class="custom-file" style="flex-grow: 1;">
-																		<InputFile @bind-Value="formData.ConstanciaInscripcionReconocimientoSuneduPath" OnChange="@(args => OnFileSelected(args, nameof(formData.ConstanciaInscripcionReconocimientoSuneduPath)))" class="custom-file-input form-control" accept=".pdf" />
-																		<label class="custom-file-label form-control" for="customFile">@(pdfConstanciaInscripcionReconocimientoSunedu != null ? pdfConstanciaInscripcionReconocimientoSunedu.Name : "Seleccione Constancia Inscripcion Reconocimiento Sunedu")</label>
-																	</div>
-																</div>
+															<div class="prema-file-wrap d-flex align-items-center gap-2 flex-wrap">
+																<span class="text-muted small">@TextoArchivo("ConstanciaInscripcionReconocimientoSunedu", pdfConstanciaInscripcionReconocimientoSunedu, "Constancia Inscripcion Reconocimiento Sunedu")</span>
+																<InputFile Id="file_const_recon" @bind-Value="formData.ConstanciaInscripcionReconocimientoSuneduPath" OnChange="@(async args => await OnFileSelected(args, nameof(formData.ConstanciaInscripcionReconocimientoSuneduPath)))" accept=".pdf" />
+																<label class="btn btn-outline-secondary btn-sm mb-0" for="file_const_recon">Examinar</label>
 															</div>
 														</div>
 													</div>
 													<div class="col-md-6">
 														<div class="form-group">
 															<h4 class="card-title">Reconocimiento Sunedu - PDF</h4>
-															<div class="custom-file">
-																<div class="input-group">
-																	<div class="custom-file" style="flex-grow: 1;">
-																		<InputFile @bind-Value="formData.ReconocimientoSuneduPath" OnChange="@(args => OnFileSelected(args, nameof(formData.ReconocimientoSuneduPath)))" class="custom-file-input form-control" accept=".pdf" />
-																		<label class="custom-file-label form-control" for="customFile">@(pdfReconocimientoSunedu != null ? pdfReconocimientoSunedu.Name : "Seleccione Reconocimiento Sunedu")</label>
-																	</div>
-																</div>
+															<div class="prema-file-wrap d-flex align-items-center gap-2 flex-wrap">
+																<span class="text-muted small">@TextoArchivo("ReconocimientoSunedu", pdfReconocimientoSunedu, "Reconocimiento Sunedu")</span>
+																<InputFile Id="file_recon" @bind-Value="formData.ReconocimientoSuneduPath" OnChange="@(async args => await OnFileSelected(args, nameof(formData.ReconocimientoSuneduPath)))" accept=".pdf" />
+																<label class="btn btn-outline-secondary btn-sm mb-0" for="file_recon">Examinar</label>
 															</div>
 														</div>
 													</div>
@@ -667,26 +1022,20 @@
 													<div class="col-md-6">
 														<div class="form-group">
 															<h4 class="card-title">Constancia Inscripcion Revalidacion Universidad Nacional</h4>
-															<div class="custom-file">
-																<div class="input-group">
-																	<div class="custom-file" style="flex-grow: 1;">
-																		<InputFile @bind-Value="formData.ConstanciaInscripcionRevalidacionUniversidadNacionalPath" OnChange="@(args => OnFileSelected(args, nameof(formData.ConstanciaInscripcionRevalidacionUniversidadNacionalPath)))" class="custom-file-input form-control" accept=".pdf" />
-																		<label class="custom-file-label form-control" for="customFile">@(pdfConstanciaInscripcionRevalidacionUniversidadNacional != null ? pdfConstanciaInscripcionRevalidacionUniversidadNacional.Name : "Seleccione Constancia Inscripcion Revalidacion Universidad Nacional")</label>
-																	</div>
-																</div>
+															<div class="prema-file-wrap d-flex align-items-center gap-2 flex-wrap">
+																<span class="text-muted small">@TextoArchivo("ConstanciaInscripcionRevalidacionUniversidadNacional", pdfConstanciaInscripcionRevalidacionUniversidadNacional, "Constancia Inscripcion Revalidacion Universidad Nacional")</span>
+																<InputFile Id="file_const_rev" @bind-Value="formData.ConstanciaInscripcionRevalidacionUniversidadNacionalPath" OnChange="@(async args => await OnFileSelected(args, nameof(formData.ConstanciaInscripcionRevalidacionUniversidadNacionalPath)))" accept=".pdf" />
+																<label class="btn btn-outline-secondary btn-sm mb-0" for="file_const_rev">Examinar</label>
 															</div>
 														</div>
 													</div>
 													<div class="col-md-6">
 														<div class="form-group">
 															<h4 class="card-title">Revalidacion Universidad Nacional - PDF</h4>
-															<div class="custom-file">
-																<div class="input-group">
-																	<div class="custom-file" style="flex-grow: 1;">
-																		<InputFile @bind-Value="formData.RevalidacionUniversidadNacionalPath" OnChange="@(args => OnFileSelected(args, nameof(formData.RevalidacionUniversidadNacionalPath)))" class="custom-file-input form-control" accept=".pdf" />
-																		<label class="custom-file-label form-control" for="customFile">@(pdfRevalidacionUniversidadNacional != null ? pdfRevalidacionUniversidadNacional.Name : "Seleccione Revalidacion Universidad Nacional")</label>
-																	</div>
-																</div>
+															<div class="prema-file-wrap d-flex align-items-center gap-2 flex-wrap">
+																<span class="text-muted small">@TextoArchivo("RevalidacionUniversidadNacional", pdfRevalidacionUniversidadNacional, "Revalidacion Universidad Nacional")</span>
+																<InputFile Id="file_rev" @bind-Value="formData.RevalidacionUniversidadNacionalPath" OnChange="@(async args => await OnFileSelected(args, nameof(formData.RevalidacionUniversidadNacionalPath)))" accept=".pdf" />
+																<label class="btn btn-outline-secondary btn-sm mb-0" for="file_rev">Examinar</label>
 															</div>
 														</div>
 													</div>
@@ -702,18 +1051,15 @@
 											<div class="col-md-12">
 												<div class="form-group">
 													<h4 class="card-title " >Adjuntar Foto</h4>
-													<div class="custom-file">
-														<div class="input-group">
-															<div class="custom-file" style="flex-grow: 1;">
-																<InputFile OnChange="@OnFotoSelected" @bind-Value="formData.FotoMedico" class="custom-file-input form-control" accept=".jpg,.jpeg,.png" id="customFile" />
-																<label class="custom-file-label form-control" for="customFile">@(fotoFile != null ? fotoFile.Name : "Seleccione foto")</label>
-															</div>
-															<button type="button" class="btn btn-outline-primary" @onclick="() => mostrarEjemplos = true" style="border-top-left-radius: 0; border-bottom-left-radius: 0;">
-																<i class="fas fa-question-circle"></i>
-																<span class="d-none d-sm-inline"> Ver ejemplos</span>
-															</button>
-
-														</div>
+													<div class="prema-file-wrap d-flex align-items-center gap-2 flex-wrap">
+														<span class="text-muted small">@TextoFoto()</span>
+														<InputFile Id="file_foto" OnChange="@OnFotoSelected" @bind-Value="formData.FotoMedico" accept=".jpg,.jpeg,.png" />
+														<label class="btn btn-outline-secondary btn-sm mb-0" for="file_foto">Examinar</label>
+														<button type="button" class="btn btn-outline-primary btn-sm" @onclick="() => mostrarEjemplos = true">
+															<i class="fas fa-question-circle"></i>
+															<span class="d-none d-sm-inline"> Ver ejemplos</span>
+														</button>
+													</div>
 														@if (mostrarEjemplos)
 														{
 															<div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5)" id="exampleModal">
@@ -778,14 +1124,13 @@
 															}
 														</div>
 														<ValidationMessage For="@(() => formData.FotoMedico)" />
-													</div>
 													<div class="alert alert-warning mb-4 mt-2" role="alert">
 														<ul>
 															<li>
 																Adjuntar foto tamaño pasaporte a color en fondo blanco <em>(caballeros: terno y corbata; damas: con blusa de vestir) </em> *
 															</li>
 															<li>
-																Debe de ser un solo archivo en formato <strong>JPG</strong> y deberá pesar hasta <strong>25MB</strong>
+																Debe de ser un solo archivo en formato <strong>JPG</strong> y deberá pesar hasta <strong>@maxFileSizeMBFormatted MB</strong>
 															</li>
 														</ul>
 													</div>
@@ -797,11 +1142,56 @@
 							<div class="row">
 								<div class="col-md-12">
 									<div class="form-group">
-										<div class="custom-control custom-switch mb-2" dir="ltr">
-											<InputCheckbox @bind-Value="formData.AceptaPoliticas" class="custom-control-input" id="customSwitch1" />
-											<label class="custom-control-label" for="customSwitch1">Acepto las <a href="/Politicas_de_privacidad">Políticas de Privacidad</a> de este sitio</label>
-											<ValidationMessage For="@(() => formData.AceptaPoliticas)" />
-										</div>
+										@if (!esCorreccionPorObservacion)
+										{
+											<div class="custom-control custom-switch mb-2" dir="ltr">
+												<input type="checkbox" class="custom-control-input" id="customSwitch1" 
+													   checked="@formData.AceptaPoliticas" 
+													   disabled="@tienePoliticasAceptadasEnServidor"
+													   @onchange="OnTogglePoliticas" />
+												<label class="custom-control-label" for="customSwitch1">
+													Acepto las <a href="javascript:void(0);" @onclick="AbrirPoliticasModal">Políticas de Privacidad</a> de este sitio
+												</label>
+												@if (tienePoliticasAceptadasEnServidor)
+												{
+													<span class="badge bg-success ms-2"><i class="ri-check-line"></i> Aceptadas</span>
+												}
+												<ValidationMessage For="@(() => formData.AceptaPoliticas)" />
+											</div>
+											<div class="custom-control custom-switch mt-2" dir="ltr">
+												<input id="acepta_ddjj" type="checkbox" class="custom-control-input @( !ddjjValida && intentadoEnviar ? "invalid" : "")" checked="@aceptaDDJJ" @onchange="OnToggleDDJJ" disabled="@ddjjFirmada" />
+												<label class="custom-control-label" style="cursor:pointer;" @onclick="OnLabelDDJJClick">
+													Declaro bajo juramento (DDJJ) que la información proporcionada es veraz y completa.
+												</label>
+											</div>
+											@if (tieneDDJJFirmadaEnServidor)
+											{
+												<div class="alert alert-success mt-2 d-flex align-items-center justify-content-between">
+													<div>
+														<i class="ri-shield-check-fill text-success me-2"></i>
+														<strong>DDJJ validada con ID PERÚ</strong>
+														@if (fechaFirmaDDJJ.HasValue)
+														{
+															<span class="ms-2 text-muted">(@fechaFirmaDDJJ.Value.ToString("dd/MM/yyyy HH:mm"))</span>
+														}
+													</div>
+													<button type="button" class="btn btn-sm btn-outline-success" @onclick="DescargarDDJJFirmada">
+														<i class="ri-download-line me-1"></i> Descargar PDF
+													</button>
+												</div>
+											}
+											@if (!ddjjValida && intentadoEnviar)
+											{
+												<div class="text-danger mt-1">Debe aceptar la DDJJ para continuar.</div>
+											}
+										}
+										else
+										{
+											<div class="alert alert-info">
+												<i class="ri-information-line me-1"></i>
+												<strong>Modo de corrección:</strong> Actualice los datos observados y presione "Actualizar Solicitud".
+											</div>
+										}
 									</div>
 								</div>
 							</div>
@@ -822,7 +1212,14 @@
 									{
 										if (SolicitudId > 0)
 										{
-											<span>Actualizar Solicitud</span>
+											@if (tieneDDJJFirmadaEnServidor && _fileBuffers.Count == 0 && fotoFile == null && (_fotoBuffer == null || _fotoBuffer.Length == 0))
+											{
+												<span>Continuar al Pago</span>
+											}
+											else
+											{
+												<span>Actualizar Solicitud</span>
+											}
 										}
 										else
 										{
@@ -834,6 +1231,277 @@
 								
 
 							</EditForm>
+							}
+							@if (mostrarPoliticasModal)
+							{
+								<div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5)">
+									<div class="modal-dialog modal-lg">
+										<div class="modal-content">
+											<div class="modal-header">
+												<h5 class="card-header card-title bg-morado bg-morado">Políticas de Privacidad y Términos</h5>
+												<button type="button" class="btn-close" @onclick="() => mostrarPoliticasModal = false"></button>
+											</div>
+											<div class="modal-body">
+												<p class="mb-2"><strong>Ejemplo (personalizar):</strong></p>
+												<p>
+													Autorizo al Colegio Médico del Perú a tratar mis datos personales conforme a la Ley N° 29733 y su Reglamento.
+													Declaro haber leído y aceptado la Política de Privacidad y los Términos y Condiciones del servicio.
+												</p>
+												<ul>
+													<li>Finalidad: gestionar el proceso de matrícula y servicios relacionados.</li>
+													<li>Plazo de conservación: según normativa aplicable.</li>
+													<li>Derechos ARCO: podrá ejercerlos a través de los canales oficiales del CMP.</li>
+												</ul>
+											</div>
+											<div class="modal-footer">
+												<button type="button" class="btn btn-secondary" @onclick="() => mostrarPoliticasModal = false">Cerrar</button>
+											</div>
+										</div>
+									</div>
+								</div>
+							}
+
+							@* Modal DDJJ *@
+							@if (mostrarDDJJModal)
+							{
+								<div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5)">
+									<div class="modal-dialog modal-xl">
+										<div class="modal-content">
+											<div class="modal-header">
+												<h5 class="card-header card-title bg-morado bg-morado">Declaración Jurada (DDJJ)</h5>
+												<button type="button" class="btn-close" @onclick="CancelarFirmaDDJJ"></button>
+											</div>
+											<div class="modal-body">
+												<div class="mb-3">
+													<object data="@ddjjPdfUrl" type="application/pdf" style="width:100%;height:70vh;">
+														<p>Tu navegador no puede mostrar el PDF. <a href="@ddjjPdfUrl" target="_blank">Descargar DDJJ</a></p>
+													</object>
+												</div>
+												<div class="d-flex justify-content-between align-items-center">
+													<small class="text-muted">Versión: @ddjjVersion</small>
+													<div class="d-flex gap-2">
+														<button type="button" class="btn btn-outline-primary" @onclick="DescargarDDJJ">
+															<i class="ri-download-line"></i> Descargar
+														</button>
+														<button type="button" class="btn btn-success" disabled="@ddjjFirmaEnProceso" @onclick="IniciarFirmaIdPeru">
+															@if (ddjjFirmaEnProceso)
+															{
+																<div class= "spinner-border text-primary spinner-border-sm" role = "status" >
+																	<span class= "visually-hidden" > Firmando...</span >
+																</div >
+																<span class="ms-2">Firmando...</span>
+															}
+															else
+															{
+																<i class="ri-shield-check-line"></i>
+																<span>Firmar con ID Perú</span>
+															}
+														</button>
+														@* Botón de simulación solo en desarrollo 
+														@if (esAmbienteDesarrollo)
+														{*@
+															<button type="button" class="btn btn-warning" disabled="@ddjjFirmaEnProceso" @onclick="SimularFirmaIdPeru">
+																<i class="ri-test-tube-line"></i>
+																<span>Simular ID Perú (DEV)</span>
+															</button>
+														@*}*@
+													</div>
+												</div>
+											</div>
+											<div class="modal-footer">
+												<button type="button" class="btn btn-secondary" @onclick="CancelarFirmaDDJJ">Cerrar</button>
+											</div>
+										</div>
+									</div>
+								</div>
+							}
+
+							@* PASO 4: Pago *@
+							@if (currentStep == 4)
+							{
+								<div class="d-flex justify-content-start mb-3">
+									<button type="button" class="btn btn-outline-primary" @onclick="() => currentStep = 3">
+										<i class="ri-arrow-left-line"></i> Volver a Paso 3
+									</button>
+								</div>
+								<div class="alert alert-info d-flex align-items-start">
+									<div class="me-2">💳</div>
+									<div>
+										<div class="fw-bold">Estado del pago: @(!pagoCompletado ? "Pendiente" : "Completado")</div>
+										<div class="small text-muted">Complete el pago de la matrícula para continuar con el proceso.</div>
+										@if (pagoCompletado && !string.IsNullOrEmpty(comprobantePago))
+										{
+											<div class="mt-2 small">
+												<strong>Comprobante:</strong> @comprobantePago
+											</div>
+										}
+									</div>
+								</div>
+								<div class="d-flex gap-2">
+									<button type="button" class="btn btn-primary" disabled="@abriendoPasarela" @onclick="AbrirPasarelaPago">
+										@if (abriendoPasarela)
+										{
+											<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+											<span class="ms-2">Abriendo...</span>
+										}
+										else
+										{
+											<span>Entrar Pasarela</span>
+										}
+									</button>
+									<button type="button" class="btn btn-outline-secondary" disabled="@verificandoPago" @onclick="VerificarPagoAsync">
+										@if (verificandoPago)
+										{
+											<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+											<span class="ms-2">Verificando...</span>
+										}
+										else
+										{
+											<span>Verificar Pago</span>
+										}
+									</button>
+									<button type="button" class="btn btn-outline-warning" disabled="@(simulandoPagoDev || pagoCompletado)" title="Solo desarrollo: marca pago como verificado, actualiza a Registrado y envía correo" @onclick="SimularPagoDesarrolloAsync">
+										@if (simulandoPagoDev)
+										{
+											<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+											<span class="ms-2">Procesando...</span>
+										}
+										else
+										{
+											<span>Simular pago (DEV)</span>
+										}
+									</button>
+								</div>
+								@if (pagoCompletado)
+								{
+									<div class="mt-3">
+										<button type="button" class="btn btn-success btn-lg" @onclick="() => currentStep = 5">
+											<i class="ri-arrow-right-line"></i>
+											<span>Continuar a Paso 5</span>
+										</button>
+									</div>
+								}
+							}
+
+							@* PASO 5: Resumen final - Solicitud enviada *@
+							@if (currentStep == 5)
+							{
+								<div class="d-flex justify-content-start mb-3">
+									@if (pagoCompletado)
+									{
+										<button type="button" class="btn btn-outline-primary" @onclick="() => currentStep = 4">
+											<i class="ri-arrow-left-line"></i> Volver a Paso 4
+										</button>
+									}
+								</div>
+								<div class="alert alert-success d-flex align-items-start mb-4">
+									<div class="me-2">✅</div>
+									<div>
+										<div class="fw-bold">¡Solicitud enviada correctamente!</div>
+										<div class="small">Su solicitud ha sido enviada y está en revisión por la oficina de matrícula.</div>
+									</div>
+								</div>
+
+								<div class="card mb-3">
+									<h5 class="card-header card-title bg-morado">Resumen de su Solicitud</h5>
+									<div class="card-body">
+										<div class="row">
+											<div class="col-md-12 mb-3">
+												<div class="alert alert-info">
+													<strong>Estado actual:</strong> @(!string.IsNullOrWhiteSpace(estadoActual) ? estadoActual : "En revisión")<br />
+													<strong>ID de Solicitud:</strong> @SolicitudId
+												</div>
+											</div>
+										</div>
+
+										<h6 class="fw-bold text-primary">Perfil Seleccionado</h6>
+										<div class="row mb-3">
+											<div class="col-md-12">
+												<div>@perfilSeleccionadoTexto</div>
+											</div>
+										</div>
+
+										<h6 class="fw-bold text-primary">Consejo Regional</h6>
+										<div class="row mb-3">
+											<div class="col-md-6">
+												<strong>Consejo:</strong> @GetConsejoNombre(formData.ConsejoRegional)
+											</div>
+										</div>
+
+										<h6 class="fw-bold text-primary">Datos Personales</h6>
+										<div class="row mb-3">
+											<div class="col-md-4 mb-2">
+												<strong>Tipo de Documento:</strong><br />
+												@GetMaestroNombre(tipodoc, formData.TipoDocumento)
+											</div>
+											<div class="col-md-4 mb-2">
+												<strong>Nro. Documento:</strong><br />
+												@(formData.NumeroDocumento)
+											</div>
+											<div class="col-md-4 mb-2">
+												<strong>Grupo Sanguíneo:</strong><br />
+												@GetMaestroNombre(gruposang, formData.GrupoSanguineo)
+											</div>
+											<div class="col-md-4 mb-2">
+												<strong>Nombres:</strong><br />
+												@(formData.Nombres)
+											</div>
+											<div class="col-md-4 mb-2">
+												<strong>Apellido Paterno:</strong><br />
+												@(formData.ApellidoPaterno)
+											</div>
+											<div class="col-md-4 mb-2">
+												<strong>Apellido Materno:</strong><br />
+												@(formData.ApellidoMaterno)
+											</div>
+											<div class="col-md-4 mb-2">
+												<strong>Sexo:</strong><br />
+												@(formData.Sexo == "1" ? "Masculino" : formData.Sexo == "0" ? "Femenino" : "-")
+											</div>
+											<div class="col-md-4 mb-2">
+												<strong>Estado Civil:</strong><br />
+												@GetMaestroNombre(estacivil, formData.EstadoCivil)
+											</div>
+										</div>
+
+										<h6 class="fw-bold text-primary">Datos de Universidad</h6>
+										<div class="row mb-3">
+											<div class="col-md-6 mb-2">
+												<strong>Origen:</strong><br />
+												@(formData.UniversidadOrigen == "1" ? "Nacional" : "Extranjera")
+											</div>
+											<div class="col-md-6 mb-2">
+												<strong>Fecha de Emisión del Título:</strong><br />
+												@(formData.FechaEmisionTitulo != default(DateTime) ? formData.FechaEmisionTitulo.ToString("dd/MM/yyyy") : "-")
+											</div>
+										</div>
+
+										<div class="alert alert-warning mt-4">
+											<h6><strong>Próximos pasos:</strong></h6>
+											<ul class="mb-0">
+												<li>La oficina de matrícula revisará su solicitud.</li>
+												<li>Recibirá notificaciones sobre el estado de su solicitud.</li>
+												<li>Puede consultar el seguimiento en la sección "Seguimiento de trámite".</li>
+												@if (perfilSeleccionado == "3" || perfilSeleccionado == "4")
+												{
+													<li><strong>Recuerde:</strong> Debe presentar los documentos físicos en mesa de partes.</li>
+												}
+											</ul>
+										</div>
+									</div>
+								</div>
+
+								<div class="d-flex justify-content-between mt-3">
+									<button type="button" class="btn btn-secondary" @onclick='() => Navigation.NavigateTo("/solicitudes/seguimiento", forceLoad: true)'>
+										<i class="ri-list-check" aria-hidden="true"></i>
+										<span>Ver seguimiento</span>
+									</button>
+									<button type="button" class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/home", forceLoad: true)'>
+										<i class="ri-home-line" aria-hidden="true"></i>
+										<span>Volver al inicio</span>
+									</button>
+								</div>
+							}
 						</div>
 					</div>
 				</div>
@@ -844,6 +1512,103 @@
 </div>
 
 @code {
+    private class ReniecResultDto
+    {
+        public string? Nombres { get; set; }
+        public string? ApellidoPaterno { get; set; }
+        public string? ApellidoMaterno { get; set; }
+        public DateTime? FechaNacimiento { get; set; }
+        public string? Sexo { get; set; }
+        public string? EstadoCivil { get; set; }
+        public string? Fuente { get; set; }
+    }
+
+	private class UniversidadExtranjera
+	{
+		public string name { get; set; } = string.Empty;
+		public string country { get; set; } = string.Empty;
+		public List<string> web_pages { get; set; } = new();
+		public string alpha_two_code { get; set; } = string.Empty;
+		public List<string> domains { get; set; } = new();
+	}
+
+	// Control de pasos y Aula Virtual
+	private int currentStep = 1;
+	private bool cursoEticaCompletado = false;
+	private bool verificandoCurso = false;
+	private bool isSavingInicial = false;
+	private bool abriendonAulaVirtual = false;
+	private string perfilSeleccionado = string.Empty;
+	private string avanceCursoDetalle = string.Empty;
+	private string tokenAulaVirtual = string.Empty;
+	private bool esAmbienteDesarrollo = false;
+
+	// Control de pago
+	private bool pagoCompletado = false;
+	private bool verificandoPago = false;
+	private bool abriendoPasarela = false;
+	private bool simulandoPagoDev = false;
+	private string comprobantePago = string.Empty;
+
+	private class EstadoCursoResponse
+	{
+		public bool Completado { get; set; }
+		public string? Estado { get; set; }
+		public int? PorcentajeAvance { get; set; }
+	}
+
+	private class AulaVirtualLoginRequest
+	{
+		public string SecreyKey { get; set; } = string.Empty;
+		public string numeroDocumento { get; set; } = string.Empty;
+		public string email { get; set; } = string.Empty;
+	}
+
+	private class AulaVirtualLoginResponse
+	{
+		public bool success { get; set; }
+		public string? token { get; set; }
+		public string? mensaje { get; set; }
+		public string? urlAulaVirtual { get; set; }
+	}
+
+	private class VerificarAvanceRequest
+	{
+		public string token { get; set; } = string.Empty;
+		public string codigoCurso { get; set; } = string.Empty;
+	}
+
+	private class VerificarAvanceResponse
+	{
+		public bool success { get; set; }
+		public string? estado { get; set; } // EN curso, Aprobado, desaprobado
+		public int? porcentajeAvance { get; set; }
+		public string? mensaje { get; set; }
+	}
+
+	private class PasarelaPagoResponse
+	{
+		public bool success { get; set; }
+		public string? url { get; set; }
+		public Dictionary<string, string>? postParams { get; set; }
+		public string? mensaje { get; set; }
+	}
+
+	private class VerificarPagoResponse
+	{
+		public bool pagado { get; set; }
+		public string? comprobante { get; set; }
+		public string? mensaje { get; set; }
+	}
+
+	private class GuardarResponse
+	{
+		public bool Success { get; set; }
+		public string? Message { get; set; }
+		public int? Id { get; set; }
+		public int? SolicitudId { get; set; }
+	}
+
     private static bool NombreEsPeru(string? nombre)
     {
         if (string.IsNullOrWhiteSpace(nombre)) return false;
@@ -858,11 +1623,116 @@
 	int paisId;
 	bool paisBloqueado = true;
 	string tipoValidacionExtranjera = "";
+	private string perfilSeleccionadoTexto => perfilSeleccionado switch
+	{
+		"1" => "1. Profesional peruano con título de universidad peruana",
+		"2" => "2. Profesional peruano con título de universidad extranjera",
+		"3" => "3. Profesional extranjero con título otorgado en el Perú",
+		"4" => "4. Profesional extranjero con título otorgado en el extranjero",
+		_ => "-"
+	};
+
+	private bool esExtranjeroSinTipoValidacion => (tipoSeleccionado == "0" || tipoDocSeleccionado == "64") && string.IsNullOrWhiteSpace(formData?.TipoValidacion);
+
+	/// <summary>Infiere perfil desde TipoDocumento + UniversidadOrigen cuando al volver a Paso 1 no está seleccionado.</summary>
+	private void SyncPerfilFromForm()
+	{
+		if (!string.IsNullOrWhiteSpace(perfilSeleccionado)) return;
+		var td = formData?.TipoDocumento ?? "";
+		var uo = formData?.UniversidadOrigen ?? "";
+		if (string.IsNullOrWhiteSpace(td) || string.IsNullOrWhiteSpace(uo)) return;
+		// 62+1→1, 62+0→2, 64+1→3, 64+0→4
+		if (td == "62" && uo == "1") perfilSeleccionado = "1";
+		else if (td == "62" && uo == "0") perfilSeleccionado = "2";
+		else if (td == "64" && uo == "1") perfilSeleccionado = "3";
+		else if (td == "64" && uo == "0") perfilSeleccionado = "4";
+		StateHasChanged();
+	}
+
+	private void VolverAPaso1()
+	{
+		currentStep = 1;
+		SyncPerfilFromForm();
+	}
 
 	List<Pais> paises = new();
 	List<Pais> paisesFiltrados = new();
 	List<Universidad> universidades = new();
 	List<Universidad> universidadesperuanas = new();
+	List<UniversidadExtranjera> universidadesExtranjeras = new();
+	bool cargandoUniversidadesExtranjeras = false;
+	bool mostrarCampoTextoUniversidadExtranjera = false;
+	string? nombrePaisSeleccionado = null;
+
+	// Diccionario de mapeo de países español -> inglés para la API de universidades
+	private static readonly Dictionary<string, string> PaisesEspanolIngles = new(StringComparer.OrdinalIgnoreCase)
+	{
+		{"ALEMANIA", "Germany"}, {"ARGENTINA", "Argentina"}, {"AUSTRALIA", "Australia"},
+		{"AUSTRIA", "Austria"}, {"BELGICA", "Belgium"}, {"BÉLGICA", "Belgium"},
+		{"BOLIVIA", "Bolivia"}, {"BRASIL", "Brazil"}, {"CANADA", "Canada"}, {"CANADÁ", "Canada"},
+		{"CHILE", "Chile"}, {"CHINA", "China"}, {"COLOMBIA", "Colombia"},
+		{"COREA DEL SUR", "South Korea"}, {"COSTA RICA", "Costa Rica"}, {"CUBA", "Cuba"},
+		{"DINAMARCA", "Denmark"}, {"ECUADOR", "Ecuador"}, {"EGIPTO", "Egypt"},
+		{"EL SALVADOR", "El Salvador"}, {"EMIRATOS ARABES UNIDOS", "United Arab Emirates"},
+		{"ESLOVAQUIA", "Slovakia"}, {"ESLOVENIA", "Slovenia"}, {"ESPAÑA", "Spain"},
+		{"ESTADOS UNIDOS", "United States"}, {"FILIPINAS", "Philippines"}, {"FINLANDIA", "Finland"},
+		{"FRANCIA", "France"}, {"GRECIA", "Greece"}, {"GUATEMALA", "Guatemala"},
+		{"HOLANDA", "Netherlands"}, {"HONDURAS", "Honduras"}, {"HUNGRIA", "Hungary"}, {"HUNGRÍA", "Hungary"},
+		{"INDIA", "India"}, {"INDONESIA", "Indonesia"}, {"IRLANDA", "Ireland"},
+		{"ISRAEL", "Israel"}, {"ITALIA", "Italy"}, {"JAPON", "Japan"}, {"JAPÓN", "Japan"},
+		{"MEXICO", "Mexico"}, {"MÉXICO", "Mexico"}, {"NICARAGUA", "Nicaragua"},
+		{"NORUEGA", "Norway"}, {"NUEVA ZELANDA", "New Zealand"}, {"PAISES BAJOS", "Netherlands"},
+		{"PANAMA", "Panama"}, {"PANAMÁ", "Panama"}, {"PARAGUAY", "Paraguay"},
+		{"PERU", "Peru"}, {"PERÚ", "Peru"}, {"POLONIA", "Poland"}, {"PORTUGAL", "Portugal"},
+		{"PUERTO RICO", "Puerto Rico"}, {"REINO UNIDO", "United Kingdom"},
+		{"REPUBLICA CHECA", "Czech Republic"}, {"REPÚBLICA CHECA", "Czech Republic"},
+		{"REPUBLICA DOMINICANA", "Dominican Republic"}, {"REPÚBLICA DOMINICANA", "Dominican Republic"},
+		{"RUMANIA", "Romania"}, {"RUSIA", "Russia"}, {"SINGAPUR", "Singapore"},
+		{"SUDAFRICA", "South Africa"}, {"SUDÁFRICA", "South Africa"}, {"SUECIA", "Sweden"},
+		{"SUIZA", "Switzerland"}, {"TAILANDIA", "Thailand"}, {"TAIWAN", "Taiwan"},
+		{"TURQUIA", "Turkey"}, {"TURQUÍA", "Turkey"}, {"UCRANIA", "Ukraine"},
+		{"URUGUAY", "Uruguay"}, {"VENEZUELA", "Venezuela"}, {"VIETNAM", "Vietnam"}
+	};
+
+	private string ObtenerNombrePaisIngles(string nombreEspanol)
+	{
+		if (string.IsNullOrWhiteSpace(nombreEspanol))
+			return nombreEspanol;
+
+		// Intentar buscar en el diccionario
+		if (PaisesEspanolIngles.TryGetValue(nombreEspanol.Trim(), out var nombreIngles))
+			return nombreIngles;
+
+		// Si no está en el diccionario, devolver el nombre original (quizás ya está en inglés)
+		return nombreEspanol;
+	}
+
+	// Helper para parsear query string sin depender de System.Web
+	private Dictionary<string, string> ParseQueryString(string query)
+	{
+		var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		if (string.IsNullOrEmpty(query)) return result;
+		
+		// Remover el ? inicial si existe
+		if (query.StartsWith("?")) query = query.Substring(1);
+		
+		foreach (var pair in query.Split('&'))
+		{
+			var parts = pair.Split('=');
+			if (parts.Length == 2)
+			{
+				var key = Uri.UnescapeDataString(parts[0]);
+				var value = Uri.UnescapeDataString(parts[1]);
+				result[key] = value;
+			}
+			else if (parts.Length == 1 && !string.IsNullOrEmpty(parts[0]))
+			{
+				result[Uri.UnescapeDataString(parts[0])] = string.Empty;
+			}
+		}
+		
+		return result;
+	}
 
 	//Guardar Formulario
 	private FormData formData = new FormData();
@@ -887,14 +1757,44 @@
 	private IBrowserFile pdfRevalidacionUniversidadNacional;
 	private IBrowserFile resolucionFile;
 
+	/// <summary>Buffers de archivos leídos al seleccionar; evita '_blazorFilesById' null al enviar.</summary>
+	private byte[]? _fotoBuffer;
+	private string? _fotoFileName;
+	private string? _fotoContentType;
+	private readonly Dictionary<string, (byte[] Bytes, string FileName)> _fileBuffers = new();
+	private const int _pdfMaxBytes = 10 * 1024 * 1024;
+
 	private string? imagePreviewUrl;
 	private string mensajeError;
 	private bool enviando = false;
 	private bool mostrarErrorFoto = false;
 	private bool estaValidando = false;
 	private string mensajeValidacion = string.Empty;
+	
+	// Configuración de tamaño máximo de archivo
+	private long maxFileSizeBytes = 4 * 1024 * 1024; // 4MB por defecto
+	private string maxFileSizeMBFormatted = "4.0";
 	private bool mostrarEjemplos = false;
 	private bool formularioEsValido = false;
+	private bool aceptaDDJJ = false;
+	private bool mostrarPoliticasModal = false;
+	private bool ddjjValida = true;
+	private bool intentadoEnviar = false;
+	private string ddjjVersion = "v1.0";
+	private string ddjjTexto = "Declaro bajo juramento (DDJJ) que la información proporcionada es veraz y completa. Autorizo el tratamiento de mis datos conforme a la normativa vigente.";
+	private bool mostrarDDJJModal = false;
+	private bool ddjjFirmaEnProceso = false;
+	private bool ddjjFirmada = false;
+	private string? ddjjCallbackResult = null; // Para mostrar el modal después del render
+	private string ddjjPdfUrl = "/docs/ddjj-ejemplo.pdf";
+	
+	// Campos para DDJJ validada con ID Perú (persistidos en BD)
+	private DateTime? fechaFirmaDDJJ = null;
+	private string? documentoFirmanteDDJJ = null;
+	private bool tieneDDJJFirmadaEnServidor = false;
+	
+	// Campo para Políticas de Privacidad persistido en BD
+	private bool tienePoliticasAceptadasEnServidor = false;
 
 	private List<Mat_Ubigeo> departamentos = new List<Mat_Ubigeo>();
 	private List<Mat_Ubigeo> provincias = new List<Mat_Ubigeo>();
@@ -912,7 +1812,18 @@
 	// Variables para el modal de observaciones
 	private bool mostrarObservaciones = false;
 	private string observacionesSolicitud = "";
+	private bool tieneCarnetEnServidor = false;
+	private readonly Dictionary<string, string> _documentosCargadosServidor = new();
 	private string estadoActual = "";
+	private int estadoIdActual = 0; // Para determinar si viene de observación
+	private bool esCorreccionPorObservacion => estadoIdActual == 3 || estadoIdActual == 5 || estadoIdActual == 7;
+
+	// Alerta de requisitos previos: solo la primera vez en paso 1, no en corrección
+	private bool yaMostramosAlertaRequisitos = false;
+	private string requisitosPreviosTitulo = "Requisitos previos para el registro";
+	private string requisitosPreviosHtml = "";
+	private string requisitosPreviosConfirmar = "Entendido";
+	private bool mostrarCalloutEsMedicoContinuo = false;
 
 	private async Task OnFotoSelected(InputFileChangeEventArgs e)
 	{
@@ -921,6 +1832,9 @@
 			// Resetear estados y vista previa
 			imagePreviewUrl = null;
 			fotoFile = null;
+			_fotoBuffer = null;
+			_fotoFileName = null;
+			_fotoContentType = null;
 			estaValidando = true;
 			mensajeValidacion = "Validando imagen...";
 			mostrarErrorFoto = false;
@@ -946,11 +1860,11 @@
 				return;
 			}
 
-			// Validar tamaño (ejemplo: máximo 4MB)
-			if (fotoFile.Size > 4 * 1024 * 1024)
+			// Validar tamaño usando configuración
+			if (fotoFile.Size > maxFileSizeBytes)
 			{
 				mostrarErrorFoto = true;
-				mensajeValidacion = "La imagen no debe exceder 4MB";
+				mensajeValidacion = $"La imagen no debe exceder {maxFileSizeMBFormatted}MB";
 				return;
 			}
 
@@ -963,7 +1877,7 @@
 			StateHasChanged(); // Actualizar para mostrar vista previa
 
 			using var content = new MultipartFormDataContent();
-			using var stream = fotoFile.OpenReadStream(maxAllowedSize: 4 * 1024 * 1024); // 4MB
+			using var stream = fotoFile.OpenReadStream(maxAllowedSize: maxFileSizeBytes);
 			content.Add(new StreamContent(stream), "file", fotoFile.Name);
 
 			var response = await Http.PostAsync("api/FotoValidator/validar", content);
@@ -991,13 +1905,22 @@
 				mostrarErrorFoto = false;
 				mensajeValidacion = "✓ Imagen válida";
 				formData.FotoMedico = fotoFile;
+				// Buffer para envío (evita _blazorFilesById null al submit)
+				await using var bs = fotoFile.OpenReadStream(maxAllowedSize: maxFileSizeBytes);
+				using var ms = new MemoryStream();
+				await bs.CopyToAsync(ms);
+				_fotoBuffer = ms.ToArray();
+				_fotoFileName = fotoFile.Name;
+				_fotoContentType = fotoFile.ContentType ?? "image/jpeg";
 			}
 			else
 			{
 				mostrarErrorFoto = true;
 				mensajeValidacion = result.mensaje ?? "La imagen no cumple los requisitos";
 				formData.FotoMedico = null;
-				// imagePreviewUrl = null;
+				_fotoBuffer = null;
+				_fotoFileName = null;
+				_fotoContentType = null;
 			}
 		}
 		catch (Exception ex)
@@ -1023,10 +1946,124 @@
 		public string? mensaje { get; set; }
 	}
 
+	// Clase para la configuración del validador
+	public class FotoValidatorConfig
+	{
+		public long MaxFileSizeBytes { get; set; }
+		public double MaxFileSizeMB { get; set; }
+		public string MaxFileSizeMBFormatted { get; set; } = "4.0";
+	}
+
 	protected override async Task OnInitializedAsync()
 	{
 		try
 		{
+			// Detectar si estamos en ambiente de desarrollo (localhost)
+			var currentUri = Navigation.Uri.ToLowerInvariant();
+			esAmbienteDesarrollo = currentUri.Contains("localhost") || currentUri.Contains("127.0.0.1");
+			
+			// Verificar si viene del callback de ID PERU (parámetro ddjj en la URL)
+			var uri = new Uri(Navigation.Uri);
+			if (!string.IsNullOrEmpty(uri.Query))
+			{
+				var queryParams = ParseQueryString(uri.Query);
+				queryParams.TryGetValue("ddjj", out var ddjjResult);
+				queryParams.TryGetValue("solicitudId", out var callbackSolicitudId);
+				
+				if (!string.IsNullOrEmpty(ddjjResult))
+				{
+					// Guardar el resultado para mostrar el modal después del render
+					ddjjCallbackResult = ddjjResult;
+					
+					if (ddjjResult == "ok")
+					{
+						// Firma exitosa - recargar estado desde el servidor para actualizar el checkbox
+						if (int.TryParse(callbackSolicitudId, out var sId))
+						{
+							SolicitudId = sId;
+							// Cargar el estado actualizado de DDJJ desde el servidor
+							await CargarEstadoDDJJ(SolicitudId);
+						}
+						else if (SolicitudId > 0)
+						{
+							// Si no viene en la URL, usar el SolicitudId actual
+							await CargarEstadoDDJJ(SolicitudId);
+						}
+						else
+						{
+							// Fallback: establecer flags localmente si no hay SolicitudId
+							ddjjFirmada = true;
+							aceptaDDJJ = true;
+							ddjjValida = true;
+						}
+					}
+				}
+			}
+			
+			// Cargar configuración de tamaño máximo de archivo
+			try
+			{
+				var configResponse = await Http.GetAsync("api/FotoValidator/config");
+				if (configResponse.IsSuccessStatusCode)
+				{
+					var configJson = await configResponse.Content.ReadAsStringAsync();
+					await JS.InvokeVoidAsync("console.log", new { 
+						tag = "FotoValidatorConfig", 
+						rawJson = configJson 
+					});
+					
+					var config = JsonSerializer.Deserialize<FotoValidatorConfig>(configJson, new JsonSerializerOptions 
+					{ 
+						PropertyNameCaseInsensitive = true 
+					});
+					
+					if (config != null && config.MaxFileSizeBytes > 0)
+					{
+						var bytes = config.MaxFileSizeBytes;
+						var mb = config.MaxFileSizeMB;
+						var formatted = !string.IsNullOrEmpty(config.MaxFileSizeMBFormatted) ? config.MaxFileSizeMBFormatted : $"{mb:F1}";
+						
+						maxFileSizeBytes = bytes;
+						maxFileSizeMBFormatted = formatted;
+						
+						await JS.InvokeVoidAsync("console.log", new { 
+							tag = "FotoValidatorConfig", 
+							loaded = true, 
+							maxBytes = maxFileSizeBytes, 
+							maxMB = maxFileSizeMBFormatted 
+						});
+					}
+					else
+					{
+						await JS.InvokeVoidAsync("console.warn", new { 
+							tag = "FotoValidatorConfig", 
+							message = "Config es null o MaxFileSizeBytes es 0, usando valores por defecto",
+							config = config 
+						});
+					}
+				}
+				else
+				{
+					var errorContent = await configResponse.Content.ReadAsStringAsync();
+					await JS.InvokeVoidAsync("console.warn", new { 
+						tag = "FotoValidatorConfig", 
+						statusCode = (int)configResponse.StatusCode,
+						errorContent = errorContent,
+						message = "No se pudo cargar la configuración, usando valores por defecto" 
+					});
+				}
+			}
+			catch (Exception ex)
+			{
+				// Si falla, usar valores por defecto
+				await JS.InvokeVoidAsync("console.error", new { 
+					tag = "FotoValidatorConfig", 
+					error = ex.Message,
+					stackTrace = ex.StackTrace,
+					message = "Error al cargar configuración, usando valores por defecto" 
+				});
+			}
+
 			var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
 			var user = authState.User;
 
@@ -1063,10 +2100,32 @@
 			}
             else
             {
+				// Si no hay SolicitudId en la URL, verificar si el usuario tiene solicitudes activas
+				if (int.TryParse(PersonaId, out var personaIdInt) && personaIdInt > 0)
+				{
+					var solicitudesActivas = await Http.GetFromJsonAsync<List<SolicitudSeguimientoDto>>(
+						$"api/personaseducacion/mis-solicitudes/{personaIdInt}");
+					
+					// Buscar solicitud activa (estado != 13 que es "rechazado/completado")
+					var solicitudActiva = solicitudesActivas?
+						.Where(s => s.EstadoId != 13)
+						.OrderByDescending(s => s.FechaSolicitud)
+						.FirstOrDefault();
+					
+					if (solicitudActiva != null)
+					{
+						// Redirigir automáticamente a la solicitud activa
+						Navigation.NavigateTo($"/solicitudes/prematricula/{solicitudActiva.Id}", forceLoad: true);
+						return;
+					}
+				}
+
                 var persona = await Http.GetFromJsonAsync<Persona>($"api/personaseducacion/{PersonaId}");
                 // Cargar datos iniciales para nuevo registro
                 formData = await MapPersonaToFormDataAsync(persona);
+                tipoDocSeleccionado = formData.TipoDocumento ?? "62";
                 editContext = new EditContext(formData);
+                SyncPerfilFromForm();
 
                 // Asegurar origen nacional por defecto y fijar Perú como país de universidad
                 formData.UniversidadOrigen = string.IsNullOrEmpty(formData.UniversidadOrigen) ? "1" : formData.UniversidadOrigen;
@@ -1080,6 +2139,15 @@
 
             await CargarUniversidades();
 			await CargarUniversidadesPeruanas();
+
+			await DeterminarPasoInicial();
+			await RestaurarPoliticasDDJJSiAplicaAsync();
+
+			// Cargar requisitos previos desde AppSettings (modificable en appsettings.json sin recompilar)
+			await CargarRequisitosPreviosAsync();
+
+			// Consulta Es Médico al inicio (antes del modal de requisitos): si hay DNI válido, verificar si es médico
+			await ConsultarEsMedicoSiHayDniAsync();
 		}
 		catch (Exception ex)
 		{
@@ -1137,6 +2205,7 @@
 				
 				// Cargar datos iniciales para nuevo registro
 				formData = await MapPersonaToFormDataAsync(personaedit);
+				tipoDocSeleccionado = formData.TipoDocumento ?? "62";
 				
 				// Cargar datos de educación si existen
 				if (personaedit.Educaciones != null && personaedit.Educaciones.Any())
@@ -1144,15 +2213,87 @@
 					var educacion = personaedit.Educaciones.First();
 					formData.UniversidadOrigen = educacion.UniversidadOrigen;
 					formData.Universidad = educacion.UniversidadId.ToString();
-					formData.FechaEmisionTitulo = educacion.FechaEmisionTitulo;
+					// Asignar fecha si tiene valor, de lo contrario dejar en default (blanco)
+					formData.FechaEmisionTitulo = educacion.FechaEmisionTitulo != default(DateTime) ? educacion.FechaEmisionTitulo : default(DateTime);
 					formData.PaisUniversidad = educacion.PaisUniversidadId.ToString() ?? "173";
 					formData.TipoValidacion = educacion.TipoValidacion;
 					formData.NumeroResolucion = educacion.NumeroResolucion;
 					formData.UniversidadPeruana = educacion.UniversidadPeruanaId?.ToString();
 					formData.NombreUniversidadExtranjera = educacion.NombreUniversidadExtranjera;
+					formData.FechaReconocimiento = educacion.FechaReconocimiento;
+					formData.FechaRevalidacion = educacion.FechaRevalidacion;
+					tipoValidacionExtranjera = formData.TipoValidacion ?? "";
+				}
+				else
+				{
+					// Si no hay educación, dejar fecha en blanco (default)
+					formData.FechaEmisionTitulo = default(DateTime);
 				}
 				
-				editContext = new EditContext(formData);
+				// Cargar perfil desde observaciones (si existe)
+				try
+				{
+					var solicitudCompleta = await Http.GetAsync($"api/personaseducacion/solicituddet/{solicitudId}");
+					if (solicitudCompleta.IsSuccessStatusCode)
+					{
+						var jsonString = await solicitudCompleta.Content.ReadAsStringAsync();
+						var jsonDoc = JsonDocument.Parse(jsonString);
+						var root = jsonDoc.RootElement;
+						
+						// Buscar observaciones para extraer el perfil
+						if (root.TryGetProperty("observaciones", out var obsElement) || 
+							root.TryGetProperty("Observaciones", out obsElement))
+						{
+							var observaciones = obsElement.GetString();
+							if (!string.IsNullOrEmpty(observaciones) && observaciones.Contains("Perfil:"))
+							{
+								// Extraer el perfil de las observaciones
+								var perfilMatch = System.Text.RegularExpressions.Regex.Match(observaciones, @"Perfil:\s*(\d+)");
+								if (perfilMatch.Success)
+									perfilSeleccionado = perfilMatch.Groups[1].Value;
+							}
+						}
+						tieneCarnetEnServidor = false;
+						_documentosCargadosServidor.Clear();
+						if (root.TryGetProperty("persona", out var pEl) || root.TryGetProperty("Persona", out pEl))
+						{
+							var pathFoto = pEl.TryGetProperty("fotoPath", out var fp) ? fp.GetString() : (pEl.TryGetProperty("FotoPath", out var fp2) ? fp2.GetString() : null);
+							if (!string.IsNullOrWhiteSpace(pathFoto))
+								_documentosCargadosServidor["Foto"] = pathFoto;
+							if ((pEl.TryGetProperty("educaciones", out var edEl) || pEl.TryGetProperty("Educaciones", out edEl)) && edEl.GetArrayLength() > 0)
+							{
+								var ed = edEl[0];
+								if ((ed.TryGetProperty("documento", out var docEl) || ed.TryGetProperty("Documento", out docEl)) && docEl.ValueKind != JsonValueKind.Null)
+								{
+									var path = GetJsonString(docEl, "carnetExtranjeriaPath", "CarnetExtranjeriaPath");
+									tieneCarnetEnServidor = !string.IsNullOrWhiteSpace(path);
+									SetDocServidor("CarnetExtranjeria", path);
+									SetDocServidor("TituloMedicoCirujano", GetJsonString(docEl, "tituloMedicoCirujanoPath", "TituloMedicoCirujanoPath"));
+									SetDocServidor("CertificadoAntecedentesPenales", GetJsonString(docEl, "certificadoAntecedentesPenalesPath", "CertificadoAntecedentesPenalesPath"));
+									SetDocServidor("ConstanciaInscripcionReconocimientoSunedu", GetJsonString(docEl, "constanciaInscripcionReconocimientoSuneduPath", "ConstanciaInscripcionReconocimientoSuneduPath"));
+									SetDocServidor("ReconocimientoSunedu", GetJsonString(docEl, "reconocimientoSuneduPath", "ReconocimientoSuneduPath"));
+									SetDocServidor("ConstanciaInscripcionRevalidacionUniversidadNacional", GetJsonString(docEl, "constanciaInscripcionRevalidacionUniversidadNacionalPath", "ConstanciaInscripcionRevalidacionUniversidadNacionalPath"));
+									SetDocServidor("RevalidacionUniversidadNacional", GetJsonString(docEl, "revalidacionUniversidadNacionalPath", "RevalidacionUniversidadNacionalPath"));
+								}
+							}
+						}
+					}
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine($"Error al cargar perfil/carnet/documentos: {ex.Message}");
+				}
+		
+		editContext = new EditContext(formData);
+		SyncPerfilFromForm();
+		
+		// Si es corrección por observación, establecer políticas y DDJJ automáticamente
+		if (esCorreccionPorObservacion)
+		{
+			formData.AceptaPoliticas = true;
+			aceptaDDJJ = true;
+			ddjjValida = true;
+		}
 				
 				// Cargar combos dependientes
 				await OnTipoSeleccionado(formData.UniversidadOrigen);
@@ -1163,6 +2304,17 @@
                     if (int.TryParse(formData.PaisUniversidad, out var parsedPais))
                     {
                         paisId = parsedPais;
+						
+						// Si es universidad extranjera y hay país seleccionado, cargar universidades de la API
+						if (formData.UniversidadOrigen == "0")
+						{
+							var paisSeleccionado = paises.FirstOrDefault(p => p.Id == parsedPais);
+							if (paisSeleccionado != null)
+							{
+								nombrePaisSeleccionado = paisSeleccionado.Nombre;
+								await CargarUniversidadesExtranjeras(paisSeleccionado.Nombre);
+							}
+						}
                     }
                     else
                     {
@@ -1197,11 +2349,140 @@
 				
 				// Obtener información de la solicitud para mostrar observaciones
 				await ObtenerObservacionesSolicitud(solicitudId);
+				
+				// Cargar estado de DDJJ firmada con ID Perú
+				await CargarEstadoDDJJ(solicitudId);
 			}
 		}
 		catch (Exception ex)
 		{
 			mensajeError = $"Error al cargar solicitud: {ex.Message}";
+		}
+	}
+	
+	/// <summary>
+	/// Carga el estado de la DDJJ firmada con ID Perú y políticas aceptadas desde el servidor
+	/// </summary>
+	private async Task CargarEstadoDDJJ(int solicitudId)
+	{
+		try
+		{
+			var response = await Http.GetAsync($"api/DDJJ/estado/{solicitudId}");
+			if (response.IsSuccessStatusCode)
+			{
+				var json = await response.Content.ReadAsStringAsync();
+				using var doc = JsonDocument.Parse(json);
+				var root = doc.RootElement;
+				
+				// Leer campos del estado DDJJ
+				if (root.TryGetProperty("ddjjFirmadaIdPeru", out var firmadaProp) || 
+				    root.TryGetProperty("DDJJFirmadaIdPeru", out firmadaProp))
+				{
+					tieneDDJJFirmadaEnServidor = firmadaProp.GetBoolean();
+				}
+				
+				if (tieneDDJJFirmadaEnServidor)
+				{
+					// Marcar DDJJ como firmada
+					ddjjFirmada = true;
+					aceptaDDJJ = true;
+					ddjjValida = true;
+					
+					// Obtener fecha de firma
+					if (root.TryGetProperty("fechaFirmaDDJJ", out var fechaProp) || 
+					    root.TryGetProperty("FechaFirmaDDJJ", out fechaProp))
+					{
+						if (fechaProp.ValueKind != JsonValueKind.Null)
+						{
+							fechaFirmaDDJJ = fechaProp.GetDateTime();
+						}
+					}
+					
+					// Obtener documento del firmante
+					if (root.TryGetProperty("documentoFirmanteDDJJ", out var docProp) || 
+					    root.TryGetProperty("DocumentoFirmanteDDJJ", out docProp))
+					{
+						if (docProp.ValueKind != JsonValueKind.Null)
+						{
+							documentoFirmanteDDJJ = docProp.GetString();
+						}
+					}
+				}
+				
+				// Leer campo de políticas de privacidad
+				if (root.TryGetProperty("aceptaPoliticasPrivacidad", out var politicasProp) || 
+				    root.TryGetProperty("AceptaPoliticasPrivacidad", out politicasProp))
+				{
+					tienePoliticasAceptadasEnServidor = politicasProp.GetBoolean();
+					if (tienePoliticasAceptadasEnServidor)
+					{
+						formData.AceptaPoliticas = true;
+					}
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error al cargar estado DDJJ: {ex.Message}");
+			// No bloquear el flujo si falla la carga del estado DDJJ
+		}
+	}
+	
+	protected override async Task OnAfterRenderAsync(bool firstRender)
+	{
+		// Alerta de requisitos previos: solo la primera vez en paso 1, cuando es nueva solicitud (SolicitudId <= 0),
+		// no en corrección por observación, y no se ha mostrado ya
+		if (firstRender && currentStep == 1 && SolicitudId <= 0 && !esCorreccionPorObservacion && !yaMostramosAlertaRequisitos)
+		{
+			yaMostramosAlertaRequisitos = true;
+			var htmlRequisitos = !string.IsNullOrWhiteSpace(requisitosPreviosHtml)
+				? requisitosPreviosHtml
+				: @"<div class=""text-start""><p class=""mb-2""><strong>Antes de iniciar el registro, asegúrese de tener:</strong></p><ul class=""list-unstyled""><li>• <strong>DNI electrónico:</strong> Necesario para validar su DDJJ mediante ID PERU.</li><li>• <strong>Paso 2 - Curso de Ética:</strong> Debe completar el curso en el Aula Virtual antes de continuar al paso 3.</li><li>• <strong>Paso 4 - Pago:</strong> Debe realizar el pago correspondiente para enviar su solicitud.</li><li>• <strong>Documentos:</strong> Tenga a mano su título profesional, constancias y demás documentos escaneados en formato PDF.</li><li>• <strong>Foto reciente:</strong> Para cargar en el formulario (formato válido, buena calidad).</li></ul><p class=""text-muted small mt-2 mb-0"">Esta información es solo de carácter informativo.</p></div>";
+			await JS.InvokeVoidAsync("Swal.fire", new
+			{
+				title = requisitosPreviosTitulo,
+				html = htmlRequisitos,
+				icon = "info",
+				confirmButtonText = requisitosPreviosConfirmar,
+				width = "600"
+			});
+		}
+
+		if (firstRender && !string.IsNullOrEmpty(ddjjCallbackResult))
+		{
+			// Limpiar los parámetros de la URL sin recargar la página
+			var uri = new Uri(Navigation.Uri);
+			var cleanUrl = uri.GetLeftPart(UriPartial.Path);
+			await JS.InvokeVoidAsync("eval", $"window.history.replaceState(null, '', '{cleanUrl}')");
+			
+			// Mostrar el modal correspondiente
+			if (ddjjCallbackResult == "ok")
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { 
+					title = "Validación Exitosa", 
+					text = "La DDJJ ha sido validada correctamente con ID PERU. Ahora puede enviar la solicitud.", 
+					icon = "success" 
+				});
+			}
+			else if (ddjjCallbackResult == "cancelled")
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { 
+					title = "Firma Cancelada", 
+					text = "Ha cancelado el proceso de firma con ID PERU. Puede intentarlo nuevamente.", 
+					icon = "warning" 
+				});
+			}
+			else if (ddjjCallbackResult == "error")
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { 
+					title = "Advertencia", 
+					text = "El DNI utilizado para la validación no corresponde al solicitante. Puede intentarlo nuevamente.", 
+					icon = "warning" 
+				});
+			}
+			
+			// Limpiar el resultado después de mostrar
+			ddjjCallbackResult = null;
 		}
 	}
 	
@@ -1239,8 +2520,9 @@
 				// Mostrar modal si la solicitud está en estado rechazado
 				if (root.TryGetProperty("estadoId", out var estadoIdElement))
 				{
-					var estadoId = estadoIdElement.GetInt32();
-					if (estadoId == 3 || estadoId == 5 || estadoId == 7)
+					estadoIdActual = estadoIdElement.GetInt32();
+					// Estados de rechazo: 3, 5, 7
+					if (estadoIdActual == 3 || estadoIdActual == 5 || estadoIdActual == 7)
 					{
 						mostrarObservaciones = true;
 						StateHasChanged();
@@ -1264,8 +2546,15 @@
 	{
 		formData.UniversidadOrigen = valorseleccionado;
 		tipoSeleccionado = valorseleccionado ?? "1";
+		
+		// Determinar el ID del select de país según el paso actual
+		var paisSelectId = currentStep == 1 ? "pais_uni_paso1" : "pais_uni_paso3";
+		
         if (tipoSeleccionado == "1") // Nacional
 		{
+			// Destruir Select2 del campo país si existe
+			await JS.InvokeVoidAsync("destroySelect2", paisSelectId);
+			
 			paisBloqueado = true;
 
             var peru = paises.FirstOrDefault(p => NombreEsPeru(p.Nombre));
@@ -1296,39 +2585,356 @@
 		StateHasChanged();
 
 		// 🕒 Esperar a que se actualice el DOM
-		await Task.Delay(1);
+		await Task.Delay(100);
 
-		// ✅ Destruir y reiniciar select2
-		// await JS.InvokeVoidAsync("select2interop.refresh", "#pais_uni");
-		// await JS.InvokeVoidAsync("select2interop.refresh", "#nombre_uni");
+		// Inicializar Select2 para el campo de país si es extranjera
+		if (tipoSeleccionado == "0")
+		{
+			await JS.InvokeVoidAsync("initSelect2Pais", paisSelectId);
+		}
 
 	}
 	async Task OnTipoDocSeleccionado(string valseleccionado)
 	{
 		tipoDocSeleccionado = valseleccionado;
+		formData.TipoDocumento = valseleccionado;
+	}
+
+	async Task OnPerfilSeleccionado(string valorPerfil)
+	{
+		perfilSeleccionado = valorPerfil;
+
+		// Perfil 1: Profesional peruano con título de universidad peruana
+		// Perfil 3: Profesional extranjero con título otorgado en el Perú
+		if (valorPerfil == "1" || valorPerfil == "3")
+		{
+			// Tipo de documento: DNI (62)
+			formData.TipoDocumento = "62";
+			tipoDocSeleccionado = "62";
+
+			// Origen de Universidad: Nacional
+			formData.UniversidadOrigen = "1";
+			await OnTipoSeleccionado("1");
+		}
+		// Perfil 2: Profesional peruano con título de universidad extranjera
+		// Perfil 4: Profesional extranjero con título otorgado en el extranjero
+		else if (valorPerfil == "2" || valorPerfil == "4")
+		{
+			// Tipo de documento: Carnet de Extranjería (64)
+			formData.TipoDocumento = "64";
+			tipoDocSeleccionado = "64";
+
+			// Limpiar el número de documento porque ya no es DNI
+			formData.NumeroDocumento = string.Empty;
+
+			// Origen de Universidad: Extranjera
+			formData.UniversidadOrigen = "0";
+			await OnTipoSeleccionado("0");
+		}
+
+		await JS.InvokeVoidAsync("console.log", new { tag = "OnPerfilSeleccionado", perfil = valorPerfil, tipoDoc = formData.TipoDocumento, uniOrigen = formData.UniversidadOrigen });
+		StateHasChanged();
+	}
+	private bool consultandoReniec = false;
+
+	// Consulta Es Médico (CMP): resultado y callout que se oculta en 15 s
+	private bool? resultadoEsMedico = null;
+	private string mensajeConsultaMedico = "";
+	private bool mostrarCalloutEsMedico = false;
+	private CancellationTokenSource? _calloutMedicoCts = null;
+
+	/// <summary>Carga los requisitos previos desde AppSettings vía API. Permite modificar el texto en appsettings.json sin recompilar.</summary>
+	private async Task CargarRequisitosPreviosAsync()
+	{
+		try
+		{
+			var res = await Http.GetAsync("api/config/prematricula-requisitos");
+			if (res.IsSuccessStatusCode)
+			{
+				var json = await res.Content.ReadAsStringAsync();
+				using var doc = JsonDocument.Parse(json);
+				var root = doc.RootElement;
+				if (root.TryGetProperty("titulo", out var t)) requisitosPreviosTitulo = t.GetString() ?? requisitosPreviosTitulo;
+				if (root.TryGetProperty("html", out var h)) requisitosPreviosHtml = h.GetString() ?? "";
+				if (root.TryGetProperty("confirmar", out var c)) requisitosPreviosConfirmar = c.GetString() ?? requisitosPreviosConfirmar;
+				if (root.TryGetProperty("mostrarCalloutEsMedicoContinuo", out var m)) mostrarCalloutEsMedicoContinuo = m.ValueKind == JsonValueKind.True;
+			}
+		}
+		catch { /* usar valores por defecto */ }
+	}
+
+	/// <summary>Consulta si el DNI corresponde a un médico colegiado. Se ejecuta al inicio (antes del modal de requisitos) y en blur del campo DNI.</summary>
+	private async Task ConsultarEsMedicoSiHayDniAsync(string? dni = null)
+	{
+		var numDoc = dni ?? formData?.NumeroDocumento ?? "";
+		var esDni = tipoDocSeleccionado == "62" || formData?.TipoDocumento == "62";
+		if (!esDni || string.IsNullOrWhiteSpace(numDoc) || numDoc.Length != 8 || !numDoc.All(char.IsDigit))
+			return;
+		try
+		{
+			var resMedico = await Http.GetAsync($"api/reniec/consulta-es-medico/{numDoc}");
+			var bodyMedico = await resMedico.Content.ReadAsStringAsync();
+			using var docMedico = JsonDocument.Parse(bodyMedico);
+			var root = docMedico.RootElement;
+			var esMedico = root.TryGetProperty("esMedico", out var em) && em.ValueKind == JsonValueKind.True;
+			resultadoEsMedico = esMedico;
+			mensajeConsultaMedico = esMedico ? "El DNI corresponde a un médico colegiado en el CMP." : "El DNI no corresponde a un médico colegiado en el CMP.";
+			mostrarCalloutEsMedico = true;
+
+			// Si MostrarCalloutEsMedicoContinuo=false, ocultar después de 15 segundos
+			if (!mostrarCalloutEsMedicoContinuo)
+			{
+				_calloutMedicoCts?.Cancel();
+				_calloutMedicoCts = new CancellationTokenSource();
+				var token = _calloutMedicoCts.Token;
+				_ = Task.Run(async () =>
+				{
+					try
+					{
+						await Task.Delay(15000, token);
+						if (!token.IsCancellationRequested)
+						{
+							mostrarCalloutEsMedico = false;
+							await InvokeAsync(() => StateHasChanged());
+						}
+					}
+					catch (OperationCanceledException) { }
+				});
+			}
+		}
+		catch (Exception ex)
+		{
+			await JS.InvokeVoidAsync("console.warn", new { tag = "ConsultaEsMedico-ERR", ex = ex.Message });
+		}
+	}
+
+	private async Task OnNumeroDocumentoBlur(FocusEventArgs args)
+	{
+		try
+		{
+			// Solo si es DNI (62) y hay 8 dígitos: consultar API en 2 tiempos (token → consulta reniec/{DNI})
+			var esDni = tipoDocSeleccionado == "62" || formData.TipoDocumento == "62";
+			if (esDni
+				&& !string.IsNullOrWhiteSpace(formData.NumeroDocumento)
+				&& formData.NumeroDocumento.All(char.IsDigit)
+				&& formData.NumeroDocumento.Length == 8)
+			{
+				consultandoReniec = true;
+				StateHasChanged();
+				try
+				{
+					// 1. Consulta RENIEC (opcional: puede fallar en localhost por IP)
+					var url = $"api/reniec/consulta/{formData.NumeroDocumento}?personaId={PersonaId}";
+					var res = await Http.GetAsync(url);
+					var body = await res.Content.ReadAsStringAsync();
+					if (res.IsSuccessStatusCode)
+					{
+						var result = JsonSerializer.Deserialize<ReniecResultDto>(body);
+						if (result != null)
+						{
+							if (!string.IsNullOrWhiteSpace(result.Nombres)) formData.Nombres = result.Nombres;
+							if (!string.IsNullOrWhiteSpace(result.ApellidoPaterno)) formData.ApellidoPaterno = result.ApellidoPaterno;
+							if (!string.IsNullOrWhiteSpace(result.ApellidoMaterno)) formData.ApellidoMaterno = result.ApellidoMaterno;
+							if (result.FechaNacimiento.HasValue)
+							{
+								formData.FechaNacimiento = result.FechaNacimiento.Value;
+								ValidarFechaNacimiento();
+							}
+							if (!string.IsNullOrWhiteSpace(result.Sexo))
+							{
+								formData.Sexo = result.Sexo.Equals("MASCULINO", StringComparison.OrdinalIgnoreCase) ? "1"
+									: result.Sexo.Equals("FEMENINO", StringComparison.OrdinalIgnoreCase) ? "0" : formData.Sexo;
+							}
+							if (!string.IsNullOrWhiteSpace(result.EstadoCivil) && estacivil?.Count > 0)
+							{
+								var ec = estacivil.FirstOrDefault(x => string.Equals(x.Nombre, result.EstadoCivil, StringComparison.OrdinalIgnoreCase));
+								if (ec != null) formData.EstadoCivil = ec.MaestroRegistro_Key.ToString();
+							}
+						}
+					}
+					else
+					{
+						var msg = "No se pudo consultar RENIEC.";
+						try
+						{
+							using var doc = JsonDocument.Parse(body);
+							if (doc.RootElement.TryGetProperty("message", out var m)) msg = m.GetString() ?? msg;
+						}
+						catch { /* usar msg por defecto */ }
+						await JS.InvokeVoidAsync("Swal.fire", new { title = "Consulta RENIEC", text = msg, icon = "warning" });
+					}
+
+					// 2. Consulta Es Médico (CMP): siempre ejecutar cuando hay DNI válido
+					await ConsultarEsMedicoSiHayDniAsync(formData.NumeroDocumento);
+				}
+				finally
+				{
+					consultandoReniec = false;
+					StateHasChanged();
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			consultandoReniec = false;
+			StateHasChanged();
+			await JS.InvokeVoidAsync("console.warn", new { tag = "RENIEC-ERR", ex = ex.Message });
+			await JS.InvokeVoidAsync("Swal.fire", new { title = "Consulta RENIEC", text = "Error de red o del servidor. Si trabajas en localhost, RENIEC puede aceptar solo IPs autorizadas.", icon = "error" });
+		}
 	}
 	async Task OnTipoValidacionSeleccionado(string valorseleccionado)
 	{
 		formData.TipoValidacion = valorseleccionado;
 		tipoValidacionExtranjera = valorseleccionado ?? "";
-		// tipoSeleccionado = e.Value?.ToString() ?? "1";
+		
+		await JS.InvokeVoidAsync("console.log", new { 
+			tag = "OnTipoValidacionSeleccionado", 
+			valorSeleccionado = valorseleccionado, 
+			tipoValidacionExtranjera = tipoValidacionExtranjera,
+			tipoSeleccionado = tipoSeleccionado
+		});
 
-		//await CargarUniversidades();
 		// 🔄 Forzar re-render
 		StateHasChanged();
 
 		// 🕒 Esperar a que se actualice el DOM
-		await Task.Delay(1);
+		await Task.Delay(10);
 	}
-	async Task OnPaisSeleccionado(ChangeEventArgs e)
+	async Task OnPaisSeleccionadoAsync(string valorPais)
 	{
-		if (int.TryParse(e.Value?.ToString(), out int id))
+		formData.PaisUniversidad = valorPais;
+		
+		if (int.TryParse(valorPais, out int id))
 		{
 			paisId = id;
-			universidades = await Http.GetFromJsonAsync<List<Universidad>>($"api/universidad/{paisId}");
-			// universidades = await PaisUniversidadesService.ObtenerUniversidadesAsync(paisId);
-         await JS.InvokeVoidAsync("console.log", new { tag = "OnPaisSeleccionado", paisId, formPais = formData.PaisUniversidad, universidadesCount = universidades?.Count ?? 0 });
+			
+			// Si es universidad extranjera, cargar desde la API externa
+			if (tipoSeleccionado == "0")
+			{
+				var paisSeleccionado = paises.FirstOrDefault(p => p.Id == id);
+				if (paisSeleccionado != null)
+				{
+					nombrePaisSeleccionado = paisSeleccionado.Nombre;
+					await CargarUniversidadesExtranjeras(paisSeleccionado.Nombre);
+				}
+			}
+			else
+			{
+				// Si es universidad nacional, cargar desde el backend
+				universidades = await Http.GetFromJsonAsync<List<Universidad>>($"api/universidad/{paisId}");
+			}
+			
+			await JS.InvokeVoidAsync("console.log", new { tag = "OnPaisSeleccionadoAsync", paisId, formPais = formData.PaisUniversidad, universidadesCount = universidades?.Count ?? 0 });
 		}
+		
+		StateHasChanged();
+	}
+
+	async Task CargarUniversidadesExtranjeras(string nombrePais)
+	{
+		try
+		{
+			cargandoUniversidadesExtranjeras = true;
+			mostrarCampoTextoUniversidadExtranjera = false;
+			StateHasChanged();
+
+			// Limpiar la selección anterior
+			formData.NombreUniversidadExtranjera = string.Empty;
+
+			// Convertir el nombre del país a inglés para la API
+			var nombrePaisIngles = ObtenerNombrePaisIngles(nombrePais);
+			
+			await JS.InvokeVoidAsync("console.log", new { tag = "CargarUniversidadesExtranjeras", paisEspanol = nombrePais, paisIngles = nombrePaisIngles });
+
+			// Llamar al endpoint del backend que hace proxy a la API externa
+			var url = $"api/universidad/extranjeras/{Uri.EscapeDataString(nombrePaisIngles)}";
+			
+			universidadesExtranjeras = await Http.GetFromJsonAsync<List<UniversidadExtranjera>>(url) ?? new();
+			
+			await JS.InvokeVoidAsync("console.log", new { tag = "CargarUniversidadesExtranjeras-Resultado", pais = nombrePaisIngles, count = universidadesExtranjeras.Count });
+			
+			if (universidadesExtranjeras.Count == 0)
+			{
+				// No se encontraron universidades, mostrar campo de texto
+				mostrarCampoTextoUniversidadExtranjera = true;
+				cargandoUniversidadesExtranjeras = false;
+				StateHasChanged();
+			}
+			else
+			{
+				// Inicializar Select2 después de cargar las universidades
+				mostrarCampoTextoUniversidadExtranjera = false;
+				cargandoUniversidadesExtranjeras = false; // Importante: desactivar loading ANTES de renderizar el select
+				StateHasChanged();
+				await Task.Delay(300); // Esperar a que el DOM se actualice
+				await InicializarSelect2UniversidadesExtranjeras();
+			}
+		}
+		catch (Exception ex)
+		{
+			await JS.InvokeVoidAsync("console.error", new { tag = "CargarUniversidadesExtranjeras-Error", message = ex.Message });
+			// Si hay error, mostrar campo de texto
+			mostrarCampoTextoUniversidadExtranjera = true;
+			universidadesExtranjeras = new();
+			cargandoUniversidadesExtranjeras = false;
+			StateHasChanged();
+		}
+	}
+
+	async Task InicializarSelect2UniversidadesExtranjeras()
+	{
+		// Solo inicializar si hay universidades y no estamos mostrando campo de texto
+		if (universidadesExtranjeras.Count == 0 || mostrarCampoTextoUniversidadExtranjera || cargandoUniversidadesExtranjeras)
+		{
+			await JS.InvokeVoidAsync("console.log", new { tag = "InicializarSelect2-Skip", reason = "No hay universidades o se muestra campo de texto", count = universidadesExtranjeras.Count, mostrarTexto = mostrarCampoTextoUniversidadExtranjera });
+			return;
+		}
+
+		try
+		{
+			// Esperar un poco más para asegurar que el DOM esté listo
+			await Task.Delay(100);
+			
+			var elementId = currentStep == 1 ? "select_universidad_extranjera_paso1" : "select_universidad_extranjera";
+			await JS.InvokeVoidAsync("console.log", new { tag = "InicializarSelect2-Intentando", elementId = elementId, currentStep = currentStep });
+			await JS.InvokeVoidAsync("initSelect2UniversidadesExtranjeras", elementId);
+		}
+		catch (Exception ex)
+		{
+			await JS.InvokeVoidAsync("console.error", new { tag = "InicializarSelect2-Error", message = ex.Message });
+		}
+	}
+
+	async Task VolverABusquedaAutomaticaPaso1()
+	{
+		mostrarCampoTextoUniversidadExtranjera = false;
+		StateHasChanged();
+		await Task.Delay(100);
+		await JS.InvokeVoidAsync("initSelect2UniversidadesExtranjeras", "select_universidad_extranjera_paso1");
+	}
+
+	async Task VolverABusquedaAutomatica()
+	{
+		mostrarCampoTextoUniversidadExtranjera = false;
+		StateHasChanged();
+		await Task.Delay(100);
+		await InicializarSelect2UniversidadesExtranjeras();
+	}
+
+	async Task CambiarATextoManualPaso1()
+	{
+		// Destruir Select2 antes de ocultar
+		await JS.InvokeVoidAsync("destroySelect2", "select_universidad_extranjera_paso1");
+		mostrarCampoTextoUniversidadExtranjera = true;
+		StateHasChanged();
+	}
+
+	async Task CambiarATextoManual()
+	{
+		// Destruir Select2 antes de ocultar
+		await JS.InvokeVoidAsync("destroySelect2", "select_universidad_extranjera");
+		mostrarCampoTextoUniversidadExtranjera = true;
+		StateHasChanged();
 	}
 
 	async Task CargarUniversidades()
@@ -1493,12 +3099,123 @@
 	{
 		try
 		{
-			// Validación básica de archivos
-			if (fotoFile == null && SolicitudId == 0)
+			intentadoEnviar = true;
+			
+			// Si la DDJJ ya está firmada con ID PERÚ y no hay cambios pendientes, avanzar directamente al paso 4
+			if (tieneDDJJFirmadaEnServidor && SolicitudId > 0 && !esCorreccionPorObservacion)
+			{
+				// Verificar si hay archivos nuevos o cambios pendientes
+				bool hayArchivosNuevos = _fileBuffers.Count > 0 || fotoFile != null || (_fotoBuffer != null && _fotoBuffer.Length > 0);
+				
+				if (!hayArchivosNuevos)
+				{
+					// No hay cambios pendientes, avanzar directamente al paso 4
+					estadoActual = "Pendiente de pago";
+					currentStep = 4;
+					StateHasChanged();
+					
+					await JS.InvokeVoidAsync("Swal.fire", new
+					{
+						title = "Continuar al Pago",
+						text = "La DDJJ ya está validada con ID PERÚ y los datos están guardados. Puede continuar con el pago.",
+						icon = "success",
+						confirmButtonText = "Continuar"
+					});
+					return;
+				}
+				else
+				{
+					// Hay archivos nuevos, guardarlos primero
+					await JS.InvokeVoidAsync("Swal.fire", new
+					{
+						title = "Guardando cambios",
+						text = "Se detectaron archivos nuevos. Guardando cambios antes de continuar...",
+						icon = "info",
+						timer = 2000,
+						showConfirmButton = false
+					});
+				}
+			}
+			
+			// DDJJ solo es obligatoria si NO viene de observación
+			if (!esCorreccionPorObservacion)
+			{
+				ddjjValida = aceptaDDJJ;
+				if (!ddjjValida)
+				{
+					mensajeError = "Debe aceptar la Declaración Jurada para continuar.";
+					return;
+				}
+			}
+
+			// Validación básica de archivos: foto requerida si no hay en servidor ni en formulario
+			if (!TieneFotoEnServidorOBuffer())
 			{
 				mostrarErrorFoto = true;
 				mensajeError = "Debe seleccionar una foto válida";
 				return;
+			}
+			var tieneCarnetEnFormulario = _fileBuffers.ContainsKey("CarnetExtranjeria") || (pdfCarnetExtranjeria != null || formData.CarnetExtranjeriaPath != null);
+			if (formData.TipoDocumento == "64" && !tieneCarnetEnServidor && !tieneCarnetEnFormulario)
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Debe cargar el PDF escaneado del Carnet de Extranjería (ambas caras).", icon = "warning" });
+				return;
+			}
+			// Universidad: requerida solo si origen Nacional; si Extranjera se usa NombreUniversidadExtranjera
+			if (formData.UniversidadOrigen == "1" && string.IsNullOrWhiteSpace(formData.Universidad))
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Seleccione la Universidad.", icon = "warning" });
+				return;
+			}
+			if (formData.UniversidadOrigen == "0" && string.IsNullOrWhiteSpace(formData.NombreUniversidadExtranjera))
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Ingrese el nombre de la Universidad extranjera.", icon = "warning" });
+				return;
+			}
+			if (formData.FechaEmisionTitulo == default(DateTime))
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Seleccione la fecha de titulación.", icon = "warning" });
+				return;
+			}
+
+			var esExtranjero = formData.UniversidadOrigen == "0" || formData.TipoDocumento == "64";
+			if (esExtranjero && !string.IsNullOrWhiteSpace(formData.TipoValidacion))
+			{
+				if (formData.TipoValidacion == "reconocimiento")
+				{
+					var tieneConstanciaRecon = TieneDocEnServidorOBuffer("ConstanciaInscripcionReconocimientoSunedu");
+					var tieneReconocimiento = TieneDocEnServidorOBuffer("ReconocimientoSunedu");
+					if (!tieneConstanciaRecon || !tieneReconocimiento)
+					{
+						await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Debe cargar la Constancia de Inscripción Reconocimiento Sunedu y el Reconocimiento Sunedu (PDF).", icon = "warning" });
+						return;
+					}
+					if (!formData.FechaReconocimiento.HasValue)
+					{
+						await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Seleccione la Fecha de reconocimiento.", icon = "warning" });
+						return;
+					}
+				}
+				else if (formData.TipoValidacion == "revalidacion")
+				{
+					var tieneConstanciaRev = TieneDocEnServidorOBuffer("ConstanciaInscripcionRevalidacionUniversidadNacional");
+					var tieneRevalidacion = TieneDocEnServidorOBuffer("RevalidacionUniversidadNacional");
+					if (!tieneConstanciaRev || !tieneRevalidacion)
+					{
+						await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Debe cargar la Constancia de Inscripción Revalidación y la Revalidación Universidad Nacional (PDF).", icon = "warning" });
+						return;
+					}
+					if (string.IsNullOrWhiteSpace(formData.UniversidadPeruana))
+					{
+						await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Seleccione la Universidad Peruana.", icon = "warning" });
+						return;
+					}
+					if (!formData.FechaRevalidacion.HasValue)
+					{
+						await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Seleccione la Fecha de revalidación.", icon = "warning" });
+						return;
+					}
+				}
 			}
 
 			// Mapeo a modelos
@@ -1506,13 +3223,15 @@
 			var educacion = new Educacion
 				{
 					UniversidadOrigen=formData.UniversidadOrigen,
-					UniversidadId = int.Parse(formData.Universidad),
+					UniversidadId = int.TryParse(formData.Universidad, out var uId) ? uId : 0,
 					FechaEmisionTitulo = formData.FechaEmisionTitulo,
 					PaisUniversidadId = int.TryParse(formData.PaisUniversidad, out var paisId) ? paisId : 0,
 					TipoValidacion = formData.TipoValidacion,
 					NumeroResolucion = formData.NumeroResolucion?.Trim(),
 					UniversidadPeruanaId = int.TryParse(formData.UniversidadPeruana, out var uniId) ? uniId : null,
-					NombreUniversidadExtranjera= formData.NombreUniversidadExtranjera?.Trim()
+					NombreUniversidadExtranjera= formData.NombreUniversidadExtranjera?.Trim(),
+					FechaReconocimiento = formData.FechaReconocimiento,
+					FechaRevalidacion = formData.FechaRevalidacion
 				};
 			// Serializar objetos a JSON
 			string personaJson = JsonSerializer.Serialize(persona);
@@ -1524,39 +3243,42 @@
 			// Agregar datos JSON
 			content.Add(new StringContent(personaJson), "Persona");
 			content.Add(new StringContent(educacionJson), "Educacion");
-
-			// Agregar archivo de foto
-			// var fotoContent = new StreamContent(fotoFile.OpenReadStream());
-			// fotoContent.Headers.ContentType = new MediaTypeHeaderValue(fotoFile.ContentType); // Usa 'new' aquí
-			// content.Add(fotoContent, "Foto", fotoFile.Name);
-
-			// Agregar archivos (solo si hay nuevos)
-			if (fotoFile != null)
+			// Agregar datos de DDJJ (el backend debe registrar fecha/hora e IP del request)
+			var ddjj = new
 			{
-				var fotoContent = new StreamContent(fotoFile.OpenReadStream(maxAllowedSize: 5 * 1024 * 1024));
-				fotoContent.Headers.ContentType = new MediaTypeHeaderValue(fotoFile.ContentType);
-				content.Add(fotoContent, "Foto", fotoFile.Name);
-			}
+				Aceptada = true,
+				PersonaId,
+				Version = ddjjVersion,
+				Texto = ddjjTexto,
+				AceptadaEnClienteUtc = DateTime.UtcNow
+			};
+			string ddjjJson = JsonSerializer.Serialize(ddjj);
+			content.Add(new StringContent(ddjjJson), "DDJJ");
+
+			// Agregar archivos desde buffers (evita _blazorFilesById null al enviar)
+			AddFotoFromBufferIfPresent(content);
 
 			// 3.3 PDF comunes (nacionales y extranjeros)
-			AddPdfIfNotNull(content, pdfTituloMedicoCirujano, "TituloMedicoCirujano");
-			AddPdfIfNotNull(content, pdfConstanciaInscripcionSunedu, "ConstanciaInscripcionSunedu");
-            AddPdfIfNotNull(content, pdfCertificadoAntecedentesPenales, "CertificadoAntecedentesPenales");
+			AddPdfFromBufferIfPresent(content, "TituloMedicoCirujano");
+			AddPdfFromBufferIfPresent(content, "ConstanciaInscripcionSunedu");
+			AddPdfFromBufferIfPresent(content, "CertificadoAntecedentesPenales");
 
-			// 3.4 PDF solo‑extranjeros
-			if (formData.UniversidadOrigen == "0") {
-				AddPdfIfNotNull(content, pdfCarnetExtranjeria, "CarnetExtranjeria");
-
-				if (formData.TipoValidacion == "reconocimiento") {
-					AddPdfIfNotNull(content, pdfConstanciaInscripcionReconocimientoSunedu, "ConstanciaInscripcionReconocimientoSunedu");
-					AddPdfIfNotNull(content, pdfReconocimientoSunedu, "ReconocimientoSunedu");
+			// 3.4 PDF solo‑extranjeros (Carnet también cuando tipo doc = 64)
+			if (formData.UniversidadOrigen == "0" || formData.TipoDocumento == "64")
+				AddPdfFromBufferIfPresent(content, "CarnetExtranjeria");
+			if (formData.UniversidadOrigen == "0")
+			{
+				if (formData.TipoValidacion == "reconocimiento")
+				{
+					AddPdfFromBufferIfPresent(content, "ConstanciaInscripcionReconocimientoSunedu");
+					AddPdfFromBufferIfPresent(content, "ReconocimientoSunedu");
 				}
-				else if (formData.TipoValidacion == "revalidacion") {
-					AddPdfIfNotNull(content, pdfConstanciaInscripcionRevalidacionUniversidadNacional, "ConstanciaInscripcionRevalidacionUniversidadNacional");
-					AddPdfIfNotNull(content, pdfRevalidacionUniversidadNacional, "RevalidacionUniversidadNacional");
+				else if (formData.TipoValidacion == "revalidacion")
+				{
+					AddPdfFromBufferIfPresent(content, "ConstanciaInscripcionRevalidacionUniversidadNacional");
+					AddPdfFromBufferIfPresent(content, "RevalidacionUniversidadNacional");
 				}
-				// resolución PDF sigue igual
-				AddPdfIfNotNull(content, resolucionFile, "ResolucionFile");
+				AddPdfFromBufferIfPresent(content, "ResolucionFile");
 			}
 
 			// Realizar petición HTTP
@@ -1575,28 +3297,71 @@
 				if (result?.Success == true)
 				{
 					string mensajeExito = result?.Message ?? "Operación completada exitosamente";
+					string tituloExito = "Éxito";
+					bool esActualizacionPorObservacion = SolicitudId > 0 && (estadoIdActual == 3 || estadoIdActual == 5 || estadoIdActual == 7);
+					bool esCompletandoFormulario = SolicitudId > 0 && estadoIdActual == -1; // Viene de curso completado
 					
-					// Si es una actualización (SolicitudId > 0), mostrar mensaje específico
-					if (SolicitudId > 0)
+					// Determinar mensaje según el contexto
+					if (esActualizacionPorObservacion)
 					{
+						// Viene de una observación (estado rechazado)
+						tituloExito = "Solicitud Actualizada";
 						mensajeExito = "Solicitud actualizada exitosamente. Ahora debe regresar al listado de solicitudes y hacer clic en el botón 'Reenviar' para continuar con el proceso.";
 					}
+					else if (esCompletandoFormulario || SolicitudId > 0)
+					{
+						// Completando paso 3: datos guardados. NO se actualiza a Registrado;
+						// el estado Registrado se asigna al verificar el pago (paso 4).
+						tituloExito = "Datos guardados";
+						mensajeExito = "Sus datos se han guardado correctamente. Continúe con el pago en el siguiente paso.";
+						
+						if (currentStep == 3)
+						{
+							estadoActual = "Pendiente de pago";
+							currentStep = 4;
+							if (SolicitudId > 0)
+							{
+								try { await JS.InvokeVoidAsync("premaSetPaso4", SolicitudId); } catch { }
+								try { await JS.InvokeVoidAsync("premaSetPoliticasDDJJ", SolicitudId); } catch { }
+							}
+							StateHasChanged();
+						}
+						else
+						{
+							await DeterminarPasoInicial();
+							if (currentStep == 3)
+							{
+								currentStep = 4;
+								estadoActual = "Pendiente de pago";
+								if (SolicitudId > 0)
+								{
+									try { await JS.InvokeVoidAsync("premaSetPaso4", SolicitudId); } catch { }
+									try { await JS.InvokeVoidAsync("premaSetPoliticasDDJJ", SolicitudId); } catch { }
+								}
+								StateHasChanged();
+							}
+						}
+					}
 					
-                    var _ = await JS.InvokeAsync<object>("Swal.fire", new
+                    await JS.InvokeVoidAsync("Swal.fire", new
                     {
-                        title = "Éxito",
+                        title = tituloExito,
                         text = mensajeExito,
                         icon = "success",
-                        confirmButtonText = "Ir al listado"
+                        confirmButtonText = esActualizacionPorObservacion ? "Ir al listado" : "Aceptar"
                     });
 
                     if (SolicitudId == 0)
                     {
                         LimpiarFormulario();
+						aceptaDDJJ = false; // finalizar marcado DDJJ tras completar proceso
                     }
 
-                    // Redirigir al listado de seguimiento tras confirmar
-                    Navigation.NavigateTo("/solicitudes/seguimiento", forceLoad: true);
+                    // Solo redirigir si es actualización por observación
+                    if (esActualizacionPorObservacion)
+                    {
+                        Navigation.NavigateTo("/solicitudes/seguimiento", forceLoad: true);
+                    }
 				}
 				else
 				{
@@ -1651,23 +3416,452 @@
 		}
 	}
 
-	void AddPdfIfNotNull(MultipartFormDataContent content, IBrowserFile? file, string formFieldName)
+	private void AbrirPoliticasModal()
 	{
-		if (file == null) return;
+		mostrarPoliticasModal = true;
+	}
 
-		var streamContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024));
-		streamContent.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
-		content.Add(streamContent, formFieldName, file.Name);
+	/// <summary>
+	/// Maneja el cambio del checkbox de políticas y lo persiste en BD
+	/// </summary>
+	private async Task OnTogglePoliticas(ChangeEventArgs e)
+	{
+		var aceptado = e?.Value is bool b && b;
+		formData.AceptaPoliticas = aceptado;
+		
+		// Solo guardar en BD si hay solicitud y se está aceptando
+		if (aceptado && SolicitudId > 0 && !tienePoliticasAceptadasEnServidor)
+		{
+			try
+			{
+				var response = await Http.PostAsync($"api/DDJJ/aceptar-politicas/{SolicitudId}", null);
+				if (response.IsSuccessStatusCode)
+				{
+					tienePoliticasAceptadasEnServidor = true;
+					StateHasChanged();
+				}
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine($"Error al guardar políticas: {ex.Message}");
+				// No bloquear el flujo si falla
+			}
+		}
+	}
+
+	private async Task OnToggleDDJJ(ChangeEventArgs e)
+	{
+		if (!ddjjFirmada)
+		{
+			ActualizarDdjjPdfUrl();
+			mostrarDDJJModal = true;
+			StateHasChanged();
+			return;
+		}
+
+		aceptaDDJJ = e?.Value is bool b && b;
+		ddjjValida = aceptaDDJJ;
+	}
+
+	private void OnLabelDDJJClick()
+	{
+		if (!ddjjFirmada)
+		{
+			ActualizarDdjjPdfUrl();
+			mostrarDDJJModal = true;
+		}
+	}
+
+	private void CancelarFirmaDDJJ()
+	{
+		mostrarDDJJModal = false;
+	}
+
+	private async Task IniciarFirmaIdPeru()
+	{
+		ddjjFirmaEnProceso = true;
+		StateHasChanged();
+
+		try
+		{
+			// Si hay SolicitudId, guardar automáticamente los datos del paso 3 antes de ir a ID PERÚ
+			// Esto asegura que al retornar, los datos estén persistidos
+			if (SolicitudId > 0)
+			{
+				var guardadoExitoso = await GuardarDatosPaso3Automatico();
+				if (!guardadoExitoso)
+				{
+					// Si falla el guardado, preguntar si quiere continuar
+					var continuar = await JS.InvokeAsync<bool>("confirm", 
+						"Error al guardar datos", 
+						"No se pudieron guardar los datos del formulario. ¿Desea continuar con la validación ID PERÚ de todos modos?");
+					if (!continuar)
+					{
+						ddjjFirmaEnProceso = false;
+						StateHasChanged();
+						return;
+					}
+				}
+			}
+
+			// Iniciar flujo de firma con ID PERÚ (redirección completa)
+			// Asegurar que el returnUrl siempre incluya el SolicitudId
+			var returnUrl = Navigation.Uri;
+			if (SolicitudId > 0 && !returnUrl.Contains($"/prematricula/{SolicitudId}"))
+			{
+				// Si la URL no tiene el SolicitudId, agregarlo
+				if (returnUrl.EndsWith("/solicitudes/prematricula") || returnUrl.EndsWith("/solicitudes/prematricula/"))
+				{
+					returnUrl = $"{returnUrl.TrimEnd('/')}/{SolicitudId}";
+				}
+				else
+				{
+					// Si tiene query params, insertar el ID antes de los params
+					var uri = new Uri(returnUrl);
+					var path = uri.GetLeftPart(UriPartial.Path);
+					if (!path.Contains($"/prematricula/{SolicitudId}"))
+					{
+						path = path.TrimEnd('/');
+						if (path.EndsWith("/prematricula"))
+						{
+							path = $"{path}/{SolicitudId}";
+						}
+						returnUrl = path + uri.Query;
+					}
+				}
+			}
+			var url = $"api/DDJJ/firmar?returnUrl={Uri.EscapeDataString(returnUrl)}";
+			Navigation.NavigateTo(url, true);
+		}
+		catch (Exception ex)
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new 
+			{ 
+				title = "Error", 
+				text = $"Error al iniciar firma: {ex.Message}", 
+				icon = "error" 
+			});
+			ddjjFirmaEnProceso = false;
+			StateHasChanged();
+		}
+	}
+
+	/// <summary>
+	/// Guarda automáticamente los datos del paso 3 sin validar DDJJ (para persistir antes de ID PERÚ)
+	/// </summary>
+	private async Task<bool> GuardarDatosPaso3Automatico()
+	{
+		try
+		{
+			// Validaciones básicas (sin DDJJ)
+			if (!TieneFotoEnServidorOBuffer())
+			{
+				// Foto es opcional para guardado automático, solo loguear
+				Console.WriteLine("[AutoGuardado] Advertencia: No hay foto cargada");
+			}
+
+			// Mapeo a modelos
+			var persona = MapFormDataToPersona(formData);
+			var educacion = new Educacion
+			{
+				UniversidadOrigen = formData.UniversidadOrigen,
+				UniversidadId = int.TryParse(formData.Universidad, out var uId) ? uId : 0,
+				FechaEmisionTitulo = formData.FechaEmisionTitulo,
+				PaisUniversidadId = int.TryParse(formData.PaisUniversidad, out var paisId) ? paisId : 0,
+				TipoValidacion = formData.TipoValidacion,
+				NumeroResolucion = formData.NumeroResolucion?.Trim(),
+				UniversidadPeruanaId = int.TryParse(formData.UniversidadPeruana, out var uniId) ? uniId : null,
+				NombreUniversidadExtranjera = formData.NombreUniversidadExtranjera?.Trim(),
+				FechaReconocimiento = formData.FechaReconocimiento,
+				FechaRevalidacion = formData.FechaRevalidacion
+			};
+
+			// Serializar objetos a JSON
+			string personaJson = JsonSerializer.Serialize(persona);
+			string educacionJson = JsonSerializer.Serialize(educacion);
+
+			// Crear contenido multipart
+			using var content = new MultipartFormDataContent();
+
+			// Agregar datos JSON
+			content.Add(new StringContent(personaJson), "Persona");
+			content.Add(new StringContent(educacionJson), "Educacion");
+			
+			// Agregar datos de DDJJ (sin validar, solo para guardar)
+			var ddjj = new
+			{
+				Aceptada = aceptaDDJJ, // Usar el valor actual
+				PersonaId,
+				Version = ddjjVersion,
+				Texto = ddjjTexto,
+				AceptadaEnClienteUtc = DateTime.UtcNow
+			};
+			string ddjjJson = JsonSerializer.Serialize(ddjj);
+			content.Add(new StringContent(ddjjJson), "DDJJ");
+
+			// Agregar archivos desde buffers
+			AddFotoFromBufferIfPresent(content);
+			AddPdfFromBufferIfPresent(content, "TituloMedicoCirujano");
+			AddPdfFromBufferIfPresent(content, "ConstanciaInscripcionSunedu");
+			AddPdfFromBufferIfPresent(content, "CertificadoAntecedentesPenales");
+
+			// PDF solo-extranjeros
+			if (formData.UniversidadOrigen == "0" || formData.TipoDocumento == "64")
+				AddPdfFromBufferIfPresent(content, "CarnetExtranjeria");
+			if (formData.UniversidadOrigen == "0")
+			{
+				if (formData.TipoValidacion == "reconocimiento")
+				{
+					AddPdfFromBufferIfPresent(content, "ConstanciaInscripcionReconocimientoSunedu");
+					AddPdfFromBufferIfPresent(content, "ReconocimientoSunedu");
+				}
+				else if (formData.TipoValidacion == "revalidacion")
+				{
+					AddPdfFromBufferIfPresent(content, "ConstanciaInscripcionRevalidacionUniversidadNacional");
+					AddPdfFromBufferIfPresent(content, "RevalidacionUniversidadNacional");
+				}
+				AddPdfFromBufferIfPresent(content, "ResolucionFile");
+			}
+
+			// Guardar usando endpoint de edición
+			var response = await Http.PostAsync($"api/matricula/editar/{SolicitudId}", content);
+
+			if (response.IsSuccessStatusCode)
+			{
+				var result = await response.Content.ReadFromJsonAsync<ResponseModel>();
+				if (result?.Success == true)
+				{
+					Console.WriteLine("[AutoGuardado] Datos guardados exitosamente antes de ID PERÚ");
+					return true;
+				}
+			}
+
+			var errorContent = await response.Content.ReadAsStringAsync();
+			Console.WriteLine($"[AutoGuardado] Error al guardar: {errorContent}");
+			return false;
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"[AutoGuardado] Excepción: {ex.Message}");
+			return false;
+		}
+	}
+
+	private async Task SimularFirmaIdPeru()
+	{
+		try
+		{
+			ddjjFirmaEnProceso = true;
+			StateHasChanged();
+
+			// Simular delay de proceso de firma
+			await Task.Delay(1500);
+
+			// Marcar como firmada exitosamente
+			ddjjFirmada = true;
+			aceptaDDJJ = true;
+			ddjjValida = true;
+			ddjjFirmaEnProceso = false;
+			mostrarDDJJModal = false;
+
+			// Mostrar mensaje de éxito
+			await JS.InvokeVoidAsync("Swal.fire", new 
+			{ 
+				title = "Simulación Exitosa", 
+				text = "DDJJ firmada correctamente (modo testing). Ahora puede enviar la solicitud.", 
+				icon = "success",
+				timer = 2500,
+				showConfirmButton = false
+			});
+
+			StateHasChanged();
+		}
+		catch (Exception ex)
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new { title = "Error", text = ex.Message, icon = "error" });
+			ddjjFirmaEnProceso = false;
+			StateHasChanged();
+		}
+	}
+
+	/// <summary>
+	/// Descarga el PDF de DDJJ firmada con ID Perú
+	/// </summary>
+	private async Task DescargarDDJJFirmada()
+	{
+		if (SolicitudId <= 0) return;
+		
+		try
+		{
+			var url = $"api/DDJJ/descargar-firmada/{SolicitudId}";
+			await JS.InvokeVoidAsync("open", url, "_blank");
+		}
+		catch (Exception ex)
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new 
+			{ 
+				title = "Error", 
+				text = $"No se pudo descargar la DDJJ: {ex.Message}", 
+				icon = "error" 
+			});
+		}
+	}
+
+	private async Task SimularCursoCompletado()
+	{
+		try
+		{
+			verificandoCurso = true;
+			StateHasChanged();
+
+			// Simular delay de verificación
+			await Task.Delay(1000);
+
+			// Llamar al endpoint para marcar como completado en BD
+			var response = await Http.PostAsync($"api/aulavirtual/marcar-completado/{SolicitudId}", null);
+			
+			if (response.IsSuccessStatusCode)
+			{
+				// Marcar curso como completado localmente
+				cursoEticaCompletado = true;
+				estadoActual = "Curso completado (simulado)";
+				avanceCursoDetalle = "✓ Curso aprobado (100%) - SIMULADO";
+				currentStep = 3;
+
+				await JS.InvokeVoidAsync("Swal.fire", new 
+				{ 
+					title = "Simulación Exitosa", 
+					text = "Curso marcado como completado en la base de datos (modo desarrollo). Ahora puede continuar al paso 3.", 
+					icon = "success",
+					timer = 2500,
+					showConfirmButton = false
+				});
+			}
+			else
+			{
+				var errorMsg = await response.Content.ReadAsStringAsync();
+				await JS.InvokeVoidAsync("Swal.fire", new 
+				{ 
+					title = "Error", 
+					text = $"No se pudo marcar el curso como completado: {errorMsg}", 
+					icon = "error" 
+				});
+			}
+
+			verificandoCurso = false;
+			StateHasChanged();
+		}
+		catch (Exception ex)
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new { title = "Error", text = ex.Message, icon = "error" });
+			verificandoCurso = false;
+			StateHasChanged();
+		}
+	}
+
+	private void DescargarDDJJ()
+	{
+		// Construir URL de descarga dedicada (sin afectar la vista previa inline)
+		var tipo = formData?.TipoDocumento ?? "";
+		var doc = formData?.NumeroDocumento ?? "";
+		var nombres = (formData?.Nombres ?? "").Trim();
+		var apellidos = $"{(formData?.ApellidoPaterno ?? "").Trim()} {(formData?.ApellidoMaterno ?? "").Trim()}".Trim();
+
+		var url = $"api/DDJJ/download?nombre={Uri.EscapeDataString(nombres)}&apellidos={Uri.EscapeDataString(apellidos)}&tipoDoc={Uri.EscapeDataString(tipo)}&numeroDoc={Uri.EscapeDataString(doc)}&version={Uri.EscapeDataString(ddjjVersion)}";
+		// Descargar en la misma pestaña para evitar pausar el depurador en una nueva
+		Navigation.NavigateTo(url, true);
+	}
+
+	private void ActualizarDdjjPdfUrl()
+	{
+		var tipo = formData?.TipoDocumento ?? "";
+		var doc = formData?.NumeroDocumento ?? "";
+		var nombres = (formData?.Nombres ?? "").Trim();
+		var apellidos = $"{(formData?.ApellidoPaterno ?? "").Trim()} {(formData?.ApellidoMaterno ?? "").Trim()}".Trim();
+		ddjjPdfUrl = $"api/DDJJ/preview?nombre={Uri.EscapeDataString(nombres)}&apellidos={Uri.EscapeDataString(apellidos)}&tipoDoc={Uri.EscapeDataString(tipo)}&numeroDoc={Uri.EscapeDataString(doc)}&version={Uri.EscapeDataString(ddjjVersion)}";
+	}
+ 
+	void AddPdfFromBufferIfPresent(MultipartFormDataContent content, string formFieldName)
+	{
+		if (!_fileBuffers.TryGetValue(formFieldName, out var buf)) return;
+		var bytes = buf.Bytes;
+		var fileName = buf.FileName;
+		if (bytes == null || bytes.Length == 0) return;
+		var byteContent = new ByteArrayContent(bytes);
+		byteContent.Headers.ContentType = new MediaTypeHeaderValue("application/pdf");
+		content.Add(byteContent, formFieldName, fileName);
+	}
+
+	void AddFotoFromBufferIfPresent(MultipartFormDataContent content)
+	{
+		if (_fotoBuffer == null || _fotoBuffer.Length == 0 || string.IsNullOrEmpty(_fotoFileName)) return;
+		var byteContent = new ByteArrayContent(_fotoBuffer);
+		byteContent.Headers.ContentType = new MediaTypeHeaderValue(_fotoContentType ?? "image/jpeg");
+		content.Add(byteContent, "Foto", _fotoFileName);
+	}
+
+	static string? GetJsonString(JsonElement el, string camel, string pascal)
+	{
+		if (el.TryGetProperty(camel, out var a)) return a.GetString();
+		if (el.TryGetProperty(pascal, out var b)) return b.GetString();
+		return null;
+	}
+
+	void SetDocServidor(string key, string? path)
+	{
+		if (string.IsNullOrWhiteSpace(path)) return;
+		_documentosCargadosServidor[key] = path;
+	}
+
+	string TextoArchivo(string bufferKey, IBrowserFile? pdfFile, string label)
+	{
+		if (pdfFile != null) return pdfFile.Name;
+		if (_fileBuffers.TryGetValue(bufferKey, out var b)) return b.FileName;
+		if (_documentosCargadosServidor.TryGetValue(bufferKey, out var path))
+			return "Archivo cargado: " + Path.GetFileName(path);
+		return "Seleccione " + label;
+	}
+
+	string TextoFoto()
+	{
+		if (fotoFile != null) return fotoFile.Name;
+		if (!string.IsNullOrEmpty(_fotoFileName)) return _fotoFileName;
+		if (_documentosCargadosServidor.TryGetValue("Foto", out var path))
+			return "Archivo cargado: " + Path.GetFileName(path);
+		return "Seleccione foto";
+	}
+
+	bool TieneDocEnServidorOBuffer(string bufferKey)
+	{
+		if (_fileBuffers.ContainsKey(bufferKey)) return true;
+		return _documentosCargadosServidor.ContainsKey(bufferKey);
+	}
+
+	bool TieneFotoEnServidorOBuffer()
+	{
+		if (fotoFile != null || (_fotoBuffer != null && _fotoBuffer.Length > 0)) return true;
+		return _documentosCargadosServidor.ContainsKey("Foto");
 	}
 
 	private void LimpiarFormulario()
 	{
 		formData = new FormData();
-		// editContext = new EditContext(formData);
-		// editContext.OnFieldChanged += async (_, __) => await VerificarFormularioValido();
 
 		fotoFile = null;
+		_fotoBuffer = null;
+		_fotoFileName = null;
+		_fotoContentType = null;
+		_fileBuffers.Clear();
+		_documentosCargadosServidor.Clear();
 		resolucionFile = null;
+		pdfTituloMedicoCirujano = null;
+		pdfConstanciaInscripcionSunedu = null;
+		pdfCertificadoAntecedentesPenales = null;
+		pdfCarnetExtranjeria = null;
+		pdfConstanciaInscripcionReconocimientoSunedu = null;
+		pdfReconocimientoSunedu = null;
+		pdfConstanciaInscripcionRevalidacionUniversidadNacional = null;
+		pdfRevalidacionUniversidadNacional = null;
 		imagePreviewUrl = null;
 		mensajeError = string.Empty;
 		mensajeValidacion = string.Empty;
@@ -1687,9 +3881,26 @@
 		public string message { get; set; }
 	}
 
-	private void OnResolucionSelected(InputFileChangeEventArgs e)
+	private async Task OnResolucionSelected(InputFileChangeEventArgs e)
 	{
-		resolucionFile = e.File;
+		var file = e.File;
+		resolucionFile = file;
+		if (file != null)
+		{
+			try
+			{
+				await using var stream = file.OpenReadStream(maxAllowedSize: _pdfMaxBytes);
+				using var ms = new MemoryStream();
+				await stream.CopyToAsync(ms);
+				_fileBuffers["ResolucionFile"] = (ms.ToArray(), file.Name);
+			}
+			catch
+			{
+				_fileBuffers.Remove("ResolucionFile");
+			}
+		}
+		else
+			_fileBuffers.Remove("ResolucionFile");
 	}
 		
 
@@ -1711,41 +3922,948 @@
 		}
 	}
 
-	// Manejador genérico para archivos
-	private void OnFileSelected(InputFileChangeEventArgs e, string propertyName)
+	// Manejador genérico para archivos; bufferiza al seleccionar para evitar _blazorFilesById en submit.
+	private async Task OnFileSelected(InputFileChangeEventArgs e, string propertyName)
 	{
 		var file = e.File;
+		if (file == null) return;
 
 		typeof(FormData).GetProperty(propertyName)?.SetValue(formData, file);
 
-		// guarda en variable auxiliar para mostrar en UI
+		var key = propertyName switch
+		{
+			nameof(formData.TituloMedicoCirujanoPath) => "TituloMedicoCirujano",
+			nameof(formData.ConstanciaInscripcionSuneduPath) => "ConstanciaInscripcionSunedu",
+			nameof(formData.CertificadoAntecedentesPenalesPath) => "CertificadoAntecedentesPenales",
+			nameof(formData.CarnetExtranjeriaPath) => "CarnetExtranjeria",
+			nameof(formData.ConstanciaInscripcionReconocimientoSuneduPath) => "ConstanciaInscripcionReconocimientoSunedu",
+			nameof(formData.ReconocimientoSuneduPath) => "ReconocimientoSunedu",
+			nameof(formData.ConstanciaInscripcionRevalidacionUniversidadNacionalPath) => "ConstanciaInscripcionRevalidacionUniversidadNacional",
+			nameof(formData.RevalidacionUniversidadNacionalPath) => "RevalidacionUniversidadNacional",
+			_ => null
+		};
+
+		if (!string.IsNullOrEmpty(key))
+		{
+			try
+			{
+				await using var stream = file.OpenReadStream(maxAllowedSize: _pdfMaxBytes);
+				using var ms = new MemoryStream();
+				await stream.CopyToAsync(ms);
+				_fileBuffers[key] = (ms.ToArray(), file.Name);
+			}
+			catch
+			{
+				_fileBuffers.Remove(key);
+			}
+		}
+
 		switch (propertyName)
 		{
-			case nameof(formData.TituloMedicoCirujanoPath):
-				pdfTituloMedicoCirujano = file; break;
-
-			case nameof(formData.ConstanciaInscripcionSuneduPath):
-				pdfConstanciaInscripcionSunedu = file; break;
-
-			case nameof(formData.CertificadoAntecedentesPenalesPath):
-				pdfCertificadoAntecedentesPenales = file; break;
-
-			case nameof(formData.CarnetExtranjeriaPath):
-				pdfCarnetExtranjeria = file; break;
-
-				case nameof(formData.ConstanciaInscripcionReconocimientoSuneduPath):
-				pdfConstanciaInscripcionReconocimientoSunedu = file; break;
-
-			case nameof(formData.ConstanciaInscripcionRevalidacionUniversidadNacionalPath):
-				pdfConstanciaInscripcionRevalidacionUniversidadNacional = file; break;
-
-				case nameof(formData.ReconocimientoSuneduPath):
-				pdfReconocimientoSunedu = file; break;
-
-			case nameof(formData.RevalidacionUniversidadNacionalPath):
-				pdfRevalidacionUniversidadNacional = file; break;
+			case nameof(formData.TituloMedicoCirujanoPath): pdfTituloMedicoCirujano = file; break;
+			case nameof(formData.ConstanciaInscripcionSuneduPath): pdfConstanciaInscripcionSunedu = file; break;
+			case nameof(formData.CertificadoAntecedentesPenalesPath): pdfCertificadoAntecedentesPenales = file; break;
+			case nameof(formData.CarnetExtranjeriaPath): pdfCarnetExtranjeria = file; break;
+			case nameof(formData.ConstanciaInscripcionReconocimientoSuneduPath): pdfConstanciaInscripcionReconocimientoSunedu = file; break;
+			case nameof(formData.ConstanciaInscripcionRevalidacionUniversidadNacionalPath): pdfConstanciaInscripcionRevalidacionUniversidadNacional = file; break;
+			case nameof(formData.ReconocimientoSuneduPath): pdfReconocimientoSunedu = file; break;
+			case nameof(formData.RevalidacionUniversidadNacionalPath): pdfRevalidacionUniversidadNacional = file; break;
 		}
 		StateHasChanged();
+	}
+
+	// Helpers Stepper
+	private bool IsCompleted(int step)
+	{
+		// Un paso está completado si es menor al actual
+		if (step < currentStep) return true;
+		if (step == 2 && cursoEticaCompletado && currentStep >= 3) return true;
+		if (step == 4 && pagoCompletado && currentStep >= 5) return true;
+		return false;
+	}
+
+	private string StepClass(int step)
+	{
+		if (IsCompleted(step)) return "completed";
+		if (step == currentStep) return "current";
+		return "upcoming";
+	}
+
+	private bool ShouldShowCheck(int step)
+	{
+		// Mostrar check en pasos completados y en el paso actual
+		if (step < currentStep) return true;
+		if (step == currentStep) return true;
+		if (step == 2 && cursoEticaCompletado && currentStep >= 3) return true;
+		if (step == 4 && pagoCompletado && currentStep >= 5) return true;
+		return false;
+	}
+
+	private string GetConsejoNombre(string? consejoId)
+	{
+		if (string.IsNullOrWhiteSpace(consejoId)) return "-";
+		if (int.TryParse(consejoId, out var id))
+		{
+			var item = consejos?.FirstOrDefault(c => c.ConsejoRegional_Key == id);
+			return item?.Nombre ?? "-";
+		}
+		return "-";
+	}
+
+	private bool EsConsejoInvalido()
+	{
+		if (!int.TryParse(Convert.ToString(formData.ConsejoRegional), out var consejoId))
+			return true;
+		return consejoId <= 0;
+	}
+
+	private string GetMaestroNombre(List<MaestroRegistro> lista, string? key)
+	{
+		if (lista == null || string.IsNullOrWhiteSpace(key)) return "-";
+		// claves pueden ser string o int representado en string
+		if (int.TryParse(key, out var kint))
+		{
+			var item = lista.FirstOrDefault(x => x.MaestroRegistro_Key == kint);
+			return item?.Nombre ?? "-";
+		}
+		else
+		{
+			var item = lista.FirstOrDefault(x => x.MaestroRegistro_Key.ToString() == key);
+			return item?.Nombre ?? "-";
+		}
+	}
+
+	// Determina el paso a mostrar al cargar
+	private async Task DeterminarPasoInicial()
+	{
+		if (SolicitudId <= 0)
+		{
+			currentStep = 1;
+			return;
+		}
+
+		try
+		{
+			// Obtener la solicitud con su estado actual
+			var response = await Http.GetAsync($"api/personaseducacion/solicituddet/{SolicitudId}");
+			if (response.IsSuccessStatusCode)
+			{
+				var json = await response.Content.ReadAsStringAsync();
+				using var doc = JsonDocument.Parse(json);
+				var root = doc.RootElement;
+				
+				int estadoId = 0;
+				if (root.TryGetProperty("estadoSolicitudId", out var estadoProp))
+				{
+					estadoId = estadoProp.GetInt32();
+				}
+				else if (root.TryGetProperty("EstadoSolicitudId", out var estadoProp2))
+				{
+					estadoId = estadoProp2.GetInt32();
+				}
+
+				// Guardar el estadoIdActual para detectar observaciones
+				estadoIdActual = estadoId;
+				
+				// Determinar paso según estado
+				if (estadoId == 0)
+				{
+					// Estado 0: "Pendiente de curso Ética" → Paso 2
+					currentStep = 2;
+					cursoEticaCompletado = false;
+					estadoActual = "Pendiente de curso Ética";
+				}
+				else if (estadoId == -1)
+				{
+					// Estado -1: curso completado. Si ya envió paso 3 y está en pago → Paso 4; si no → Paso 3
+					var yaEnPaso4 = "";
+					try
+					{
+						yaEnPaso4 = await JS.InvokeAsync<string>("premaGetPaso4", SolicitudId) ?? "";
+					}
+					catch
+					{
+						// JS no disponible o error: quedarse en paso 3, no en 2
+					}
+					if (yaEnPaso4 == "1")
+					{
+						currentStep = 4;
+						cursoEticaCompletado = true;
+						estadoActual = "Pendiente de pago";
+					}
+					else
+					{
+						currentStep = 3;
+						cursoEticaCompletado = true;
+						estadoActual = "Curso completado, pendiente de documentos";
+					}
+				}
+				else if (estadoId == 7)
+				{
+					// Estado de observación (7 - Rechazado por Of. Matrícula) → Paso 3 para permitir corrección
+					currentStep = 3;
+					cursoEticaCompletado = true;
+					estadoActual = "Con observaciones - Requiere corrección";
+					// Cargar observaciones automáticamente
+					await ObtenerObservacionesSolicitud(SolicitudId);
+					
+					// En modo corrección, aceptar automáticamente políticas y DDJJ
+					// para evitar validaciones innecesarias
+					if (formData != null)
+					{
+						formData.AceptaPoliticas = true;
+					}
+					aceptaDDJJ = true;
+					ddjjValida = true;
+				}
+				else if (estadoId == 3 || estadoId == 5)
+				{
+					// Estados 3 y 5 ya no se usan, pero si existen, mostrar solo resumen
+					currentStep = 5;
+					cursoEticaCompletado = true;
+					pagoCompletado = true;
+					estadoActual = "En proceso";
+				}
+				else if (estadoId == 1)
+				{
+					// Estado 1: Registrado. Solo se llega aquí tras pago (real o simulado).
+					// Ir directo al paso 5; no usar VerificarEstadoPago (aún en desarrollo).
+					currentStep = 5;
+					pagoCompletado = true;
+					cursoEticaCompletado = true;
+					estadoActual = "Registrado";
+					try { await JS.InvokeVoidAsync("premaClearPaso4", SolicitudId); } catch { }
+					try { await JS.InvokeVoidAsync("premaClearPoliticasDDJJ", SolicitudId); } catch { }
+				}
+				else if (estadoId > 1 && estadoId != 3 && estadoId != 5 && estadoId != 7 && estadoId != 6)
+				{
+					// Otros estados avanzados (2, 4, 6, etc.) → Paso 5 (solo resumen)
+					currentStep = 5;
+					cursoEticaCompletado = true;
+					pagoCompletado = true; // Asumir que si está en estado avanzado, ya pagó
+					estadoActual = "En proceso";
+				}
+			}
+			else
+			{
+				// Si falla la petición: con solicitud existente no enviar al paso 2
+				if (SolicitudId > 0)
+				{
+					currentStep = 3;
+					cursoEticaCompletado = true;
+					estadoActual = "Curso completado, pendiente de documentos";
+				}
+				else
+				{
+					currentStep = 2;
+					cursoEticaCompletado = false;
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			Console.WriteLine($"Error en DeterminarPasoInicial: {ex.Message}");
+			if (SolicitudId > 0)
+			{
+				currentStep = 3;
+				cursoEticaCompletado = true;
+				estadoActual = "Curso completado, pendiente de documentos";
+			}
+			else
+			{
+				currentStep = 2;
+				cursoEticaCompletado = false;
+			}
+		}
+	}
+
+	private async Task RestaurarPoliticasDDJJSiAplicaAsync()
+	{
+		if (SolicitudId <= 0 || currentStep != 3) return;
+		try
+		{
+			var v = await JS.InvokeAsync<string>("premaGetPoliticasDDJJ", SolicitudId);
+			if (v != "1") return;
+			formData.AceptaPoliticas = true;
+			aceptaDDJJ = true;
+			ddjjValida = true;
+		}
+		catch { /* premaGetPoliticasDDJJ no disponible o error */ }
+	}
+
+	// Registro inicial mínimo (consejo, datos personales y universidad)
+	private async Task RegistrarInicialAsync()
+	{
+		try
+		{
+			isSavingInicial = true;
+			mensajeError = string.Empty;
+			intentadoEnviar = true; // Marcar que se intentó enviar para mostrar errores
+
+			// Validaciones de campos obligatorios (*)
+			if (string.IsNullOrWhiteSpace(perfilSeleccionado))
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Seleccione el perfil del solicitante", icon = "warning" });
+				return;
+			}
+			int consejoRegionalId;
+			if (!int.TryParse(Convert.ToString(formData.ConsejoRegional), out consejoRegionalId) || consejoRegionalId <= 0)
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Seleccione Consejo Regional", icon = "warning" });
+				return;
+			}
+			if (string.IsNullOrWhiteSpace(formData.TipoDocumento) || string.IsNullOrWhiteSpace(formData.NumeroDocumento))
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Ingrese Tipo y Número de Documento", icon = "warning" });
+				return;
+			}
+			if (string.IsNullOrWhiteSpace(formData.GrupoSanguineo))
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Seleccione Grupo Sanguíneo", icon = "warning" });
+				return;
+			}
+			if (string.IsNullOrWhiteSpace(formData.Nombres) || string.IsNullOrWhiteSpace(formData.ApellidoPaterno) || string.IsNullOrWhiteSpace(formData.ApellidoMaterno))
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Complete nombres y apellidos", icon = "warning" });
+				return;
+			}
+			if (string.IsNullOrWhiteSpace(formData.Sexo))
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Seleccione Sexo", icon = "warning" });
+				return;
+			}
+			if (string.IsNullOrWhiteSpace(formData.EstadoCivil))
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Seleccione Estado Civil", icon = "warning" });
+				return;
+			}
+			if (string.IsNullOrWhiteSpace(formData.UniversidadOrigen) || string.IsNullOrWhiteSpace(formData.PaisUniversidad))
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Complete los datos de universidad", icon = "warning" });
+				return;
+			}
+			if (formData.UniversidadOrigen == "1" && string.IsNullOrWhiteSpace(formData.Universidad))
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Seleccione la Universidad", icon = "warning" });
+				return;
+			}
+			if (formData.UniversidadOrigen == "0" && string.IsNullOrWhiteSpace(formData.NombreUniversidadExtranjera))
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Ingrese el nombre de la Universidad extranjera", icon = "warning" });
+				return;
+			}
+			var tieneCarnetEnFormularioReg = _fileBuffers.ContainsKey("CarnetExtranjeria") || (pdfCarnetExtranjeria != null || formData.CarnetExtranjeriaPath != null);
+			if (formData.TipoDocumento == "64" && !tieneCarnetEnServidor && !tieneCarnetEnFormularioReg)
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Debe cargar el PDF escaneado del Carnet de Extranjería (ambas caras).", icon = "warning" });
+				return;
+			}
+			// Extranjero (universidad extranjera o Carnet): obligar Tipo de validación
+			var esExtranjero = formData.UniversidadOrigen == "0" || formData.TipoDocumento == "64";
+			if (esExtranjero && string.IsNullOrWhiteSpace(formData.TipoValidacion))
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Seleccione el Tipo de validación (Reconocimiento de Sunedu o Revalidación).", icon = "warning" });
+				return;
+			}
+			if (formData.TipoValidacion == "reconocimiento")
+			{
+				if (string.IsNullOrWhiteSpace(formData.NumeroResolucion))
+				{
+					await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Ingrese la Resolución de Reconocimiento Universidad Nacional.", icon = "warning" });
+					return;
+				}
+			}
+			if (formData.TipoValidacion == "revalidacion")
+			{
+				if (string.IsNullOrWhiteSpace(formData.NumeroResolucion))
+				{
+					await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Ingrese la Resolución de Revalidación Universidad Nacional.", icon = "warning" });
+					return;
+				}
+				if (string.IsNullOrWhiteSpace(formData.UniversidadPeruana))
+				{
+					await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Seleccione la Universidad Peruana.", icon = "warning" });
+					return;
+				}
+				if (!formData.FechaRevalidacion.HasValue)
+				{
+					await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Seleccione la Fecha de revalidación.", icon = "warning" });
+					return;
+				}
+			}
+			if (formData.TipoValidacion == "reconocimiento" && !formData.FechaReconocimiento.HasValue)
+			{
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Validación", text = "Seleccione la Fecha de reconocimiento.", icon = "warning" });
+				return;
+			}
+
+			var persona = MapFormDataToPersona(formData);
+			var educacion = new Educacion
+			{
+				UniversidadOrigen = formData.UniversidadOrigen,
+				UniversidadId = int.TryParse(formData.Universidad, out var uniId) ? uniId : 0,
+				FechaEmisionTitulo = formData.FechaEmisionTitulo,
+				PaisUniversidadId = int.TryParse(formData.PaisUniversidad, out var pId) ? pId : 0,
+				TipoValidacion = formData.TipoValidacion,
+				NumeroResolucion = formData.NumeroResolucion?.Trim(),
+				UniversidadPeruanaId = int.TryParse(formData.UniversidadPeruana, out var uniPer) ? uniPer : null,
+				NombreUniversidadExtranjera = formData.NombreUniversidadExtranjera?.Trim(),
+				FechaReconocimiento = formData.FechaReconocimiento,
+				FechaRevalidacion = formData.FechaRevalidacion
+			};
+
+		string personaJson = JsonSerializer.Serialize(persona);
+		string educacionJson = JsonSerializer.Serialize(educacion);
+
+		using var content = new MultipartFormDataContent();
+		content.Add(new StringContent(personaJson), "Persona");
+		content.Add(new StringContent(educacionJson), "Educacion");
+		content.Add(new StringContent(perfilSeleccionado), "PerfilSeleccionado");
+		if (formData.TipoDocumento == "64")
+			AddPdfFromBufferIfPresent(content, "CarnetExtranjeria");
+
+		// Si ya existe una solicitud, actualizarla en lugar de crear una nueva
+			HttpResponseMessage response;
+			if (SolicitudId > 0)
+			{
+				// Actualizar solicitud existente
+				response = await Http.PostAsync($"api/matricula/editar/{SolicitudId}", content);
+			}
+			else
+			{
+				// Crear registro inicial en estado "Pendiente de curso Ética"
+				response = await Http.PostAsync("api/matricula/crear-inicial", content);
+				if (!response.IsSuccessStatusCode)
+				{
+					// Fallback si aún no existe el endpoint dedicado
+					response = await Http.PostAsync("api/matricula/guardar?modo=inicial", content);
+				}
+			}
+
+			var raw = await response.Content.ReadAsStringAsync();
+			GuardarResponse? resp = null;
+			try { resp = JsonSerializer.Deserialize<GuardarResponse>(raw, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }); } catch { }
+
+			// Verificar que la respuesta sea exitosa (tanto HTTP como en el body JSON)
+			if (response.IsSuccessStatusCode && resp?.Success == true)
+			{
+				var newId = resp?.SolicitudId ?? resp?.Id ?? 0;
+				var eraNuevaSolicitud = SolicitudId <= 0; // Guardar si era nueva antes de asignar el ID
+				
+				if (newId > 0 && eraNuevaSolicitud) 
+				{
+					SolicitudId = newId;
+				}
+
+				if (eraNuevaSolicitud)
+				{
+					// Creación exitosa - avanzar al paso 2
+					estadoActual = "Pendiente de curso Ética";
+					currentStep = 2;
+					StateHasChanged(); // Forzar actualización de la UI
+					await JS.InvokeVoidAsync("Swal.fire", new { title = "Registro creado", text = "Se creó el registro inicial. Continúe con el curso de Ética.", icon = "success" });
+				}
+					else
+					{
+						// Actualización exitosa - avanzar al siguiente paso según el paso actual
+						var pasoAnterior = currentStep;
+						
+						// Avanzar al siguiente paso según el paso actual
+						switch (pasoAnterior)
+						{
+							case 1:
+								currentStep = 2;
+								estadoActual = "Pendiente de curso Ética";
+								StateHasChanged();
+								await JS.InvokeVoidAsync("Swal.fire", new { title = "Registro actualizado", text = "Los datos se actualizaron correctamente. Continúe con el curso de Ética.", icon = "success" });
+								break;
+							case 2:
+								// Si el curso ya está completado, avanzar al paso 3
+								if (cursoEticaCompletado)
+								{
+									currentStep = 3;
+									estadoActual = "Curso completado, pendiente de documentos";
+									StateHasChanged();
+									await JS.InvokeVoidAsync("Swal.fire", new { title = "Registro actualizado", text = "Los datos se actualizaron correctamente. Continúe completando la solicitud.", icon = "success" });
+								}
+								else
+								{
+									await JS.InvokeVoidAsync("Swal.fire", new { title = "Registro actualizado", text = "Los datos se actualizaron correctamente.", icon = "success" });
+								}
+								break;
+							case 3:
+								// Si se actualiza desde el paso 3, avanzar al paso 4 (pago)
+								currentStep = 4;
+								StateHasChanged();
+								await JS.InvokeVoidAsync("Swal.fire", new { title = "Registro actualizado", text = "Los datos se actualizaron correctamente. Continúe con el pago.", icon = "success" });
+								break;
+							case 4:
+								// Si se actualiza desde el paso 4 y el pago está completado, avanzar al paso 5
+								if (pagoCompletado)
+								{
+									currentStep = 5;
+									StateHasChanged();
+									await JS.InvokeVoidAsync("Swal.fire", new { title = "Registro actualizado", text = "Los datos se actualizaron correctamente.", icon = "success" });
+								}
+								else
+								{
+									await JS.InvokeVoidAsync("Swal.fire", new { title = "Registro actualizado", text = "Los datos se actualizaron correctamente.", icon = "success" });
+								}
+								break;
+							default:
+								await JS.InvokeVoidAsync("Swal.fire", new { title = "Registro actualizado", text = "Los datos se actualizaron correctamente.", icon = "success" });
+								break;
+						}
+					}
+				return;
+			}
+
+			// Mostrar error con el mensaje del servidor
+			var errorMessage = resp?.Message ?? raw;
+			await JS.InvokeVoidAsync("Swal.fire", new { title = "Error", text = string.IsNullOrWhiteSpace(errorMessage) ? (SolicitudId > 0 ? "No se pudo actualizar el registro" : "No se pudo crear el registro inicial") : errorMessage, icon = "error" });
+		}
+		catch (Exception ex)
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new { title = "Error", text = ex.Message, icon = "error" });
+		}
+		finally
+		{
+			isSavingInicial = false;
+			StateHasChanged();
+		}
+	}
+
+	private async Task IrAlAulaVirtual()
+	{
+		if (SolicitudId <= 0)
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new { title = "Atención", text = "Primero cree el registro inicial.", icon = "warning" });
+			return;
+		}
+
+		try
+		{
+			abriendonAulaVirtual = true;
+			StateHasChanged();
+
+			// Autenticar con el Aula Virtual
+			var loginResponse = await Http.PostAsync($"api/aulavirtual/autenticar?solicitudId={SolicitudId}", null);
+			
+			if (loginResponse.IsSuccessStatusCode)
+			{
+				var loginResult = await loginResponse.Content.ReadFromJsonAsync<AulaVirtualLoginResponse>();
+				
+				if (loginResult?.success == true && !string.IsNullOrEmpty(loginResult.token))
+				{
+					tokenAulaVirtual = loginResult.token;
+					
+					// Construir URL del aula virtual con token
+					var aulaUrl = loginResult.urlAulaVirtual ?? $"{loginResult.token}";
+					
+					// Abrir en nueva pestaña
+					await JS.InvokeVoidAsync("open", aulaUrl, "_blank");
+					
+					await JS.InvokeVoidAsync("Swal.fire", new 
+					{ 
+						title = "Aula Virtual", 
+						text = "Se ha abierto el Aula Virtual en una nueva pestaña. Complete el curso y luego presione 'Verificar avance'.", 
+						icon = "info",
+						timer = 4000
+					});
+				}
+				else
+				{
+					await JS.InvokeVoidAsync("Swal.fire", new 
+					{ 
+						title = "Error", 
+						text = loginResult?.mensaje ?? "No se pudo autenticar con el Aula Virtual", 
+						icon = "error" 
+					});
+				}
+			}
+			else
+			{
+				var errorMsg = await loginResponse.Content.ReadAsStringAsync();
+				await JS.InvokeVoidAsync("Swal.fire", new 
+				{ 
+					title = "Error", 
+					text = $"Error al conectar con el Aula Virtual: {errorMsg}", 
+					icon = "error" 
+				});
+			}
+		}
+		catch (Exception ex)
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new 
+			{ 
+				title = "Error", 
+				text = $"Error inesperado: {ex.Message}", 
+				icon = "error" 
+			});
+		}
+		finally
+		{
+			abriendonAulaVirtual = false;
+			StateHasChanged();
+		}
+	}
+
+	private async Task VerificarCursoEticaAsync()
+	{
+		if (SolicitudId <= 0) return;
+
+		try
+		{
+			verificandoCurso = true;
+			StateHasChanged();
+			
+			// Verificar el avance del curso en el Aula Virtual
+			var response = await Http.GetAsync($"api/aulavirtual/verificar-avance?solicitudId={SolicitudId}");
+			
+			if (response.IsSuccessStatusCode)
+			{
+				var result = await response.Content.ReadFromJsonAsync<VerificarAvanceResponse>();
+				
+				if (result?.success == true)
+				{
+					// Actualizar información de avance
+					// Los estados que devuelve el API son: "No inscrito", "En curso", "aprobado", "desaprobado"
+					var estado = result.estado ?? "";
+					avanceCursoDetalle = estado switch
+					{
+						"aprobado" => $"✓ Curso aprobado ({result.porcentajeAvance ?? 100}%)",
+						"En curso" => $"En curso - Avance: {result.porcentajeAvance ?? 0}%",
+						"desaprobado" => $"Desaprobado - Avance: {result.porcentajeAvance ?? 0}%",
+						"No inscrito" => "No inscrito - Debe inscribirse al curso",
+						_ => estado != "" ? estado : "Estado desconocido"
+					};
+					
+					// Curso completado si está aprobado (el API devuelve "aprobado" en minúsculas)
+					cursoEticaCompletado = estado.Equals("aprobado", StringComparison.OrdinalIgnoreCase);
+					
+					if (cursoEticaCompletado)
+					{
+						estadoActual = "Curso completado, pendiente de documentos";
+						// Si estamos en el paso 2, avanzar al paso 3
+						if (currentStep == 2)
+						{
+							currentStep = 3;
+							StateHasChanged();
+						}
+						
+						await JS.InvokeVoidAsync("Swal.fire", new 
+						{ 
+							title = "¡Curso Completado!", 
+							text = "Ha completado exitosamente el curso de Ética. Ahora puede continuar con el resto de la solicitud.", 
+							icon = "success" 
+						});
+					}
+					else if (estado.Equals("En curso", StringComparison.OrdinalIgnoreCase))
+					{
+						await JS.InvokeVoidAsync("Swal.fire", new 
+						{ 
+							title = "Curso en Progreso", 
+							text = $"Su avance actual es del {result.porcentajeAvance ?? 0}%. Complete el curso para continuar.", 
+							icon = "info" 
+						});
+					}
+					else if (estado.Equals("desaprobado", StringComparison.OrdinalIgnoreCase))
+					{
+						await JS.InvokeVoidAsync("Swal.fire", new 
+						{ 
+							title = "Curso Desaprobado", 
+							text = "Debe volver a realizar el curso para continuar con el proceso.", 
+							icon = "warning" 
+						});
+					}
+					else if (estado.Equals("No inscrito", StringComparison.OrdinalIgnoreCase))
+					{
+						await JS.InvokeVoidAsync("Swal.fire", new 
+						{ 
+							title = "No Inscrito", 
+							text = "Debe inscribirse al curso de Ética primero. Use el botón 'Ir al Aula Virtual' para acceder.", 
+							icon = "info" 
+						});
+					}
+				}
+				else
+				{
+					await JS.InvokeVoidAsync("Swal.fire", new 
+					{ 
+						title = "Error", 
+						text = result?.mensaje ?? "No se pudo verificar el estado del curso", 
+						icon = "error" 
+					});
+				}
+			}
+			else
+			{
+				var errorMsg = await response.Content.ReadAsStringAsync();
+				await JS.InvokeVoidAsync("Swal.fire", new 
+				{ 
+					title = "Error", 
+					text = $"Error al verificar avance: {errorMsg}", 
+					icon = "error" 
+				});
+			}
+		}
+		catch (Exception ex)
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new 
+			{ 
+				title = "Error", 
+				text = $"Error inesperado: {ex.Message}", 
+				icon = "error" 
+			});
+		}
+		finally
+		{
+			verificandoCurso = false;
+			StateHasChanged();
+		}
+	}
+
+	private async Task AbrirPasarelaPago()
+	{
+		if (SolicitudId <= 0)
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new { title = "Atención", text = "Primero debe completar los pasos anteriores.", icon = "warning" });
+			return;
+		}
+
+		try
+		{
+			abriendoPasarela = true;
+			StateHasChanged();
+
+			var response = await Http.PostAsync($"api/pago/abrir-pasarela?solicitudId={SolicitudId}", null);
+			
+			if (response.IsSuccessStatusCode)
+			{
+				var result = await response.Content.ReadFromJsonAsync<PasarelaPagoResponse>();
+				
+				if (result?.success == true && !string.IsNullOrEmpty(result.url))
+				{
+					// La pasarela exige POST: enviar form en nueva pestaña
+					await JS.InvokeVoidAsync("premaAbrirPasarelaPost", result.url, result.postParams ?? new Dictionary<string, string>());
+					
+					await JS.InvokeVoidAsync("Swal.fire", new 
+					{ 
+						title = "Pasarela de Pago", 
+						text = "Se ha abierto la pasarela de pago en una nueva pestaña. Complete el pago y luego presione 'Verificar Pago'.", 
+						icon = "info",
+						timer = 4000
+					});
+				}
+				else
+				{
+					await JS.InvokeVoidAsync("Swal.fire", new 
+					{ 
+						title = "Error", 
+						text = result?.mensaje ?? "No se pudo abrir la pasarela de pago", 
+						icon = "error" 
+					});
+				}
+			}
+			else
+			{
+				var errorMsg = await response.Content.ReadAsStringAsync();
+				await JS.InvokeVoidAsync("Swal.fire", new 
+				{ 
+					title = "Error", 
+					text = $"Error al abrir pasarela: {errorMsg}", 
+					icon = "error" 
+				});
+			}
+		}
+		catch (Exception ex)
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new 
+			{ 
+				title = "Error", 
+				text = $"Error inesperado: {ex.Message}", 
+				icon = "error" 
+			});
+		}
+		finally
+		{
+			abriendoPasarela = false;
+			StateHasChanged();
+		}
+	}
+
+	private async Task VerificarPagoAsync()
+	{
+		if (SolicitudId <= 0)
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new { title = "Atención", text = "No hay solicitud asociada.", icon = "warning" });
+			return;
+		}
+
+		try
+		{
+			verificandoPago = true;
+			StateHasChanged();
+
+			var response = await Http.GetAsync($"api/pago/verificar?solicitudId={SolicitudId}");
+			
+			if (response.IsSuccessStatusCode)
+			{
+				var result = await response.Content.ReadFromJsonAsync<VerificarPagoResponse>();
+				
+				if (result?.pagado == true)
+				{
+					pagoCompletado = true;
+					comprobantePago = result.comprobante ?? "Comprobante registrado";
+					if (SolicitudId > 0)
+					{
+						try { await JS.InvokeVoidAsync("premaClearPaso4", SolicitudId); } catch { }
+						try { await JS.InvokeVoidAsync("premaClearPoliticasDDJJ", SolicitudId); } catch { }
+					}
+					
+					await JS.InvokeVoidAsync("Swal.fire", new 
+					{ 
+						title = "¡Pago Verificado!", 
+						text = "El pago ha sido verificado correctamente. Puede continuar con el siguiente paso.", 
+						icon = "success" 
+					});
+					
+					if (currentStep == 4)
+						currentStep = 5;
+				}
+				else
+				{
+					pagoCompletado = false;
+					comprobantePago = string.Empty;
+					
+					await JS.InvokeVoidAsync("Swal.fire", new 
+					{ 
+						title = "Pago Pendiente", 
+						text = result?.mensaje ?? "El pago aún no ha sido registrado. Complete el pago en la pasarela y vuelva a verificar.", 
+						icon = "info" 
+					});
+				}
+			}
+			else
+			{
+				var errorMsg = await response.Content.ReadAsStringAsync();
+				await JS.InvokeVoidAsync("Swal.fire", new 
+				{ 
+					title = "Error", 
+					text = $"Error al verificar pago: {errorMsg}", 
+					icon = "error" 
+				});
+			}
+		}
+		catch (Exception ex)
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new 
+			{ 
+				title = "Error", 
+				text = $"Error inesperado: {ex.Message}", 
+				icon = "error" 
+			});
+		}
+		finally
+		{
+			verificandoPago = false;
+			StateHasChanged();
+		}
+	}
+
+	private async Task SimularPagoDesarrolloAsync()
+	{
+		if (SolicitudId <= 0)
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new { title = "Atención", text = "No hay solicitud asociada.", icon = "warning" });
+			return;
+		}
+
+		try
+		{
+			simulandoPagoDev = true;
+			StateHasChanged();
+
+			var response = await Http.PostAsync($"api/pago/marcar-pagado-desarrollo?solicitudId={SolicitudId}", null);
+
+			if (response.IsSuccessStatusCode)
+			{
+				var result = await response.Content.ReadFromJsonAsync<ResponseModel>();
+				pagoCompletado = true;
+				comprobantePago = "Simulado (DEV)";
+				estadoIdActual = 1;
+				estadoActual = "En revisión";
+				if (SolicitudId > 0)
+				{
+					try { await JS.InvokeVoidAsync("premaClearPaso4", SolicitudId); } catch { }
+					try { await JS.InvokeVoidAsync("premaClearPoliticasDDJJ", SolicitudId); } catch { }
+				}
+
+				await JS.InvokeVoidAsync("Swal.fire", new
+				{
+					title = "Pago simulado (DEV)",
+					text = result?.Message ?? "Estado actualizado a Registrado. Se envió el correo de notificación.",
+					icon = "success"
+				});
+
+				if (currentStep == 4)
+					currentStep = 5;
+			}
+			else
+			{
+				var errorMsg = await response.Content.ReadAsStringAsync();
+				await JS.InvokeVoidAsync("Swal.fire", new { title = "Error", text = errorMsg ?? "No se pudo simular el pago.", icon = "error" });
+			}
+		}
+		catch (Exception ex)
+		{
+			await JS.InvokeVoidAsync("Swal.fire", new { title = "Error", text = $"Error inesperado: {ex.Message}", icon = "error" });
+		}
+		finally
+		{
+			simulandoPagoDev = false;
+			StateHasChanged();
+		}
+	}
+
+	private async Task VerificarEstadoPago()
+	{
+		try
+		{
+			var response = await Http.GetAsync($"api/pago/verificar?solicitudId={SolicitudId}");
+			if (response.IsSuccessStatusCode)
+			{
+				var result = await response.Content.ReadFromJsonAsync<VerificarPagoResponse>();
+				if (result?.pagado == true)
+				{
+					pagoCompletado = true;
+					comprobantePago = result.comprobante ?? "";
+					currentStep = 5;
+					if (SolicitudId > 0)
+					{
+						try { await JS.InvokeVoidAsync("premaClearPaso4", SolicitudId); } catch { }
+						try { await JS.InvokeVoidAsync("premaClearPoliticasDDJJ", SolicitudId); } catch { }
+					}
+				}
+				else
+				{
+					pagoCompletado = false;
+					currentStep = 4;
+				}
+			}
+			else
+			{
+				// Si no se puede verificar, asumir que no hay pago
+				pagoCompletado = false;
+				currentStep = 4;
+			}
+		}
+		catch
+		{
+			// Si hay error, asumir que no hay pago
+			pagoCompletado = false;
+			currentStep = 4;
+		}
 	}
 }
 

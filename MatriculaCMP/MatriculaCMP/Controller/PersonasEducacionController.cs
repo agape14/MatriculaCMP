@@ -1,4 +1,4 @@
-﻿using MatriculaCMP.Server.Data;
+using MatriculaCMP.Server.Data;
 using MatriculaCMP.Services;
 using MatriculaCMP.Shared;
 using Microsoft.AspNetCore.Mvc;
@@ -266,9 +266,18 @@ namespace MatriculaCMP.Controller
                     return NotFound("Solicitud no encontrada");
 
                 var estadoAnterior = solicitud.EstadoSolicitudId;
+                var nuevoEstadoId = dto.NuevoEstadoId;
+
+                // Omitir estado 3: Si se aprueba desde Consejo Regional (estado 2), ir directo a estado 4 o 6 (Aprobado por Of. Matrícula)
+                // Verificar si existe el estado 4, si no, usar el estado 6
+                if (dto.NuevoEstadoId == 2 && (estadoAnterior == 1 || estadoAnterior == 0))
+                {
+                    var estado4Existe = await _context.EstadoSolicitudes.AnyAsync(e => e.Id == 4);
+                    nuevoEstadoId = estado4Existe ? 4 : 6; // Saltar estado 3, ir directo a Aprobado por Of. Matrícula
+                }
 
                 // Cambiar estado
-                solicitud.EstadoSolicitudId = dto.NuevoEstadoId;
+                solicitud.EstadoSolicitudId = nuevoEstadoId;
                 var peruTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SA Pacific Standard Time");
                 var fechaCambio = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, peruTimeZone);
 
@@ -280,7 +289,7 @@ namespace MatriculaCMP.Controller
                 {
                     SolicitudId = dto.SolicitudId,
                     EstadoAnteriorId = estadoAnterior,
-                    EstadoNuevoId = dto.NuevoEstadoId,
+                    EstadoNuevoId = nuevoEstadoId,
                     FechaCambio = fechaCambio,
                     Observacion = dto.Observacion,
                     UsuarioCambio = usuarioId // Usar el ID del usuario autenticado
@@ -289,16 +298,15 @@ namespace MatriculaCMP.Controller
                 _context.SolicitudHistorialEstados.Add(historial);
                 await _context.SaveChangesAsync();
 
-                var destinatario = solicitud.Persona?.Email ?? "adelacruzcarlos@gmail.com";
-                var nombre = solicitud.Persona?.Nombres ?? "Nombre";
-                var apellido = solicitud.Persona?.ApellidoPaterno ?? "Apellido";
-
-                var nombreEstado = await _context.EstadoSolicitudes
-                    .Where(e => e.Id == dto.NuevoEstadoId)
-                    .Select(e => e.Nombre)
-                    .FirstOrDefaultAsync();
-
-                await EmailHelper.EnviarCorreoCambioEstadoAsync(destinatario, nombre, apellido, nombreEstado ?? "Sin Estado", dto.Observacion);
+                // Enviar correo solo para estados permitidos: 1, 6, 7, 9, 11, 13
+                var estadosPermitidos = new[] { 1, 6, 7, 9, 11, 13 };
+                if (estadosPermitidos.Contains(nuevoEstadoId))
+                {
+                    var destinatario = solicitud.Persona?.Email ?? "adelacruzcarlos@gmail.com";
+                    var nombre = solicitud.Persona?.Nombres ?? "Nombre";
+                    var apellido = solicitud.Persona?.ApellidoPaterno ?? "Apellido";
+                    await EmailHelper.EnviarCorreoCambioEstadoAsync(destinatario, nombre, apellido, nuevoEstadoId, dto.Observacion);
+                }
 
                 return Ok();
             }
@@ -309,7 +317,7 @@ namespace MatriculaCMP.Controller
         }
 
         [HttpGet("EstadosConCheck/{personaId}")]
-        public async Task<IActionResult> GetEstadosConCheck(int personaId)
+        public async Task<IActionResult> GetEstadosConCheck(int personaId, [FromQuery] bool vistaSimplificada = false)
         {
             // Obtener los estados con verReporte = true
             var estados = await _context.EstadoSolicitudes
@@ -343,16 +351,131 @@ namespace MatriculaCMP.Controller
                 }
             ).ToListAsync();
 
+            // Obtener diplomas para verificar fecha de entrega
+            var diplomas = await _context.Diplomas
+                .Where(d => _context.Solicitudes.Any(s => s.PersonaId == personaId && s.Id == d.SolicitudId))
+                .Select(d => new { d.SolicitudId, d.FechaEntrega })
+                .ToListAsync();
+
+            // Si es vista simplificada (para médico), transformar estados
+            if (vistaSimplificada)
+            {
+                var estadosSimplificados = new List<EstadoSolicitudConCheckDto>();
+                
+                // Mapeo de estados internos a estados visuales simplificados
+                // Estado 1: Pendiente de curso Ética
+                var estado1 = estados.FirstOrDefault(e => e.Id == 0 || e.Id == 1);
+                if (estado1 != null)
+                {
+                    estadosSimplificados.Add(new EstadoSolicitudConCheckDto
+                    {
+                        Id = 1,
+                        Nombre = "Pendiente de curso Ética",
+                        Color = estado1.Color,
+                        TieneCheck = estado1.TieneCheck
+                    });
+                }
+
+                // Estado 2: Registrado
+                var estado2 = estados.FirstOrDefault(e => e.Id == 1);
+                if (estado2 != null && estado2.Id == 1)
+                {
+                    estadosSimplificados.Add(new EstadoSolicitudConCheckDto
+                    {
+                        Id = 2,
+                        Nombre = "Registrado",
+                        Color = estado2.Color,
+                        TieneCheck = estado2.TieneCheck
+                    });
+                }
+
+                // Estado 3: Aprobado por Of. Matrícula (omite estado 3 interno)
+                // Verificar si pasó por estado 4 o 6 (Aprobado por Of. Matrícula)
+                var estadoAprobadoOM = estados.FirstOrDefault(e => e.Id == 4 || e.Id == 6);
+                if (estadoAprobadoOM != null)
+                {
+                    estadosSimplificados.Add(new EstadoSolicitudConCheckDto
+                    {
+                        Id = 3,
+                        Nombre = "Aprobado por Of. Matrícula",
+                        Color = estadoAprobadoOM.Color,
+                        TieneCheck = estadoAprobadoOM.TieneCheck || estados.Any(e => (e.Id == 4 || e.Id == 6) && e.TieneCheck)
+                    });
+                }
+
+                // Estado 4: Firmado por Consejo Regional (reemplaza estados 8 y 9 internos - Pendiente Firma Secretario CR y Decano CR)
+                var estado8 = estados.FirstOrDefault(e => e.Id == 8);
+                var estado9 = estados.FirstOrDefault(e => e.Id == 9);
+                bool tieneFirmaCR = (estado8?.TieneCheck ?? false) || (estado9?.TieneCheck ?? false);
+                estadosSimplificados.Add(new EstadoSolicitudConCheckDto
+                {
+                    Id = 4,
+                    Nombre = "Firmado por Consejo Regional",
+                    Color = estado8?.Color ?? estado9?.Color ?? "warning",
+                    TieneCheck = tieneFirmaCR
+                });
+
+                // Estado 5: Firmado por Consejo Nacional (reemplaza estados 10 y 11 internos - Pendiente Firma Secretario General y Decano)
+                var estado10 = estados.FirstOrDefault(e => e.Id == 10);
+                var estado11 = estados.FirstOrDefault(e => e.Id == 11);
+                bool tieneFirmaCN = (estado10?.TieneCheck ?? false) || (estado11?.TieneCheck ?? false);
+                estadosSimplificados.Add(new EstadoSolicitudConCheckDto
+                {
+                    Id = 5,
+                    Nombre = "Firmado por Consejo Nacional",
+                    Color = estado10?.Color ?? estado11?.Color ?? "info",
+                    TieneCheck = tieneFirmaCN
+                });
+
+                // Estado 6: Diploma Firmado - Entregado (reemplaza estados 12 y 13 internos)
+                var estado12 = estados.FirstOrDefault(e => e.Id == 12);
+                var estado13 = estados.FirstOrDefault(e => e.Id == 13);
+                bool tieneDiplomaEntregado = (estado12?.TieneCheck ?? false) || (estado13?.TieneCheck ?? false);
+                // Verificar si hay fecha de entrega en diplomas
+                bool tieneFechaEntrega = diplomas.Any(d => d.FechaEntrega.HasValue);
+                estadosSimplificados.Add(new EstadoSolicitudConCheckDto
+                {
+                    Id = 6,
+                    Nombre = "Diploma Firmado - Entregado",
+                    Color = estado13?.Color ?? "success",
+                    TieneCheck = tieneDiplomaEntregado || tieneFechaEntrega
+                });
+
+                estados = estadosSimplificados;
+            }
+
             // Calcular el porcentaje
             var totalEstados = estados.Count;
             var estadosCompletados = estados.Count(e => e.TieneCheck);
             var porcentaje = totalEstados > 0 ? (estadosCompletados * 100.0 / totalEstados) : 0;
 
+            // Determinar último estado visual
+            string nombreUltimoEstado = historial.FirstOrDefault()?.EstadoNombre ?? "Sin estado";
+            if (vistaSimplificada)
+            {
+                // Mapear último estado interno a estado visual simplificado
+                var ultimoEstadoId = historial.FirstOrDefault()?.EstadoId ?? 0;
+                nombreUltimoEstado = ultimoEstadoId switch
+                {
+                    0 or 1 => "Registrado",
+                    2 or 3 or 4 or 6 => "Aprobado por Of. Matrícula",
+                    5 or 6 or 8 or 9 => "Firmado por Consejo Regional",
+                    7 or 10 or 11 => "Firmado por Consejo Nacional",
+                    12 or 13 => "Diploma Firmado - Entregado",
+                    _ => nombreUltimoEstado
+                };
+                // Si hay fecha de entrega, mostrar como entregado
+                if (diplomas.Any(d => d.FechaEntrega.HasValue))
+                {
+                    nombreUltimoEstado = "Diploma Firmado - Entregado";
+                }
+            }
+
             // Construir la respuesta
             var response = new EstadoSolicitudConCheckResponse
             {
                 PorcentajeCompletado = Math.Round(porcentaje, 2), // Redondea a 2 decimales
-                NombreUltimoEstado = historial.FirstOrDefault()?.EstadoNombre,
+                NombreUltimoEstado = nombreUltimoEstado,
                 Estados = estados
             };
 

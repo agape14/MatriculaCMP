@@ -1,4 +1,4 @@
-﻿@using MatriculaCMP.Shared
+@using MatriculaCMP.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Authorization
 @using System.IdentityModel.Tokens.Jwt
@@ -63,7 +63,7 @@
                         <span>Inicio</span>
                     </a>
                     
-                    @if (perfilUsuario == "2" || perfilUsuario == "1")
+                    @if (perfilUsuario == "2")
                     {
                         <!-- Solicitante -->
                         <div class="mobile-menu-section">
@@ -87,13 +87,13 @@
                             <i class="ri-government-line"></i>
                             <strong>Consejo Regional</strong>
                         </div>
-                        <a href="/consejoregional/lista" class="mobile-menu-item">
-                            <i class="ri-folder-list-line"></i>
-                            <span>Solicitudes</span>
-                        </a>
                         <a href="/consejoregional/firmar-diplomas" class="mobile-menu-item">
                             <i class="ri-shield-check-line"></i>
                             <span>Firmar Diplomas</span>
+                        </a>
+                        <a href="/consejoregional/entregar-diplomas" class="mobile-menu-item">
+                            <i class="ri-hand-heart-line"></i>
+                            <span>Entregar Diplomas</span>
                         </a>
                     }
                     

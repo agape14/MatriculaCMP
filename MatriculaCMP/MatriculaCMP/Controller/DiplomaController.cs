@@ -400,5 +400,110 @@ namespace MatriculaCMP.Controller
                 return StatusCode(500, $"Error al descargar PDF: {ex.Message}");
             }
         }
+
+        [HttpGet("para-entrega")]
+        public async Task<IActionResult> ListarParaEntrega()
+        {
+            try
+            {
+                // Listar diplomas en estados 12 (Diploma Firmado - Pendiente Entrega) o 13 (Proceso finalizado - Entregado)
+                // o diplomas que ya tienen fecha de entrega
+                var registros = await _context.Solicitudes
+                    .Where(s => s.EstadoSolicitudId == 12 || s.EstadoSolicitudId == 13 || 
+                                _context.Diplomas.Any(d => d.SolicitudId == s.Id && d.FechaEntrega.HasValue))
+                    .Include(s => s.Persona)
+                    .Include(s => s.EstadoSolicitud)
+                    .Join(_context.Diplomas,
+                        s => s.Id,
+                        d => d.SolicitudId,
+                        (s, d) => new
+                        {
+                            SolicitudId = s.Id,
+                            NumeroSolicitud = s.NumeroSolicitud,
+                            FechaSolicitud = s.FechaSolicitud,
+                            EstadoId = s.EstadoSolicitudId,
+                            EstadoNombre = s.EstadoSolicitud.Nombre,
+                            PersonaId = s.PersonaId,
+                            NumeroDocumento = s.Persona.NumeroDocumento,
+                            NombreCompleto = s.Persona.NombresCompletos,
+                            NumeroColegiatura = s.Persona.NumeroColegiatura,
+                            DiplomaFechaEmision = d.FechaEmision,
+                            FechaEntrega = d.FechaEntrega,
+                            RutaPdf = d.RutaPdf
+                        })
+                    .OrderBy(r => r.NumeroSolicitud)
+                    .ToListAsync();
+
+                return Ok(registros);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error al listar diplomas para entrega: {ex.Message}");
+            }
+        }
+
+        [HttpPost("registrar-entrega")]
+        public async Task<IActionResult> RegistrarEntrega([FromBody] RegistrarEntregaDto dto)
+        {
+            try
+            {
+                var diploma = await _context.Diplomas
+                    .FirstOrDefaultAsync(d => d.SolicitudId == dto.SolicitudId);
+
+                if (diploma == null)
+                    return NotFound("Diploma no encontrado");
+
+                // Actualizar fecha de entrega
+                diploma.FechaEntrega = dto.FechaEntrega ?? DateTime.Now;
+
+                // Si el estado es 12 (Pendiente Entrega), cambiar a 13 (Entregado)
+                var solicitud = await _context.Solicitudes
+                    .FirstOrDefaultAsync(s => s.Id == dto.SolicitudId);
+
+                if (solicitud != null && solicitud.EstadoSolicitudId == 12)
+                {
+                    solicitud.EstadoSolicitudId = 13;
+                    _context.Solicitudes.Update(solicitud);
+
+                    // Guardar en historial
+                    var peruTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SA Pacific Standard Time");
+                    var fechaCambio = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, peruTimeZone);
+                    var historial = new SolicitudHistorialEstado
+                    {
+                        SolicitudId = dto.SolicitudId,
+                        EstadoAnteriorId = 12,
+                        EstadoNuevoId = 13,
+                        FechaCambio = fechaCambio,
+                        Observacion = $"Diploma entregado el {diploma.FechaEntrega.Value:dd/MM/yyyy}",
+                        UsuarioCambio = GetUsuarioAutenticadoId()
+                    };
+                    _context.SolicitudHistorialEstados.Add(historial);
+                    await _context.SaveChangesAsync();
+
+                    // Enviar correo para estado 13 (Proceso finalizado - Entregado)
+                    var destinatario = solicitud.Persona?.Email ?? "adelacruzcarlos@gmail.com";
+                    var nombre = solicitud.Persona?.Nombres ?? "Nombre";
+                    var apellido = solicitud.Persona?.ApellidoPaterno ?? "Apellido";
+                    await EmailHelper.EnviarCorreoCambioEstadoAsync(destinatario, nombre, apellido, 13, $"Diploma entregado el {diploma.FechaEntrega.Value:dd/MM/yyyy}");
+                }
+                else
+                {
+                    _context.Diplomas.Update(diploma);
+                    await _context.SaveChangesAsync();
+                }
+
+                return Ok(new { success = true, message = "Fecha de entrega registrada exitosamente" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error al registrar entrega: {ex.Message}");
+            }
+        }
+    }
+
+    public class RegistrarEntregaDto
+    {
+        public int SolicitudId { get; set; }
+        public DateTime? FechaEntrega { get; set; }
     }
 }

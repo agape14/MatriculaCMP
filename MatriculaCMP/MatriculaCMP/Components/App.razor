@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -146,10 +146,218 @@
             return text || null;
         }
 
+        // Funciones para Select2 de universidades extranjeras
+        window.initSelect2UniversidadesExtranjeras = (elementId) => {
+            try {
+                const selector = '#' + elementId;
+                const element = $(selector);
 
+                console.log('Intentando inicializar Select2 para:', elementId, 'Elemento encontrado:', element.length > 0);
+
+                if (element.length === 0) {
+                    console.warn('Elemento no encontrado:', elementId);
+                    return false;
+                }
+                
+                // Destruir Select2 si ya existe
+                if (element.data('select2')) {
+                    element.select2('destroy');
+                    element.off('change.select2');
+                }
+                
+                // Inicializar Select2
+                element.select2({
+                    placeholder: 'Seleccione o escriba para buscar...',
+                    allowClear: true,
+                    width: '100%',
+                    dropdownAutoWidth: true,
+                    language: {
+                        noResults: function() {
+                            return 'No se encontraron resultados';
+                        },
+                        searching: function() {
+                            return 'Buscando...';
+                        }
+                    }
+                });
+
+                // Manejar el evento de cambio para Blazor (con protección contra bucle infinito)
+                element.on('change.select2', function (e) {
+                    // Evitar bucle infinito
+                    if (this._processingChange) return;
+                    this._processingChange = true;
+                    
+                    var selectedValue = $(this).val();
+                    console.log('Select2 cambió a:', selectedValue);
+                    
+                    // Disparar el evento change nativo para que Blazor lo detecte
+                    var nativeEvent = new Event('change', { bubbles: true });
+                    this.dispatchEvent(nativeEvent);
+                    
+                    // Resetear la bandera después de un pequeño delay
+                    var self = this;
+                    setTimeout(function() {
+                        self._processingChange = false;
+                    }, 100);
+                });
+
+                console.log('Select2 inicializado correctamente para:', elementId, 'Options:', element.find('option').length);
+                return true;
+            } catch (error) {
+                console.error('Error al inicializar Select2 para', elementId, ':', error);
+                return false;
+            }
+        };
+
+        // Función para obtener el valor seleccionado del Select2
+        window.getSelect2Value = (elementId) => {
+            const selector = '#' + elementId;
+            const element = $(selector);
+            if (element.length > 0 && element.data('select2')) {
+                return element.val();
+            }
+            return null;
+        };
+
+        // Función para destruir Select2
+        window.destroySelect2 = (elementId) => {
+            try {
+                const selector = '#' + elementId;
+                const element = $(selector);
+                if (element.length > 0 && element.data('select2')) {
+                    element.select2('destroy');
+                    element.off('change.select2');
+                    console.log('Select2 destruido para:', elementId);
+                }
+            } catch (error) {
+                console.error('Error al destruir Select2:', error);
+            }
+        };
+
+        // Función para inicializar Select2 en el campo de País (para universidad extranjera)
+        window.initSelect2Pais = (elementId) => {
+            try {
+                const selector = '#' + elementId;
+                const element = $(selector);
+
+                if (element.length === 0) {
+                    console.warn('Elemento país no encontrado:', elementId);
+                    return false;
+                }
+                
+                // Destruir Select2 si ya existe
+                if (element.data('select2')) {
+                    element.select2('destroy');
+                    element.off('change.select2');
+                }
+                
+                // Inicializar Select2
+                element.select2({
+                    placeholder: 'Buscar país...',
+                    allowClear: true,
+                    width: '100%',
+                    language: {
+                        noResults: function() {
+                            return 'No se encontraron países';
+                        },
+                        searching: function() {
+                            return 'Buscando...';
+                        }
+                    }
+                });
+
+                // Manejar el evento de cambio para Blazor
+                element.on('change.select2', function (e) {
+                    if (this._processingChange) return;
+                    this._processingChange = true;
+                    
+                    var selectedValue = $(this).val();
+                    console.log('País Select2 cambió a:', selectedValue);
+                    
+                    var nativeEvent = new Event('change', { bubbles: true });
+                    this.dispatchEvent(nativeEvent);
+                    
+                    var self = this;
+                    setTimeout(function() {
+                        self._processingChange = false;
+                    }, 100);
+                });
+
+                console.log('Select2 País inicializado para:', elementId);
+                return true;
+            } catch (error) {
+                console.error('Error al inicializar Select2 País:', error);
+                return false;
+            }
+        };
+
+        // Funciones de modal y confirmación
+        window.confirmarSweet = async function (titulo, texto) {
+            const result = await Swal.fire({
+                title: titulo,
+                text: texto,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, proceder',
+                cancelButtonText: 'Salir'
+            });
+            return result.isConfirmed;
+        };
+
+        window.mostrarModal = (id) => {
+            console.log('muestra el modal', id);
+            var modal = new bootstrap.Modal(document.querySelector(id));
+            modal.show();
+        };
+
+        window.ocultarModal = (id) => {
+            var modalEl = document.querySelector(id);
+            var modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        };
+
+        window.inicializarDataTable = (tableId) => {
+            const selector = tableId;
+            if ($.fn.DataTable.isDataTable(selector)) {
+                $(selector).DataTable().clear().destroy();
+            }
+            setTimeout(() => {
+                $(selector).DataTable({
+                    responsive: true,
+                    destroy: true,
+                    autoWidth: false,
+                    language: {
+                        url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+                    }
+                });
+            }, 100);
+        };
+
+        // Prematrícula: persistir paso 4 y políticas/DDJJ (site.js no se carga en todas las vistas)
+        window.premaSetPaso4 = function(solicitudId) { try { localStorage.setItem('prematricula_paso4_' + solicitudId, '1'); } catch (e) {} };
+        window.premaGetPaso4 = function(solicitudId) { try { return localStorage.getItem('prematricula_paso4_' + solicitudId) || ''; } catch (e) { return ''; } };
+        window.premaClearPaso4 = function(solicitudId) { try { localStorage.removeItem('prematricula_paso4_' + solicitudId); } catch (e) {} };
+        window.premaSetPoliticasDDJJ = function(solicitudId) { try { localStorage.setItem('prematricula_politicas_ddjj_' + solicitudId, '1'); } catch (e) {} };
+        window.premaGetPoliticasDDJJ = function(solicitudId) { try { return localStorage.getItem('prematricula_politicas_ddjj_' + solicitudId) || ''; } catch (e) { return ''; } };
+        window.premaClearPoliticasDDJJ = function(solicitudId) { try { localStorage.removeItem('prematricula_politicas_ddjj_' + solicitudId); } catch (e) {} };
+        window.premaAbrirPasarelaPost = function(url, postParams) {
+            try {
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = url || '';
+                form.target = '_blank';
+                if (postParams && typeof postParams === 'object') {
+                    for (var k in postParams) { if (postParams.hasOwnProperty(k)) {
+                        var i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = postParams[k] || ''; form.appendChild(i);
+                    }}
+                }
+                document.body.appendChild(form);
+                form.submit();
+                document.body.removeChild(form);
+            } catch (e) { console.error('premaAbrirPasarelaPost', e); }
+        };
     </script>
 
-    <script src="js/site.js"></script>
     <script src="js/apexchart.js?v=9"></script>
 </body>
 

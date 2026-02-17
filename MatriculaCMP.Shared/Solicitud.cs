@@ -28,5 +28,14 @@ namespace MatriculaCMP.Shared
         // 👇 NUEVO CAMPO AGREGADO
         public int NumeroSolicitud { get; set; }
         public ICollection<SolicitudHistorialEstado> HistorialEstados { get; set; } = new List<SolicitudHistorialEstado>();
+
+        // Campos para DDJJ validada con ID Perú
+        public bool DDJJFirmadaIdPeru { get; set; } = false;
+        public DateTime? FechaFirmaDDJJ { get; set; }
+        public string? DocumentoFirmanteDDJJ { get; set; }
+        public string? RutaDDJJFirmada { get; set; }
+
+        // Campo para Políticas de Privacidad aceptadas
+        public bool AceptaPoliticasPrivacidad { get; set; } = false;
     }
 }

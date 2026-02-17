@@ -27,6 +27,7 @@
 
     private bool isTokenValid = true;
     private bool shouldRedirect = false;
+    private bool isProcessing = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -36,41 +37,78 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
+        if (firstRender && !isProcessing)
         {
-            Console.WriteLine("[autologin] Iniciando validación en cliente tras prerender.");
-
-            if (string.IsNullOrEmpty(Token))
-            {
-                Console.WriteLine("[autologin] Token vacío, redirigiendo a /");
-                Nav.NavigateTo("/", true);
-                return;
-            }
-
+            isProcessing = true;
+            
             try
             {
-                var encodedToken = Uri.EscapeDataString(Token);
-                var apiUrl = new Uri(new Uri(Nav.BaseUri), $"api/usuario/validate?token={encodedToken}").ToString();
-                var response = await Http.GetAsync(apiUrl);
-                isTokenValid = response.IsSuccessStatusCode;
+                Console.WriteLine("[autologin] Iniciando validación en cliente tras prerender.");
+
+                if (string.IsNullOrEmpty(Token))
+                {
+                    Console.WriteLine("[autologin] Token vacío, redirigiendo a /");
+                    await Task.Delay(500);
+                    Nav.NavigateTo("/", true);
+                    return;
+                }
+
+                try
+                {
+                    var encodedToken = Uri.EscapeDataString(Token);
+                    var apiUrl = new Uri(new Uri(Nav.BaseUri), $"api/usuario/validate?token={encodedToken}").ToString();
+                    
+                    Console.WriteLine($"[autologin] Validando token en: {apiUrl}");
+                    
+                    var response = await Http.GetAsync(apiUrl);
+                    isTokenValid = response.IsSuccessStatusCode;
+                    
+                    Console.WriteLine($"[autologin] Respuesta de validación: {response.StatusCode}");
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"[autologin] Error validando token (cliente): {ex.Message}");
+                    Console.Error.WriteLine($"[autologin] Stack: {ex.StackTrace}");
+                    isTokenValid = false;
+                }
+
+                Console.WriteLine($"[autologin] Ejecutando redirección. Token válido: {isTokenValid}");
+
+                if (isTokenValid)
+                {
+                    try
+                    {
+                        await JS.InvokeVoidAsync("console.log", "Guardando token en localStorage");
+                        await JS.InvokeVoidAsync("localStorage.setItem", "Token", Token);
+                        
+                        // Pequeña pausa antes de navegar
+                        await Task.Delay(200);
+                        
+                        Console.WriteLine("[autologin] Navegando a /home");
+                        Nav.NavigateTo("/home", true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.Error.WriteLine($"[autologin] Error al guardar token o navegar: {ex.Message}");
+                        Nav.NavigateTo("/", true);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("[autologin] Token no válido, redirigiendo a /");
+                    await Task.Delay(500);
+                    Nav.NavigateTo("/", true);
+                }
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"[autologin] Error validando token (cliente): {ex.Message}");
-                isTokenValid = false;
-            }
-
-            Console.WriteLine($"[autologin] Ejecutando redirección. Token válido: {isTokenValid}");
-
-            if (isTokenValid)
-            {
-                await JS.InvokeVoidAsync("console.log", "Guardando token en localStorage");
-                await JS.InvokeVoidAsync("localStorage.setItem", "Token", Token);
-                Nav.NavigateTo("/home", true);
-            }
-            else
-            {
+                Console.Error.WriteLine($"[autologin] Error general: {ex.Message}");
+                Console.Error.WriteLine($"[autologin] Stack: {ex.StackTrace}");
                 Nav.NavigateTo("/", true);
+            }
+            finally
+            {
+                isProcessing = false;
             }
         }
     }

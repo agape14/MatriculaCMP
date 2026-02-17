@@ -42,7 +42,7 @@ namespace MatriculaCMP.Controller
                         .ThenInclude(e => e.Universidad)
                 .Include(s => s.Area)
                 .Include(s => s.EstadoSolicitud)
-                .Where(s => s.EstadoSolicitudId == 2 || s.EstadoSolicitudId == 6 || s.EstadoSolicitudId == 11) // + Estado 11: Proceso finalizado - Entregado (firmado por Decano)
+                .Where(s => s.EstadoSolicitudId == 1 || s.EstadoSolicitudId == 6 || s.EstadoSolicitudId == 11) // Estado 1: Registrado, Estado 6: Aprobado OM, Estado 11: Proceso finalizado - Entregado (firmado por Decano)
                 .OrderByDescending(s => s.FechaSolicitud)
                 .ToListAsync();
 
@@ -121,9 +121,9 @@ namespace MatriculaCMP.Controller
                 if (solicitud is null)
                     return NotFound("Solicitud no encontrada");
 
-                // Verificar que la solicitud esté en estado aprobado por CR (estado 2)
-                if (solicitud.EstadoSolicitudId != 2)
-                    return BadRequest("La solicitud debe estar aprobada por el Consejo Regional para continuar");
+                // Verificar que la solicitud esté en estado registrado (estado 1)
+                if (solicitud.EstadoSolicitudId != 1)
+                    return BadRequest("La solicitud debe estar registrada (estado 1) para continuar");
 
                 var estadoAnterior = solicitud.EstadoSolicitudId;
 
@@ -154,7 +154,7 @@ namespace MatriculaCMP.Controller
                 var nombre = solicitud.Persona?.Nombres ?? "Nombre";
                 var apellido = solicitud.Persona?.ApellidoPaterno ?? "Apellido";
 
-                await EmailHelper.EnviarCorreoCambioEstadoAsync(destinatario, nombre, apellido, "Aprobado por Oficina de Matrícula", dto.Observacion);
+                await EmailHelper.EnviarCorreoCambioEstadoAsync(destinatario, nombre, apellido, 6, dto.Observacion); // Estado 6: Aprobado por Of. Matrícula
 
                 return Ok(new { message = "Solicitud aprobada exitosamente" });
             }
@@ -180,9 +180,9 @@ namespace MatriculaCMP.Controller
                 if (solicitud is null)
                     return NotFound("Solicitud no encontrada");
 
-                // Verificar que la solicitud esté en estado aprobado por CR (estado 2)
-                if (solicitud.EstadoSolicitudId != 2)
-                    return BadRequest("La solicitud debe estar aprobada por el Consejo Regional para continuar");
+                // Verificar que la solicitud esté en estado registrado (estado 1)
+                if (solicitud.EstadoSolicitudId != 1)
+                    return BadRequest("La solicitud debe estar registrada (estado 1) para continuar");
 
                 var estadoAnterior = solicitud.EstadoSolicitudId;
 
@@ -213,7 +213,7 @@ namespace MatriculaCMP.Controller
                 var nombre = solicitud.Persona?.Nombres ?? "Nombre";
                 var apellido = solicitud.Persona?.ApellidoPaterno ?? "Apellido";
 
-                await EmailHelper.EnviarCorreoCambioEstadoAsync(destinatario, nombre, apellido, "Rechazado por Oficina de Matrícula", dto.Observacion);
+                await EmailHelper.EnviarCorreoCambioEstadoAsync(destinatario, nombre, apellido, 7, dto.Observacion); // Estado 7: Rechazado por Of. Matrícula
 
                 return Ok(new { message = "Solicitud rechazada exitosamente" });
             }

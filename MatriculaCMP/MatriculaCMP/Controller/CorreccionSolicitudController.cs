@@ -109,12 +109,8 @@ namespace MatriculaCMP.Controller
                 _context.SolicitudHistorialEstados.Add(historial);
                 await _context.SaveChangesAsync();
 
-                // Enviar email de notificación
-                var destinatario = solicitud.Persona?.Email ?? "adelacruzcarlos@gmail.com";
-                var nombre = solicitud.Persona?.Nombres ?? "Nombre";
-                var apellido = solicitud.Persona?.ApellidoPaterno ?? "Apellido";
-
-                await EmailHelper.EnviarCorreoCambioEstadoAsync(destinatario, nombre, apellido, "Solicitud Reenviada", observacion);
+                // No enviar correo aquí - el correo se enviará automáticamente cuando el estado cambie a uno de los permitidos (1, 6, 7, 9, 11, 13)
+                // Si el nuevoEstadoId es uno de los permitidos, se enviará el correo automáticamente desde PersonasEducacionController
 
                 return Ok(new { 
                     success = true, 

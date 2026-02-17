@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Components.Forms;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -106,18 +106,20 @@ namespace MatriculaCMP.Shared
 
 		public string PaisUniversidad { get; set; }
 
-		[Required(ErrorMessage = "La universidad es requerida")]
+		/// <summary>UniversidadId (Nacional). Solo obligatorio cuando UniversidadOrigen == "1". Si es Extranjera se usa NombreUniversidadExtranjera.</summary>
 		public string Universidad { get; set; }
 
 		public string? NombreUniversidadExtranjera { get; set; }
 
-		[Required(ErrorMessage = "La fecha de emisión del título es requerida")]
-		public DateTime FechaEmisionTitulo { get; set; } = DateTime.Today;
+		/// <summary>Requerido en Paso 3 (fecha de titulación). No se pide en Paso 1.</summary>
+		public DateTime FechaEmisionTitulo { get; set; } = default(DateTime);
 
 		public string TipoValidacion { get; set; } // Solo para extranjeras
 		public string NumeroResolucion { get; set; } // Solo para extranjeras
 		public string? ResolucionPath { get; set; }
 		public string UniversidadPeruana { get; set; } // Solo para revalidación
+		public DateTime? FechaReconocimiento { get; set; } // Reconocimiento Sunedu
+		public DateTime? FechaRevalidacion { get; set; } // Revalidación
 
 		// Términos y condiciones
 		[Range(typeof(bool), "true", "true", ErrorMessage = "Debe aceptar las políticas de privacidad")]

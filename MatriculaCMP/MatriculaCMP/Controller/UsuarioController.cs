@@ -1,5 +1,6 @@
-﻿using MatriculaCMP.Data;
+using MatriculaCMP.Data;
 using MatriculaCMP.Server.Data;
+using MatriculaCMP.Services;
 using MatriculaCMP.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -11,6 +12,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
+
 namespace MatriculaCMP.Controller
 {
 	[Route("api/[controller]")]
@@ -19,16 +21,18 @@ namespace MatriculaCMP.Controller
 	{
 		private readonly ApplicationDbContext _context;
 		private readonly SgdDbContext _sgdContext;
-        private readonly IConfiguration _config;
-        private readonly ILogger<UsuarioController> _logger;
-        public UsuarioController(ApplicationDbContext context, SgdDbContext sgdContext, IConfiguration config,ILogger<UsuarioController> logger)
-		{
+		private readonly IConfiguration _config;
+		private readonly ILogger<UsuarioController> _logger;
+		private readonly IConsultaEsMedicoService _consultaEsMedicoService;
 
+		public UsuarioController(ApplicationDbContext context, SgdDbContext sgdContext, IConfiguration config, ILogger<UsuarioController> logger, IConsultaEsMedicoService consultaEsMedicoService)
+		{
 			_context = context;
-            _sgdContext = sgdContext;
-            _config = config;
-            _logger = logger;
-        }
+			_sgdContext = sgdContext;
+			_config = config;
+			_logger = logger;
+			_consultaEsMedicoService = consultaEsMedicoService;
+		}
 
 		[HttpGet("ConexionServidor"), Authorize]
 		public async Task<ActionResult<string>> GetEjemplo()
@@ -145,6 +149,10 @@ namespace MatriculaCMP.Controller
                 new Claim("PerfilId", user.PerfilId.ToString()),
                 new Claim("PerfilNombre", user.Perfil.Nombre),
                 new Claim("NombresCompletos", user.Persona.NombresCompletos),
+                new Claim("Nombres", user.Persona.Nombres),
+                new Claim("ApellidoPaterno", user.Persona.ApellidoPaterno),
+                new Claim("ApellidoMaterno", user.Persona.ApellidoMaterno),
+                new Claim("NroDocumento", user.Persona.NumeroDocumento),
              };
 
 			//var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
@@ -173,21 +181,51 @@ namespace MatriculaCMP.Controller
             try
             {
                 // 🔓 Desencriptar Base64
-                string tipoDoc = DecryptBase64(request.TipoDocumentoEncrypted);
-                string numDoc = DecryptBase64(request.NumeroDocumentoEncrypted);
+                string tipoDoc = DecryptBase64(request.TipoDocumentoEncrypted).Trim().ToUpperInvariant();
+                string numDoc = DecryptBase64(request.NumeroDocumentoEncrypted).Trim();
 
-                // Buscar tipo documento 'DNI' en catálogo SGD
-                var catalogoDni = await _sgdContext.CatalogoSGD
-                    .Where(c => c.Descripcion == "DNI")
+                // Solo se aceptan DNI y CE (Carnet de Extranjería)
+                if (tipoDoc != "DNI" && tipoDoc != "CE")
+                    return BadRequest(new { message = "Tipo de documento no permitido. Solo se acepta DNI o CE (Carnet de Extranjería)." });
+
+                // Validar formato del número: DNI 8 dígitos, CE 8 o 9 dígitos
+                if (tipoDoc == "DNI")
+                {
+                    if (numDoc.Length != 8 || !numDoc.All(char.IsDigit))
+                        return BadRequest(new { message = "El número de DNI debe tener 8 dígitos numéricos." });
+                }
+                else // CE
+                {
+                    if (numDoc.Length < 8 || numDoc.Length > 9 || !numDoc.All(char.IsDigit))
+                        return BadRequest(new { message = "El número de Carnet de Extranjería debe tener 8 o 9 dígitos numéricos." });
+                }
+
+                // Verificar que el documento NO sea de un médico colegiado CMP (solo para DNI; CE no se consulta)
+                if (tipoDoc == "DNI")
+                {
+                    var consultaEsMedico = await _consultaEsMedicoService.ConsultarAsync(numDoc);
+                    if (consultaEsMedico.EsMedico)
+                        return StatusCode(403, new { message = "El DNI ingresado corresponde a un médico colegiado del CMP. Para iniciar sesión utilice la opción 'Iniciar con usuario y contraseña'.", esMedico = true });
+                }
+
+                // Perfil: si no se envía, por defecto 2 (Médico en contexto SGD = usuario premátricula). Validar que exista.
+                int perfilId = request.PerfilId ?? 2;
+                var perfilExiste = await _context.Perfil.AnyAsync(p => p.Id == perfilId);
+                if (!perfilExiste)
+                    return BadRequest(new { message = $"El PerfilId {perfilId} no existe en el sistema. Consulte los perfiles disponibles." });
+
+                // Buscar tipo documento (DNI o CE) en catálogo SGD
+                var idCatalogoTipoDoc = await _sgdContext.CatalogoSGD
+                    .Where(c => c.Descripcion == tipoDoc)
                     .Select(c => c.IdCatalogo)
                     .FirstOrDefaultAsync();
 
-                if (catalogoDni == 0)
-                    return NotFound($"No se encontró el tipo de documento {tipoDoc} en el catálogo.");
+                if (idCatalogoTipoDoc == 0)
+                    return NotFound($"No se encontró el tipo de documento {tipoDoc} en el catálogo SGD.");
 
                 // Buscar persona en SGD
                 var persona = await _sgdContext.Persona
-                    .FirstOrDefaultAsync(p => p.IdCatalogoTipoDocumentoPersonal == catalogoDni && p.NumeroDocumento == numDoc);
+                    .FirstOrDefaultAsync(p => p.IdCatalogoTipoDocumentoPersonal == idCatalogoTipoDoc && p.NumeroDocumento == numDoc);
 
                 if (persona == null)
                     return NotFound("No se encontró el usuario. Comuníquese con el administrador.");
@@ -207,11 +245,14 @@ namespace MatriculaCMP.Controller
                     if (usuario_prem == null)
                         return NotFound("No se encontró el usuario en el sistema de gestión de documentos.");
 
-                    // Buscar código de tipo documento local
-                    var codmatchDni = await _context.MaestroRegistro
-                        .Where(c => c.Nombre.Trim() == "DNI")
+                    // Buscar código de tipo documento local (DNI o CE)
+                    var codmatchTipoDoc = await _context.MaestroRegistro
+                        .Where(c => c.Nombre != null && c.Nombre.Trim().ToUpperInvariant() == tipoDoc)
                         .Select(c => c.MaestroRegistro_Key)
                         .FirstOrDefaultAsync();
+
+                    if (codmatchTipoDoc == 0)
+                        return NotFound($"No se encontró el tipo de documento {tipoDoc} en MaestroRegistro local.");
 
                     // Crear Persona local
                     var nuevaPersona = new Persona
@@ -219,7 +260,7 @@ namespace MatriculaCMP.Controller
                         Nombres = persona.Nombres,
                         ApellidoPaterno = persona.ApellidoPaterno,
                         ApellidoMaterno = persona.ApellidoMaterno,
-                        TipoDocumentoId = codmatchDni.ToString(),
+                        TipoDocumentoId = codmatchTipoDoc.ToString(),
                         NumeroDocumento = persona.NumeroDocumento,
                         Email = usuario_prem.Email ?? ""
                     };
@@ -239,7 +280,7 @@ namespace MatriculaCMP.Controller
                         NombreUsuario = usuario_prem.Logueo,
                         PasswordHash = hash,
                         PasswordSalt = salt,
-                        PerfilId = 2, // Médico
+                        PerfilId = perfilId,
                         PersonaId = idPersona
                     };
 
@@ -296,17 +337,19 @@ namespace MatriculaCMP.Controller
             }
         }
 
-        // En tu controlador API
+        /// <summary>
+        /// Login desde SGD por GET (para redirección desde INTRANET u otros proyectos).
+        /// Parámetros: tipo (Base64 del tipo doc, ej. DNI), numero (Base64 del número de documento), perfil (opcional, Id del perfil; por defecto 2).
+        /// </summary>
         [HttpGet("LoginSgdRedirect")]
-        public async Task<IActionResult> LoginSgdRedirect([FromQuery] string tipo, [FromQuery] string numero)
+        public async Task<IActionResult> LoginSgdRedirect([FromQuery] string tipo, [FromQuery] string numero, [FromQuery] int? perfil = null)
         {
             var dto = new UsuarioLoginEncryptedDTO
             {
                 TipoDocumentoEncrypted = tipo,
-                NumeroDocumentoEncrypted = numero
+                NumeroDocumentoEncrypted = numero,
+                PerfilId = perfil
             };
-
-            // Llama al método POST original
             return await LoginSgd(dto);
         }
 
@@ -545,5 +588,7 @@ namespace MatriculaCMP.Controller
                 return StatusCode(500, "Ocurrió un error al eliminar el usuario");
             }
         }
+
+		
     }
 }

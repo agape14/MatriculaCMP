@@ -1,4 +1,4 @@
-﻿using MatriculaCMP.Server.Data;
+using MatriculaCMP.Server.Data;
 using MatriculaCMP.Shared;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
@@ -33,11 +33,13 @@ namespace MatriculaCMP.Services
         public async Task<(bool Success, string Message)> GuardarMatriculaAsync(
     Persona persona,
     Educacion educacion,
-    IFormFile foto,
+    IFormFile? foto,
     IFormFile? resolucionFile = null,
     IDictionary<string, IFormFile?> docsPdf = null,
     int? solicitudId = null,
-    ClaimsPrincipal? user = null)
+    ClaimsPrincipal? user = null,
+    bool esRegistroInicial = false,
+    string? perfilSeleccionado = null)
         {
             // Validaciones comunes
             var validationResults = new List<ValidationResult>();
@@ -49,29 +51,33 @@ namespace MatriculaCMP.Services
             // Validaciones específicas para creación
             if (!solicitudId.HasValue)
             {
-                if (foto == null || foto.Length == 0)
-                    return (false, "Debe subir una foto");
+                // Para registro inicial, la foto NO es obligatoria
+                if (!esRegistroInicial)
+                {
+                    if (foto == null || foto.Length == 0)
+                        return (false, "Debe subir una foto");
 
-                if (foto.Length > 25 * 1024 * 1024)
-                    return (false, "La foto no debe pesar más de 25MB");
+                    if (foto.Length > 25 * 1024 * 1024)
+                        return (false, "La foto no debe pesar más de 25MB");
 
-                var extension = Path.GetExtension(foto.FileName).ToLowerInvariant();
-                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
-                if (!allowedExtensions.Contains(extension))
-                    return (false, "La foto debe estar en formato JPG, JPEG o PNG");
+                    var extension = Path.GetExtension(foto.FileName).ToLowerInvariant();
+                    var allowedExtensions = new[] { ".jpg", ".jpeg", ".png" };
+                    if (!allowedExtensions.Contains(extension))
+                        return (false, "La foto debe estar en formato JPG, JPEG o PNG");
 
-                var contentType = (foto.ContentType ?? string.Empty).ToLowerInvariant();
-                var allowedContentTypes = new[] { "image/jpeg", "image/png" };
-                if (!allowedContentTypes.Contains(contentType))
-                    return (false, "El archivo debe ser una imagen válida (JPEG o PNG)");
+                    var contentType = (foto.ContentType ?? string.Empty).ToLowerInvariant();
+                    var allowedContentTypes = new[] { "image/jpeg", "image/png" };
+                    if (!allowedContentTypes.Contains(contentType))
+                        return (false, "El archivo debe ser una imagen válida (JPEG o PNG)");
 
-                if (educacion.EsExtranjera && resolucionFile == null)
-                    return (false, "Debe subir el archivo de resolución para universidades extranjeras");
+                    if (educacion.EsExtranjera && resolucionFile == null)
+                        return (false, "Debe subir el archivo de resolución para universidades extranjeras");
+                }
 
                 var tieneSolicitudesPendientes = await _context.Solicitudes
                     .AnyAsync(s => s.PersonaId == persona.Id && s.EstadoSolicitudId != 13);
 
-                if (tieneSolicitudesPendientes)
+                if (tieneSolicitudesPendientes && !esRegistroInicial)
                     return (false, "Ya tiene una solicitud registrada en trámite. No puede registrar una nueva.");
             }
 
@@ -147,13 +153,27 @@ namespace MatriculaCMP.Services
                 // Actualizar campos editables
                 educacionEntity.PersonaId = persona.Id;
                 educacionEntity.UniversidadOrigen = educacion.UniversidadOrigen;
-                educacionEntity.UniversidadId = educacion.UniversidadId;
                 educacionEntity.FechaEmisionTitulo = educacion.FechaEmisionTitulo;
                 educacionEntity.PaisUniversidadId = educacion.PaisUniversidadId;
                 educacionEntity.TipoValidacion = educacion.TipoValidacion;
                 educacionEntity.NumeroResolucion = educacion.NumeroResolucion;
                 educacionEntity.UniversidadPeruanaId = educacion.UniversidadPeruanaId;
-                educacionEntity.NombreUniversidadExtranjera = educacion.NombreUniversidadExtranjera;
+                educacionEntity.FechaReconocimiento = educacion.FechaReconocimiento;
+                educacionEntity.FechaRevalidacion = educacion.FechaRevalidacion;
+                
+                // Manejar UniversidadId según el origen
+                if (educacion.UniversidadOrigen == "0") // Universidad Extranjera
+                {
+                    educacionEntity.UniversidadId = null; // No hay ID de universidad en BD
+                    educacionEntity.NombreUniversidadExtranjera = educacion.NombreUniversidadExtranjera;
+                    educacionEntity.EsExtranjera = true;
+                }
+                else // Universidad Nacional
+                {
+                    educacionEntity.UniversidadId = educacion.UniversidadId;
+                    educacionEntity.NombreUniversidadExtranjera = null;
+                    educacionEntity.EsExtranjera = false;
+                }
 
                 if (educacionEntity.Id == 0)
                 {
@@ -184,14 +204,23 @@ namespace MatriculaCMP.Services
 
                 // 4. Manejo de Solicitud
                 Solicitud solicitud;
+                int? estadoAnterior = null;
+                bool huboCambioEstado = false;
+                
                 if (solicitudId.HasValue)
                 {
                     solicitud = await _context.Solicitudes.FindAsync(solicitudId);
                     if (solicitud == null) return (false, "Solicitud no encontrada");
 
+                    estadoAnterior = solicitud.EstadoSolicitudId;
                     solicitud.FechaSolicitud = fechaCambio;
-                    // NO cambiar el estado - mantener el estado actual para correcciones
-                    // solicitud.EstadoSolicitudId = 1; // Comentado para correcciones
+                    
+                    // Actualizar estado solo si viene de estados intermedios (no de observación)
+                    // Estado de observación: 7 (Rechazado por Of. Matrícula) - mantener el estado actual para correcciones
+                    // Paso 3 (completar datos): NO actualizar a Registrado. El estado 1 (Registrado)
+                    // se asigna solo al verificar el pago (paso 4). Se mantiene -1 (pendiente de pago).
+                    // Si está en estado de observación (7), mantener el estado actual
+                    
                     _context.Solicitudes.Update(solicitud);
                 }
                 else
@@ -209,14 +238,20 @@ namespace MatriculaCMP.Services
                     }
                     await _context.SaveChangesAsync();
 
+                    // Determinar estado según tipo de registro
+                    int estadoInicial = esRegistroInicial ? 0 : 1; // 0 = Pendiente de curso Ética, 1 = En revisión
+                    string observacion = esRegistroInicial 
+                        ? $"Registro inicial - Pendiente de curso Ética (Perfil: {perfilSeleccionado ?? "No especificado"})" 
+                        : "Registro desde el formulario del médico";
+
                     solicitud = new Solicitud
                     {
                         PersonaId = persona.Id,
                         TipoSolicitud = "REGISTRO",
-                        EstadoSolicitudId = 1,
+                        EstadoSolicitudId = estadoInicial,
                         FechaSolicitud = fechaCambio,
                         AreaId = 1,
-                        Observaciones = "Registro desde el formulario del médico",
+                        Observaciones = observacion,
                         NumeroSolicitud = correlativo.UltimoNumero
                     };
                     await _context.Solicitudes.AddAsync(solicitud);
@@ -240,9 +275,20 @@ namespace MatriculaCMP.Services
                         await using var stream = new FileStream(savePath, FileMode.Create);
                         await kv.Value.CopyToAsync(stream);
 
-                        typeof(EducacionDocumento)
-                            .GetProperty($"{kv.Key}Path")?
-                            .SetValue(docEntity, unique);
+                        switch (kv.Key)
+                        {
+                            case "TituloMedicoCirujano": docEntity.TituloMedicoCirujanoPath = unique; break;
+                            case "ConstanciaInscripcionSunedu": docEntity.ConstanciaInscripcionSuneduPath = unique; break;
+                            case "CertificadoAntecedentesPenales": docEntity.CertificadoAntecedentesPenalesPath = unique; break;
+                            case "CarnetExtranjeria": docEntity.CarnetExtranjeriaPath = unique; break;
+                            case "ConstanciaInscripcionReconocimientoSunedu": docEntity.ConstanciaInscripcionReconocimientoSuneduPath = unique; break;
+                            case "ConstanciaInscripcionRevalidacionUniversidadNacional": docEntity.ConstanciaInscripcionRevalidacionUniversidadNacionalPath = unique; break;
+                            case "ReconocimientoSunedu": docEntity.ReconocimientoSuneduPath = unique; break;
+                            case "RevalidacionUniversidadNacional": docEntity.RevalidacionUniversidadNacionalPath = unique; break;
+                            default:
+                                typeof(EducacionDocumento).GetProperty($"{kv.Key}Path")?.SetValue(docEntity, unique);
+                                break;
+                        }
                     }
                 }
 
@@ -256,24 +302,55 @@ namespace MatriculaCMP.Services
                 // 6. Historial de cambios
                 if (!solicitudId.HasValue) // Solo para nuevas solicitudes
                 {
+                    int estadoParaHistorial = esRegistroInicial ? 0 : 1;
+                    string observacionHistorial = esRegistroInicial 
+                        ? "Registro inicial - Pendiente de curso Ética" 
+                        : "Registro inicial de solicitud";
+
                     var historial = new SolicitudHistorialEstado
                     {
                         SolicitudId = solicitud.Id,
                         EstadoAnteriorId = null,
-                        EstadoNuevoId = 1,
+                        EstadoNuevoId = estadoParaHistorial,
                         FechaCambio = fechaCambio,
-                        Observacion = "Registro inicial de solicitud",
+                        Observacion = observacionHistorial,
                         UsuarioCambio = usuarioId // Usar el ID del usuario autenticado
                     };
                     await _context.SolicitudHistorialEstados.AddAsync(historial);
                 }
+                
+                // Si hubo cambio de estado en actualización (ej: de -1 a 1), registrar en historial
+                if (solicitudId.HasValue && huboCambioEstado && estadoAnterior.HasValue)
+                {
+                    var historialActualizacion = new SolicitudHistorialEstado
+                    {
+                        SolicitudId = solicitud.Id,
+                        EstadoAnteriorId = estadoAnterior.Value,
+                        EstadoNuevoId = solicitud.EstadoSolicitudId,
+                        FechaCambio = fechaCambio,
+                        Observacion = "Solicitud completada por el médico - En revisión",
+                        UsuarioCambio = usuarioId
+                    };
+                    await _context.SolicitudHistorialEstados.AddAsync(historialActualizacion);
+                }
+                
                 // Para correcciones, NO se registra cambio de estado - se mantiene el estado actual
                 await _context.SaveChangesAsync();
 
                 await transaction.CommitAsync();
-                return (true, solicitudId.HasValue
-                    ? "Solicitud actualizada exitosamente"
-                    : "Matrícula registrada exitosamente");
+                
+                // Retornar mensaje con ID de solicitud
+                if (solicitudId.HasValue)
+                {
+                    return (true, $"Solicitud actualizada exitosamente. ID: {solicitud.Id}");
+                }
+                else
+                {
+                    string mensaje = esRegistroInicial 
+                        ? $"Registro inicial creado exitosamente. ID: {solicitud.Id}" 
+                        : $"Matrícula registrada exitosamente. ID: {solicitud.Id}";
+                    return (true, mensaje);
+                }
             }
             catch (DbUpdateException dbEx)
             {

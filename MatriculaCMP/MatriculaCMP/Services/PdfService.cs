@@ -420,10 +420,10 @@ namespace MatriculaCMP.Services
 
         private string ConstruirUrlVerificacion(int solicitudId)
         {
-            // Usar FrontendUrl si está configurado (p.ej. https://localhost:5181)
-            string baseUrl = _configuration?["FrontendUrl"]
-                ?? _configuration?["Verification:BaseUrl"]
-                ?? "https://sistema.cmp.org.pe";
+            // Priorizar URL explícita de verificación (para producción). Si no existe, usar FrontendUrl.
+            string baseUrl = _configuration?["Verification:BaseUrl"]
+                ?? _configuration?["FrontendUrl"]
+                ?? "https://matricula.cmp.org.pe";
             string endpoint = _configuration?["Verification:Endpoint"] ?? "/verificar/documento";
             string idB64 = Convert.ToBase64String(Encoding.UTF8.GetBytes(solicitudId.ToString()));
             return string.Format("{0}{1}?id={2}", baseUrl.TrimEnd('/'), endpoint, Uri.EscapeDataString(idB64));
@@ -452,7 +452,7 @@ namespace MatriculaCMP.Services
             cb.Stroke();
             cb.RestoreState();
 
-            // Construir texto y link
+            // Construir texto (sin enlace clicable para evitar URLs incorrectas en dev/prod)
             string url = ConstruirUrlVerificacion(solicitudId);
             string leyenda = "Esta es una copia auténtica imprimible de un documento electrónico archivado por el CMP. Su autenticidad e integridad puede verificarse en:";
 
@@ -468,16 +468,11 @@ namespace MatriculaCMP.Services
 
             var baseFont = BaseFont.CreateFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
             var small = new Font(baseFont, 8, Font.NORMAL, BaseColor.BLACK);
-            var smallBold = new Font(baseFont, 8, Font.BOLD, BaseColor.BLACK);
 
+            // Leyenda y URL como texto normal (sin link) para que sea correcto en cualquier entorno
             Phrase p = new Phrase();
             p.Add(new Chunk(leyenda + " ", small));
-            // Link que intenta abrir en nueva ventana/pestaña (según soporte del visor PDF)
-            var linkChunk = new Chunk(url, smallBold);
-            var action = new PdfAction(url);
-            action.Put(PdfName.NEWWINDOW, PdfBoolean.PDFTRUE);
-            linkChunk.SetAction(action);
-            p.Add(linkChunk);
+            p.Add(new Chunk(url, small));
 
             // Colocar el texto cerca del borde inferior, por encima de la línea
             ct.SetSimpleColumn(

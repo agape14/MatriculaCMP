@@ -1,4 +1,4 @@
-﻿using MatriculaCMP.Services;
+using MatriculaCMP.Services;
 using MatriculaCMP.Shared;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -15,6 +15,79 @@ namespace MatriculaCMP.Controller
 		public MatriculaController(MatriculaService matriculaService)
 		{
 			_matriculaService = matriculaService;
+		}
+
+	[HttpPost("crear-inicial")]
+	public async Task<IActionResult> CrearSolicitudInicial(
+		[FromForm] string Persona,
+		[FromForm] string Educacion,
+		[FromForm] string? PerfilSeleccionado = null,
+		[FromForm] IFormFile? CarnetExtranjeria = null)
+	{
+		try
+		{
+			if (string.IsNullOrWhiteSpace(Persona) || string.IsNullOrWhiteSpace(Educacion))
+			{
+				return BadRequest(new { message = "Los campos 'Persona' y 'Educacion' son obligatorios." });
+			}
+
+			Persona? persona;
+			Educacion? educacion;
+
+			try
+			{
+				persona = JsonSerializer.Deserialize<Persona>(Persona);
+				educacion = JsonSerializer.Deserialize<Educacion>(Educacion);
+			}
+			catch (JsonException jsonEx)
+			{
+				return BadRequest(new { message = $"Error de formato JSON: {jsonEx.Message}" });
+			}
+
+			if (persona == null || educacion == null)
+			{
+				return BadRequest(new { message = "No se pudo deserializar los datos de 'Persona' o 'Educacion'." });
+			}
+
+			var user = HttpContext.User;
+			var docsPdf = new Dictionary<string, IFormFile?>
+			{
+				["CarnetExtranjeria"] = CarnetExtranjeria
+			};
+
+			var (success, message) = await _matriculaService.GuardarMatriculaAsync(
+				persona,
+				educacion,
+				null,
+				null,
+				docsPdf,
+				null,
+				user,
+				esRegistroInicial: true,
+				perfilSeleccionado: PerfilSeleccionado);
+
+				if (success)
+				{
+					// Extraer el ID de la solicitud del mensaje si está presente
+					// El servicio debe retornar algo como "Solicitud creada con ID: 123"
+					int? solicitudId = null;
+					if (message.Contains("ID:") || message.Contains("Id:"))
+					{
+						var parts = message.Split(new[] { "ID:", "Id:" }, StringSplitOptions.None);
+						if (parts.Length > 1 && int.TryParse(parts[1].Trim().Split(' ')[0], out var id))
+						{
+							solicitudId = id;
+						}
+					}
+					return Ok(new { success = true, message = message, solicitudId = solicitudId });
+				}
+				
+				return Ok(new { success = false, message = message });
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(500, new { success = false, message = $"Error interno del servidor: {ex.Message}" });
+			}
 		}
 
 		[HttpPost("guardar")]
@@ -93,6 +166,7 @@ namespace MatriculaCMP.Controller
 			int solicitudId,
 			[FromForm] string Persona,
 			[FromForm] string Educacion,
+			[FromForm] string? PerfilSeleccionado = null,
 			[FromForm] IFormFile? Foto = null, // Hacer opcional para edición
 			[FromForm] IFormFile? ResolucionFile = null,
 			[FromForm] IFormFile? TituloMedicoCirujano = null,
@@ -133,9 +207,26 @@ namespace MatriculaCMP.Controller
                     ResolucionFile,
                     docsPdf,
                     solicitudId, // Pasar el ID de solicitud existente
-                    user); // Pasar el usuario autenticado
+                    user, // Pasar el usuario autenticado
+                    esRegistroInicial: false, // No es registro inicial, es actualización
+                    perfilSeleccionado: PerfilSeleccionado); // Pasar perfil si existe
 
-                return success ? Ok(new { success = true, message = message }) : Ok(new { success = false, message = message });
+                if (success)
+                {
+                    // Extraer el ID de la solicitud del mensaje si está presente
+                    int? solicitudIdFromMessage = solicitudId; // Usar el ID que ya tenemos
+                    if (message.Contains("ID:") || message.Contains("Id:"))
+                    {
+                        var parts = message.Split(new[] { "ID:", "Id:" }, StringSplitOptions.None);
+                        if (parts.Length > 1 && int.TryParse(parts[1].Trim().Split(' ')[0], out var id))
+                        {
+                            solicitudIdFromMessage = id;
+                        }
+                    }
+                    return Ok(new { success = true, message = message, solicitudId = solicitudIdFromMessage });
+                }
+                
+                return Ok(new { success = false, message = message });
             }
             catch (Exception ex)
             {

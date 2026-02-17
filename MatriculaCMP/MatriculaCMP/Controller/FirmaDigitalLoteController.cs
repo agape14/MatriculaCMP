@@ -40,36 +40,19 @@ namespace MatriculaCMP.Controller
         [HttpPost("firmar")]
         public async Task<IActionResult> Firmar([FromBody] FirmarLoteDto dto)
         {
-            var r = await _loteService.FirmarLoteAsync(dto.Ids, dto.TipoDocumentoFirmado);
-            if (r?.codigoFirma > 0 && dto.TipoDocumentoFirmado == 1)
+            try
             {
-                // Avanzar 6->8 al iniciar firma de Secretario CR (lote), igual que en individual
-                var ids = dto.Ids?.Distinct().ToList() ?? new List<int>();
-                if (ids.Any())
-                {
-                    var solicitudes = await _context.Solicitudes.Where(s => ids.Contains(s.Id)).ToListAsync();
-                    foreach (var s in solicitudes)
-                    {
-                        if (s.EstadoSolicitudId == 6)
-                        {
-                            int anterior = s.EstadoSolicitudId;
-                            s.EstadoSolicitudId = 8;
-                            _context.Solicitudes.Update(s);
-                            _context.SolicitudHistorialEstados.Add(new SolicitudHistorialEstado
-                            {
-                                SolicitudId = s.Id,
-                                EstadoAnteriorId = anterior,
-                                EstadoNuevoId = 8,
-                                FechaCambio = DateTime.Now,
-                                Observacion = "Enviado a firma Secretario CR (lote)",
-                                UsuarioCambio = GetUsuarioAutenticadoId()
-                            });
-                        }
-                    }
-                    await _context.SaveChangesAsync();
-                }
+                var r = await _loteService.FirmarLoteAsync(dto.Ids, dto.TipoDocumentoFirmado);
+                return Ok(r ?? new FirmaDigitalDTO.UploadResponse { codigoFirma = -1, descripcion = "Error al iniciar firma en lote" });
             }
-            return Ok(r);
+            catch (Exception ex)
+            {
+                return Ok(new FirmaDigitalDTO.UploadResponse
+                {
+                    codigoFirma = -1,
+                    descripcion = $"No se pudo iniciar la firma en lote. Verifique el firmador o la aplicación Biuen. Detalle: {ex.Message}"
+                });
+            }
         }
 
         public class UploadLoteDto
@@ -81,7 +64,9 @@ namespace MatriculaCMP.Controller
         [HttpPost("upload")]
         public async Task<IActionResult> Subir([FromBody] UploadLoteDto dto)
         {
-            var resp = await _loteService.SubirLoteFirmadoAsync(dto.CodigoFirma);
+            try
+            {
+                var resp = await _loteService.SubirLoteFirmadoAsync(dto.CodigoFirma);
             if (resp == null || resp.estado <= 0 || string.IsNullOrEmpty(resp.archivoFirmado))
                 return Ok(resp);
 
@@ -144,8 +129,10 @@ namespace MatriculaCMP.Controller
                     {
                         int estadoAnterior = solicitud.EstadoSolicitudId;
                         int proximo = estadoAnterior;
-                        // 1: Secretario CR firma (lote): se mantiene en 8, avance real se hizo 6->8 al iniciar
+                        // 1: Secretario CR firma (lote): 6 -> 8 cuando se completa la firma
                         if (dto.TipoDocumentoFirmado == 1 && estadoAnterior == 6) proximo = 8;
+                        // Si ya está en 8, mantenerlo
+                        else if (dto.TipoDocumentoFirmado == 1 && estadoAnterior == 8) proximo = 8;
                         // 2: Decano CR firma => 8 (Pend. Sec CR) -> 9 (Pend. Decano CR) -> 10 para SG al completar Decano CR
                         else if (dto.TipoDocumentoFirmado == 2 && estadoAnterior == 8) proximo = 9;
                         // 3: Secretario General firma => 9 -> 10
@@ -167,6 +154,15 @@ namespace MatriculaCMP.Controller
                                 Observacion = "Avance por firma digital (lote)",
                                 UsuarioCambio = GetUsuarioAutenticadoId()
                             });
+                            
+                            // Enviar correo solo para estados permitidos: 9, 11
+                            if (proximo == 9 || proximo == 11)
+                            {
+                                var destinatario = solicitud.Persona?.Email ?? "adelacruzcarlos@gmail.com";
+                                var nombre = solicitud.Persona?.Nombres ?? "Nombre";
+                                var apellido = solicitud.Persona?.ApellidoPaterno ?? "Apellido";
+                                await EmailHelper.EnviarCorreoCambioEstadoAsync(destinatario, nombre, apellido, proximo, null);
+                            }
                         }
                     }
                 }
@@ -177,7 +173,16 @@ namespace MatriculaCMP.Controller
                 // Single PDF: no viene comprimido; no soportado para lote en este método
             }
 
-            return Ok(resp);
+                return Ok(resp);
+            }
+            catch (Exception ex)
+            {
+                return Ok(new FirmaDigitalDTO.DownloadResponse
+                {
+                    estado = -1,
+                    descripcion = $"Error al subir lote firmado. Si recargó la página (F5), vuelva al listado e intente de nuevo. Detalle: {ex.Message}"
+                });
+            }
         }
     }
 }
