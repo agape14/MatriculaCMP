@@ -1,0 +1,39 @@
+@namespace MatriculaCMP.Client.Components.Mat
+
+<div class="mat-radio-group @(Disabled ? "mat-radio-disabled" : "")">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="mat-input-label">@Label</label>
+    }
+    <div class="mat-radio-options" role="radiogroup" aria-label="@Label">
+        @foreach (var opt in Options ?? Array.Empty<MatRadioOption>())
+        {
+            <label class="mat-radio-item">
+                <input type="radio"
+                       name="@Name"
+                       value="@opt.Value"
+                       checked="@(Value == opt.Value)"
+                       @onchange="() => SelectValue(opt.Value)"
+                       disabled="@(Disabled || opt.Disabled)" />
+                <span class="mat-radio-mark"></span>
+                <span class="mat-radio-text">@opt.Text</span>
+            </label>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Name { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public IEnumerable<MatRadioOption>? Options { get; set; }
+
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    private async Task SelectValue(string? val)
+    {
+        Value = val;
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

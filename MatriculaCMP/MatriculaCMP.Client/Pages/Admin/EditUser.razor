@@ -1,4 +1,4 @@
-﻿@page "/admin/usuarios/new"
+@page "/admin/usuarios/new"
 @page "/admin/usuarios/{Id:int?}"
 @using MatriculaCMP.Shared
 
@@ -115,14 +115,22 @@ else if (!string.IsNullOrEmpty(_error))
                             </div>
                             <div class="col-md-12">
                                 <div class="form-group">
-                                    <label for="lblConsejoRegional">Consejo Regional *</label>
-                                    <InputSelect @bind-Value="_model.ConsejoRegionalId" class="form-control" id="cbxConsejoRegional" requiered>
+                                    <label for="lblConsejoRegional">Consejo Regional @(RequiereConsejoRegional ? "*" : "")</label>
+                                    @if (RequiereConsejoRegional)
+                                    {
+                                        <span class="text-muted small">(obligatorio para Secretario CR, Decano CR, Secretario CN, Decano CN)</span>
+                                    }
+                                    <InputSelect @bind-Value="_model.ConsejoRegionalId" class="@ConsejoRegionalInputCss" id="cbxConsejoRegional">
                                         <option value="">Seleccione...</option>
                                         @foreach (var consejo in consejos)
                                         {
                                             <option value="@consejo.ConsejoRegional_Key">@consejo.Nombre</option>
                                         }
                                     </InputSelect>
+                                    @if (RequiereConsejoRegional && string.IsNullOrWhiteSpace(_model.ConsejoRegionalId) && _intentoGuardar)
+                                    {
+                                        <div class="invalid-feedback d-block">Debe seleccionar un Consejo Regional para este perfil.</div>
+                                    }
                                     <ValidationMessage For="@(() => _model.ConsejoRegionalId)" />
                                 </div>
                             </div>
@@ -154,8 +162,14 @@ else if (!string.IsNullOrEmpty(_error))
 
     private bool _cargando = true;
     private bool _guardando = false;
+    private bool _intentoGuardar = false;
     private string? _error;
     private string PersonaId;
+
+    /// <summary>Perfiles que exigen Consejo Regional: 3=Sec. CR, 4=Decano CR, 5=Sec. CN, 6=Decano CN.</summary>
+    private bool RequiereConsejoRegional => _model.PerfilId == 3 || _model.PerfilId == 4 || _model.PerfilId == 5 || _model.PerfilId == 6;
+
+    private string ConsejoRegionalInputCss => RequiereConsejoRegional && string.IsNullOrWhiteSpace(_model.ConsejoRegionalId) && _intentoGuardar ? "form-control is-invalid" : "form-control";
 
     protected override async Task OnInitializedAsync()
 	{
@@ -202,17 +216,23 @@ else if (!string.IsNullOrEmpty(_error))
     async Task Guardar()
     {
         if (_guardando) return;
-        _guardando = true;
-
-        // Validación de contraseña solo si es nuevo
-        if (_id is null && string.IsNullOrWhiteSpace(_model.Password))
+        _intentoGuardar = true;
+        if (RequiereConsejoRegional && string.IsNullOrWhiteSpace(_model.ConsejoRegionalId))
         {
-            await MostrarErrorTemporal("La contraseña es obligatoria para nuevos usuarios.");
-            _guardando = false;
+            await MostrarErrorTemporal("Para los perfiles Secretario CR, Decano CR, Secretario Consejo Nacional y Decano Consejo Nacional debe seleccionar un Consejo Regional.");
+            StateHasChanged();
             return;
         }
+        _guardando = true;
         try
         {
+            // Validación de contraseña solo si es nuevo
+            if (_id is null && string.IsNullOrWhiteSpace(_model.Password))
+            {
+                await MostrarErrorTemporal("La contraseña es obligatoria para nuevos usuarios.");
+                _guardando = false;
+                return;
+            }
             HttpResponseMessage resp = _id is null
                 ? await Http.PostAsJsonAsync("/api/usuario", _model)
                 : await Http.PutAsJsonAsync($"/api/usuario/{_id}", _model);

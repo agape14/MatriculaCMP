@@ -1,0 +1,51 @@
+@namespace MatriculaCMP.Client.Components.Mat
+
+<div class="mat-select-container @(Disabled ? "mat-select-disabled" : "")">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="mat-input-label" for="@Id">
+            @Label
+            @if (Required) { <span class="mat-input-required">*</span> }
+        </label>
+    }
+    <select id="@Id"
+            class="mat-select-field"
+            value="@Value"
+            @onchange="OnChange"
+            disabled="@Disabled"
+            required="@Required"
+            aria-invalid="@Invalid">
+        @if (!string.IsNullOrEmpty(Placeholder))
+        {
+            <option value="">@Placeholder</option>
+        }
+        @foreach (var opt in Options ?? Array.Empty<MatSelectOption>())
+        {
+            <option value="@opt.Value" disabled="@opt.Disabled">@opt.Text</option>
+        }
+    </select>
+    @if (Invalid && !string.IsNullOrEmpty(ErrorMessage))
+    {
+        <span class="mat-input-error">@ErrorMessage</span>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public IEnumerable<MatSelectOption>? Options { get; set; }
+    [Parameter] public bool Invalid { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    private async Task OnChange(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

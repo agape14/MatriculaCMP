@@ -153,6 +153,7 @@ namespace MatriculaCMP.Controller
                 new Claim("ApellidoPaterno", user.Persona.ApellidoPaterno),
                 new Claim("ApellidoMaterno", user.Persona.ApellidoMaterno),
                 new Claim("NroDocumento", user.Persona.NumeroDocumento),
+                new Claim("ConsejoRegionalId", user.Persona?.ConsejoRegionalId ?? ""),
              };
 
 			//var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(

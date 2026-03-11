@@ -39,7 +39,6 @@ namespace MatriculaCMP.Controller
                 // Asegurar archivo a firmar ya existe en wwwroot/firmas_digitales/documento_{id}.pdf
                 // La preparación del archivo se hace desde el controlador de Diploma (preparar-firma)
                 var result = await _firmaService.FirmarDocumentoAsync(request);
-                // NO actualizar estado aquí - se actualizará cuando se complete la firma en el método SubirDocumentoFirmado
                 return Ok(result);
             }
             catch (Exception ex)

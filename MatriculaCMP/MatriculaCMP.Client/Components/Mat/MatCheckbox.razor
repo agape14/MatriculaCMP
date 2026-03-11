@@ -1,0 +1,32 @@
+@namespace MatriculaCMP.Client.Components.Mat
+
+<div class="mat-checkbox-container @(Disabled ? "mat-checkbox-disabled" : "")">
+    <label class="mat-checkbox-label">
+        <input type="checkbox"
+               class="mat-checkbox-input"
+               checked="@Value"
+               @onchange="OnChange"
+               disabled="@Disabled"
+               id="@Id" />
+        <span class="mat-checkbox-box"></span>
+        @if (!string.IsNullOrEmpty(Label))
+        {
+            <span class="mat-checkbox-text">@Label</span>
+        }
+    </label>
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+
+    [Parameter] public bool Value { get; set; }
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+
+    private async Task OnChange(ChangeEventArgs e)
+    {
+        Value = e.Value as bool? ?? false;
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

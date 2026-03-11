@@ -1,0 +1,47 @@
+@namespace MatriculaCMP.Client.Components.Mat
+
+<div class="mat-card mat-card-elevation-@(Elevation) @(HeaderGradient ? "mat-card-header-gradient" : "") @CssClass">
+    @if (!string.IsNullOrEmpty(Title) || HeaderContent != null)
+    {
+        <div class="mat-card-header">
+            @if (HeaderContent != null)
+            {
+                @HeaderContent
+            }
+            else
+            {
+                @if (!string.IsNullOrEmpty(HeaderIcon))
+                {
+                    <span class="mat-card-header-icon"><i class="@HeaderIcon" aria-hidden="true"></i></span>
+                }
+                <h3 class="mat-card-title">@Title</h3>
+                @if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    <p class="mat-card-subtitle">@Subtitle</p>
+                }
+            }
+        </div>
+    }
+    <div class="mat-card-content" style="@(!string.IsNullOrEmpty(Padding) ? $"padding: {Padding};" : "")">
+        @ChildContent
+    </div>
+    @if (FooterContent != null)
+    {
+        <div class="mat-card-footer">
+            @FooterContent
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public string? HeaderIcon { get; set; }
+    [Parameter] public bool HeaderGradient { get; set; } = true;
+    [Parameter] public int Elevation { get; set; } = 1;
+    [Parameter] public string? Padding { get; set; }
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+}

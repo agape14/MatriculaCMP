@@ -20,16 +20,34 @@ namespace MatriculaCMP.Controller
             _pdfService = pdfService;
         }
 
+        /// <summary>Obtiene PerfilId y ConsejoRegionalId del usuario autenticado. Si es Administrador (1), no se filtra por consejo.</summary>
+        private (int PerfilId, string? ConsejoRegionalId) GetUsuarioFirmaClaims()
+        {
+            var perfilId = 0;
+            var consejoId = User.FindFirst("ConsejoRegionalId")?.Value;
+            if (int.TryParse(User.FindFirst("PerfilId")?.Value, out var p)) perfilId = p;
+            return (perfilId, string.IsNullOrWhiteSpace(consejoId) ? null : consejoId.Trim());
+        }
+
+        /// <summary>Perfiles que firman por consejo regional: deben tener ConsejoRegionalId; si no, no se muestran datos.</summary>
+        private static bool PerfilExigeConsejoRegional(int perfilId) => perfilId == 3 || perfilId == 4 || perfilId == 5 || perfilId == 6;
+
         [HttpGet("para-firma")]
-        public async Task<IActionResult> ListarParaFirma()
+        public async Task<IActionResult> ListarParaFirma([FromQuery] string? consejoRegionalId = null)
         {
             try
             {
-                // Para CR mostramos items en estado 6 (aprobado Of. Matrícula) y los pendientes de firma CR (8 y 9)
-                var registros = await _context.Solicitudes
+                var (perfilId, consejoFromToken) = GetUsuarioFirmaClaims();
+                var consejoId = !string.IsNullOrWhiteSpace(consejoRegionalId) ? consejoRegionalId.Trim() : consejoFromToken;
+                if (PerfilExigeConsejoRegional(perfilId) && string.IsNullOrEmpty(consejoId))
+                    return Ok(new List<object>());
+                IQueryable<Solicitud> query = _context.Solicitudes
                     .Where(s => s.EstadoSolicitudId == 6 || s.EstadoSolicitudId == 8 || s.EstadoSolicitudId == 9)
                     .Include(s => s.Persona)
-                    .Include(s => s.EstadoSolicitud)
+                    .Include(s => s.EstadoSolicitud);
+                if (perfilId != 1 && !string.IsNullOrEmpty(consejoId))
+                    query = query.Where(s => s.Persona != null && s.Persona.ConsejoRegionalId == consejoId);
+                var registros = await query
                     .Join(_context.Diplomas,
                         s => s.Id,
                         d => d.SolicitudId,
@@ -58,15 +76,71 @@ namespace MatriculaCMP.Controller
             }
         }
 
-        [HttpGet("sg-para-firma")]
-        public async Task<IActionResult> ListarParaFirmaSG()
+        /// <summary>
+        /// Lista diplomas ya firmados por el Consejo Regional (estados 9 en adelante: Pend. SG, Pend. Decanato, etc., hasta Entregado).
+        /// Usado en la vista "Ver diplomas firmados" del CR.
+        /// </summary>
+        [HttpGet("cr-firmados")]
+        public async Task<IActionResult> ListarCrFirmados([FromQuery] string? consejoRegionalId = null)
         {
             try
             {
-                var registros = await _context.Solicitudes
+                var (perfilId, consejoFromToken) = GetUsuarioFirmaClaims();
+                var consejoId = !string.IsNullOrWhiteSpace(consejoRegionalId) ? consejoRegionalId.Trim() : consejoFromToken;
+                if (PerfilExigeConsejoRegional(perfilId) && string.IsNullOrEmpty(consejoId))
+                    return Ok(new List<object>());
+                IQueryable<Solicitud> query = _context.Solicitudes
+                    .Where(s => s.EstadoSolicitudId >= 9)
+                    .Include(s => s.Persona)
+                    .Include(s => s.EstadoSolicitud);
+                if (perfilId != 1 && !string.IsNullOrEmpty(consejoId))
+                    query = query.Where(s => s.Persona != null && s.Persona.ConsejoRegionalId == consejoId);
+                var registros = await query
+                    .Join(_context.Diplomas,
+                        s => s.Id,
+                        d => d.SolicitudId,
+                        (s, d) => new
+                        {
+                            SolicitudId = s.Id,
+                            NumeroSolicitud = s.NumeroSolicitud,
+                            FechaSolicitud = s.FechaSolicitud,
+                            EstadoId = s.EstadoSolicitudId,
+                            EstadoNombre = s.EstadoSolicitud.Nombre,
+                            PersonaId = s.PersonaId,
+                            NumeroDocumento = s.Persona.NumeroDocumento,
+                            NombreCompleto = s.Persona.NombresCompletos,
+                            NumeroColegiatura = s.Persona.NumeroColegiatura,
+                            DiplomaFechaEmision = d.FechaEmision,
+                            RutaPdf = d.RutaPdf,
+                            RutaPdfFirmado = d.RutaPdfFirmado
+                        })
+                    .OrderByDescending(r => r.FechaSolicitud)
+                    .ToListAsync();
+
+                return Ok(registros);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error al listar diplomas firmados CR: {ex.Message}");
+            }
+        }
+
+        [HttpGet("sg-para-firma")]
+        public async Task<IActionResult> ListarParaFirmaSG([FromQuery] string? consejoRegionalId = null)
+        {
+            try
+            {
+                var (perfilId, consejoFromToken) = GetUsuarioFirmaClaims();
+                var consejoId = !string.IsNullOrWhiteSpace(consejoRegionalId) ? consejoRegionalId.Trim() : consejoFromToken;
+                if (PerfilExigeConsejoRegional(perfilId) && string.IsNullOrEmpty(consejoId))
+                    return Ok(new List<object>());
+                IQueryable<Solicitud> query = _context.Solicitudes
                     .Where(s => s.EstadoSolicitudId == 9)
                     .Include(s => s.Persona)
-                    .Include(s => s.EstadoSolicitud)
+                    .Include(s => s.EstadoSolicitud);
+                if (perfilId != 1 && !string.IsNullOrEmpty(consejoId))
+                    query = query.Where(s => s.Persona != null && s.Persona.ConsejoRegionalId == consejoId);
+                var registros = await query
                     .Join(_context.Diplomas,
                         s => s.Id,
                         d => d.SolicitudId,
@@ -96,14 +170,21 @@ namespace MatriculaCMP.Controller
         }
 
         [HttpGet("decanato-para-firma")]
-        public async Task<IActionResult> ListarParaFirmaDecanato()
+        public async Task<IActionResult> ListarParaFirmaDecanato([FromQuery] string? consejoRegionalId = null)
         {
             try
             {
-                var registros = await _context.Solicitudes
+                var (perfilId, consejoFromToken) = GetUsuarioFirmaClaims();
+                var consejoId = !string.IsNullOrWhiteSpace(consejoRegionalId) ? consejoRegionalId.Trim() : consejoFromToken;
+                if (PerfilExigeConsejoRegional(perfilId) && string.IsNullOrEmpty(consejoId))
+                    return Ok(new List<object>());
+                IQueryable<Solicitud> query = _context.Solicitudes
                     .Where(s => s.EstadoSolicitudId == 10 || s.EstadoSolicitudId == 11)
                     .Include(s => s.Persona)
-                    .Include(s => s.EstadoSolicitud)
+                    .Include(s => s.EstadoSolicitud);
+                if (perfilId != 1 && !string.IsNullOrEmpty(consejoId))
+                    query = query.Where(s => s.Persona != null && s.Persona.ConsejoRegionalId == consejoId);
+                var registros = await query
                     .Join(_context.Diplomas,
                         s => s.Id,
                         d => d.SolicitudId,

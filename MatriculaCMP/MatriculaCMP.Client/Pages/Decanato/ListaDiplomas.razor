@@ -1,8 +1,11 @@
-﻿@page "/decanato/lista"
+@page "/decanato/lista"
 @using MatriculaCMP.Shared
 @using static MatriculaCMP.Shared.FirmaDigitalDTO
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 @inject IJSRuntime JS
 @inject HttpClient Http
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 
 <div class="container-fluid">
@@ -88,9 +91,7 @@
 						<table class="table table-hover align-middle mb-0">
                                 <thead class="thead-light">
                                     <tr>
-									<th style="width:42px">
-                                            <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
-                                        </th>
+                                        <th style="width:42px" aria-label="Selección"></th>
 									<th>N° Solicitud</th>
 									<th class="d-none d-sm-table-cell">Fecha Solicitud</th>
 									<th>Estado</th>
@@ -208,7 +209,11 @@
 	{
 		try
 		{
+			var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+			var consejoId = authState.User.FindFirst("ConsejoRegionalId")?.Value;
 			var url = $"api/diploma/decanato-para-firma?ts={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+			if (!string.IsNullOrWhiteSpace(consejoId))
+				url += "&consejoRegionalId=" + Uri.EscapeDataString(consejoId.Trim());
 			paraFirma = await Http.GetFromJsonAsync<List<ItemFirma>>(url);
 			alumnosMaster = paraFirma.Select(x => new ItemFirmaView
 			{

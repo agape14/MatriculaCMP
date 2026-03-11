@@ -1,0 +1,47 @@
+@namespace MatriculaCMP.Client.Components.Mat
+
+@if (IsVisible)
+{
+    <div class="mat-modal-backdrop" @onclick="OnBackdropClick"></div>
+    <div class="mat-modal-wrap" role="dialog" aria-modal="true" aria-labelledby="@($"mat-modal-title-{ModalId}")">
+        <div class="mat-modal mat-modal-@Size">
+            <div class="mat-modal-header">
+                <h2 id="@($"mat-modal-title-{ModalId}")" class="mat-modal-title">@Title</h2>
+                <button type="button" class="mat-modal-close" @onclick="Close" aria-label="Cerrar">
+                    <i class="ri-close-line" aria-hidden="true"></i>
+                </button>
+            </div>
+            <div class="mat-modal-body">
+                @ChildContent
+            </div>
+            @if (FooterContent != null)
+            {
+                <div class="mat-modal-footer">
+                    @FooterContent
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback<bool> IsVisibleChanged { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string Size { get; set; } = "medium";
+    [Parameter] public bool CloseOnBackdropClick { get; set; } = true;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? FooterContent { get; set; }
+
+    private string ModalId { get; } = Guid.NewGuid().ToString("N")[..8];
+
+    private async Task Close()
+    {
+        await IsVisibleChanged.InvokeAsync(false);
+    }
+
+    private async Task OnBackdropClick()
+    {
+        if (CloseOnBackdropClick) await Close();
+    }
+}

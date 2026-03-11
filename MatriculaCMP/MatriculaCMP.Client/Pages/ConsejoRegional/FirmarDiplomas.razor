@@ -1,9 +1,13 @@
 @page "/consejoregional/firmar-diplomas"
+@page "/consejoregional/firmar-diplomas/{RolFirma}"
 @using MatriculaCMP.Shared
 @using static MatriculaCMP.Shared.FirmaDigitalDTO
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 @inject IJSRuntime JS
 @inject HttpClient Http
 @inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <ErrorBoundary>
     <ChildContent>
@@ -50,12 +54,12 @@
     <div class="row">
         <div class="col-12">
             <div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                <h4 class="mb-sm-0">Consejo Regional - Listado Diplomas</h4>
+                <h4 class="mb-sm-0">@TituloPagina</h4>
 
                 <div class="page-title-right">
                     <ol class="breadcrumb m-0">
                         <li class="breadcrumb-item"><a href="javascript: void(0);">Inicio</a></li>
-                        <li class="breadcrumb-item active">Listado Diplomas</li>
+                        <li class="breadcrumb-item active">@(EsModoRolUnico ? NombreRolActual : "Listado Diplomas")</li>
                     </ol>
                 </div>
 
@@ -68,16 +72,23 @@
             <div class="card">
                 <div class="card-body  pt-0">
                     <div class="d-flex flex-wrap align-items-center mb-3 mt-2 gap-2">
-                        <div class="btn-group" role="group" aria-label="Rol de firma">
-                            <button type="button" class="btn @(modoFirma == 1 ? "btn-primary" : "btn-outline-primary")" @onclick="(()=>CambiarModo(1))">
-                                <i class="ri-user-2-line me-1"></i> Sec. CR
-                                <span class="badge bg-light text-primary ms-2">@alumnosMaster.Count(a=>a.EstadoId==6)</span>
-                            </button>
-                            <button type="button" class="btn @(modoFirma == 2 ? "btn-primary" : "btn-outline-primary")" @onclick="(()=>CambiarModo(2))">
-                                <i class="ri-award-line me-1"></i> Decano CR
-                                <span class="badge bg-light text-primary ms-2">@alumnosMaster.Count(a=>a.EstadoId==8)</span>
-                            </button>
-                        </div>
+                        @if (!EsModoRolUnico)
+                        {
+                            <div class="btn-group" role="group" aria-label="Rol de firma">
+                                <button type="button" class="btn @(modoFirma == 1 ? "btn-primary" : "btn-outline-primary")" @onclick="(()=>CambiarModo(1))">
+                                    <i class="ri-user-2-line me-1"></i> Sec. CR
+                                    <span class="badge bg-light text-primary ms-2">@alumnosMaster.Count(a=>a.EstadoId==6)</span>
+                                </button>
+                                <button type="button" class="btn @(modoFirma == 2 ? "btn-primary" : "btn-outline-primary")" @onclick="(()=>CambiarModo(2))">
+                                    <i class="ri-award-line me-1"></i> Decano CR
+                                    <span class="badge bg-light text-primary ms-2">@alumnosMaster.Count(a=>a.EstadoId==8)</span>
+                                </button>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="badge bg-primary fs-6 py-2 px-3"><i class="@(modoFirma == 1 ? "ri-user-2-line" : "ri-award-line") me-1"></i> @NombreRolActual</span>
+                        }
                         <div class="form-check ms-2">
                             <input type="checkbox" id="chkTodos" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
                             <label class="form-check-label" for="chkTodos">Seleccionar todos</label>
@@ -98,9 +109,7 @@
                         <table class="table table-hover align-middle mb-0">
                             <thead class="thead-light">
                                 <tr>
-                                    <th style="width:42px">
-                                        <input type="checkbox" class="form-check-input" checked="@seleccionarTodos" @onchange="SeleccionarTodasFilas" />
-                                    </th>
+                                    <th style="width:42px" aria-label="Selección"></th>
                                     <th>N° Solicitud</th>
                                     <th class="d-none d-sm-table-cell">Fecha Solicitud</th>
                                     <th>Estado</th>
@@ -211,6 +220,9 @@
 </ErrorBoundary>
 
 @code {
+    [Parameter]
+    public string? RolFirma { get; set; }
+
     private bool mostrarPdf = false;
     private string? pdfUrl;
     private bool seleccionarTodos = false;
@@ -220,6 +232,11 @@
     private List<ItemFirmaView> alumnosMaster = new();
     private string filtro = string.Empty;
     private int modoFirma = 1; // 1: Sec. CR (estado 6), 2: Decano CR (estado 8)
+
+    /// <summary>True cuando la ruta es /firmar-diplomas/sec o /firmar-diplomas/decano (un solo rol).</summary>
+    private bool EsModoRolUnico => !string.IsNullOrWhiteSpace(RolFirma) && (RolFirma.Equals("sec", StringComparison.OrdinalIgnoreCase) || RolFirma.Equals("decano", StringComparison.OrdinalIgnoreCase));
+    private string NombreRolActual => modoFirma == 1 ? "Sec. CR" : "Decano CR";
+    private string TituloPagina => EsModoRolUnico ? $"Consejo Regional - Firmar Diplomas ({NombreRolActual})" : "Consejo Regional - Listado Diplomas";
     private string Filtro
     {
         get => filtro;
@@ -254,18 +271,44 @@
         // Aquí puedes agregar la lógica real de descarga
     }
 
+    protected override void OnParametersSet()
+    {
+        if (RolFirma?.Trim().Equals("decano", StringComparison.OrdinalIgnoreCase) == true)
+            modoFirma = 2;
+        else if (RolFirma?.Trim().Equals("sec", StringComparison.OrdinalIgnoreCase) == true)
+            modoFirma = 1;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Al entrar a /sec o /decano (o al cambiar entre ellos) siempre recargar datos con el rol correcto.
+        // Así se corrige: carga directa a /decano que a veces no pinta, y navegación /sec <-> /decano sin recarga.
+        if (EsModoRolUnico)
+        {
+            await CargarParaFirma();
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
-        await CargarParaFirma();
-        // Crear referencia a instancia si se requiere ampliar JSInvokable con instancia
+        OnParametersSet();
         selfRef = DotNetObjectReference.Create(this);
+        // Si no hay rol en la ruta (página con tabs), cargar aquí. Si hay rol (/sec o /decano), ya se carga en OnParametersSetAsync.
+        if (!EsModoRolUnico)
+        {
+            await CargarParaFirma();
+        }
     }
 
     private async Task CargarParaFirma()
     {
         try
         {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var consejoId = authState.User.FindFirst("ConsejoRegionalId")?.Value;
             var url = $"api/diploma/para-firma?ts={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+            if (!string.IsNullOrWhiteSpace(consejoId))
+                url += "&consejoRegionalId=" + Uri.EscapeDataString(consejoId.Trim());
             paraFirma = await Http.GetFromJsonAsync<List<ItemFirma>>(url);
             alumnosMaster = paraFirma.Select(x => new ItemFirmaView
             {

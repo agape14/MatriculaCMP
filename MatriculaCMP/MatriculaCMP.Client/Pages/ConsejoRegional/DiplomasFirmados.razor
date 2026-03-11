@@ -1,0 +1,214 @@
+@page "/consejoregional/diplomas-firmados"
+@using MatriculaCMP.Shared
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject IJSRuntime JS
+@inject HttpClient Http
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<div class="container-fluid">
+    @if (mostrarPdf)
+    {
+        <div class="modal fade show" style="display:block;" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Diploma firmado</h5>
+                        <button type="button" class="btn-close" @onclick="CerrarModalPdf"></button>
+                    </div>
+                    <div class="modal-body" style="height:75vh;background-color:#f8f9fa;">
+                        @if (!string.IsNullOrEmpty(pdfUrl))
+                        {
+                            <object data="@pdfUrl" type="application/pdf" width="100%" height="100%">
+                                <embed src="@pdfUrl" type="application/pdf" width="100%" height="100%" />
+                            </object>
+                        }
+                        else
+                        {
+                            <div class="text-center p-4">Cargando PDF...</div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CerrarModalPdf">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
+
+    <div class="row">
+        <div class="col-12">
+            <div class="page-title-box d-sm-flex align-items-center justify-content-between">
+                <h4 class="mb-sm-0">Consejo Regional - Diplomas firmados</h4>
+                <div class="page-title-right">
+                    <ol class="breadcrumb m-0">
+                        <li class="breadcrumb-item"><a href="javascript: void(0);">Inicio</a></li>
+                        <li class="breadcrumb-item active">Diplomas firmados</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card">
+                <div class="card-body pt-0">
+                    <div class="d-flex flex-wrap align-items-center mb-3 mt-2 gap-2">
+                        <div class="ms-auto" style="min-width:260px;max-width:340px;">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="ri-search-2-line"></i></span>
+                                <input class="form-control" placeholder="Buscar DNI, nombre o N° solicitud" @bind="filtro" @bind:event="oninput" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>N° Solicitud</th>
+                                    <th class="d-none d-sm-table-cell">Fecha Solicitud</th>
+                                    <th>Estado</th>
+                                    <th class="d-none d-md-table-cell">DNI</th>
+                                    <th>Nombre</th>
+                                    <th class="d-none d-lg-table-cell">N° Colegiatura</th>
+                                    <th class="d-none d-md-table-cell">Fecha Emisión</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!itemsFiltrados.Any())
+                                {
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted py-4">No hay diplomas firmados por el CR para mostrar.</td>
+                                    </tr>
+                                }
+                                else
+                                {
+                                    @foreach (var item in itemsFiltrados)
+                                    {
+                                        <tr>
+                                            <td>@item.NumeroSolicitud</td>
+                                            <td class="d-none d-sm-table-cell">@item.FechaSolicitud.ToString("dd/MM/yyyy")</td>
+                                            <td><span class="badge bg-info">@item.EstadoNombre</span></td>
+                                            <td class="d-none d-md-table-cell">@item.NumeroDocumento</td>
+                                            <td>@item.NombreCompleto</td>
+                                            <td class="d-none d-lg-table-cell">@item.NumeroColegiatura</td>
+                                            <td class="d-none d-md-table-cell">@item.DiplomaFechaEmision.ToString("dd/MM/yyyy")</td>
+                                            <td class="text-nowrap">
+                                                <button class="btn btn-sm btn-outline-info" title="Ver PDF firmado" @onclick="(() => VerPdfFirmado(item.SolicitudId))">
+                                                    <i class="ri-file-pdf-2-line me-1"></i> Ver PDF firmado
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool mostrarPdf = false;
+    private string? pdfUrl;
+    private string filtro = string.Empty;
+    private List<ItemFirmadoCr> itemsMaster = new();
+    private IEnumerable<ItemFirmadoCr> itemsFiltrados => AplicarFiltroList();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CargarFirmados();
+    }
+
+    private async Task CargarFirmados()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var consejoId = authState.User.FindFirst("ConsejoRegionalId")?.Value;
+            var url = $"api/diploma/cr-firmados?ts={DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}";
+            if (!string.IsNullOrWhiteSpace(consejoId))
+                url += "&consejoRegionalId=" + Uri.EscapeDataString(consejoId.Trim());
+            var list = await Http.GetFromJsonAsync<List<ItemFirmadoCr>>(url);
+            itemsMaster = list ?? new List<ItemFirmadoCr>();
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("console.error", new { tag = "DiplomasFirmados", error = ex.Message });
+        }
+    }
+
+    private IEnumerable<ItemFirmadoCr> AplicarFiltroList()
+    {
+        if (string.IsNullOrWhiteSpace(filtro))
+            return itemsMaster;
+        var f = filtro.Trim().ToLowerInvariant();
+        return itemsMaster.Where(a =>
+            a.NumeroSolicitud.ToString().Contains(f) ||
+            (!string.IsNullOrEmpty(a.NumeroDocumento) && a.NumeroDocumento.ToLower().Contains(f)) ||
+            (!string.IsNullOrEmpty(a.NombreCompleto) && a.NombreCompleto.ToLower().Contains(f)) ||
+            (!string.IsNullOrEmpty(a.NumeroColegiatura) && a.NumeroColegiatura.ToLower().Contains(f)));
+    }
+
+    private async Task VerPdfFirmado(int solicitudId)
+    {
+        try
+        {
+            var basePath = $"/firmas_digitales/documento_{solicitudId}";
+            string? firmadoMasReciente = null;
+            var candidatos = new[] { "[F][F][F][F]", "[F][F][F]", "[F][F]", "[F]", "_firmado" };
+            foreach (var suf in candidatos)
+            {
+                var url = $"{basePath}{suf}.pdf";
+                var resp = await Http.GetAsync(url);
+                if (resp.IsSuccessStatusCode)
+                {
+                    firmadoMasReciente = url;
+                    break;
+                }
+            }
+            if (!string.IsNullOrEmpty(firmadoMasReciente))
+            {
+                pdfUrl = firmadoMasReciente;
+                mostrarPdf = true;
+                StateHasChanged();
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("Swal.fire", new { icon = "warning", title = "PDF no encontrado", text = "No se encontró el archivo firmado para esta solicitud." });
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("Swal.fire", new { icon = "error", title = "Error", text = ex.Message });
+        }
+    }
+
+    private void CerrarModalPdf()
+    {
+        mostrarPdf = false;
+        pdfUrl = null;
+        StateHasChanged();
+    }
+
+    private class ItemFirmadoCr
+    {
+        public int SolicitudId { get; set; }
+        public int NumeroSolicitud { get; set; }
+        public DateTime FechaSolicitud { get; set; }
+        public int EstadoId { get; set; }
+        public string EstadoNombre { get; set; } = "";
+        public string NumeroDocumento { get; set; } = "";
+        public string NombreCompleto { get; set; } = "";
+        public string NumeroColegiatura { get; set; } = "";
+        public DateTime DiplomaFechaEmision { get; set; }
+        public string? RutaPdf { get; set; }
+        public string? RutaPdfFirmado { get; set; }
+    }
+}

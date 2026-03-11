@@ -4,27 +4,29 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @using Microsoft.JSInterop
+@using System.Text.Json
 @inject IJSRuntime JS
-
-
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject HttpClient Http
+@inject MenuCacheService MenuCache
 
-
-<!-- Sidebar Brand/Logo -->
-<div class="sidebar-brand">
-    <a class="navbar-brand" href="/home">
-        <i class="ri-building-2-line me-2"></i>
-        MatriculaCMP
+<!-- Brand/Logo (diseño React: icono + texto) -->
+<div class="mat-sidebar-brand">
+    <a href="/home" class="d-flex align-items-center gap-2">
+        <span class="mat-sidebar-brand-icon">
+            <i class="ri-home-5-line" aria-hidden="true"></i>
+        </span>
+        <span class="mat-sidebar-brand-text">MatriculaCMP</span>
     </a>
 </div>
 
-<div class="nav-scrollable">
-    <nav class="flex-column">
+<div class="mat-sidebar-nav">
+    <nav class="d-flex flex-column">
         <!-- Inicio fijo -->
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/home" Match="NavLinkMatch.All">
-                <i class="ri-home-line" aria-hidden="true"></i> Inicio
+        <div class="mat-nav-item">
+            <NavLink class="mat-nav-link" href="/home" Match="NavLinkMatch.All" ActiveClass="active">
+                <i class="ri-home-line" aria-hidden="true"></i>
+                <span>Inicio</span>
             </NavLink>
         </div>
 
@@ -32,27 +34,39 @@
         {
             @foreach (var kvp in menusAgrupados.OrderBy(k => k.Value.MinId))
             {
-                <div class="nav-item px-3 text-info">
-                    <i class="@(string.IsNullOrWhiteSpace(kvp.Value.ModuloIcono) ? ObtenerIconoPorDefecto(kvp.Key) : kvp.Value.ModuloIcono) me-2"></i><strong>@kvp.Key</strong>
+                <div class="mat-nav-section">
+                    <i class="@(string.IsNullOrWhiteSpace(kvp.Value.ModuloIcono) ? ObtenerIconoPorDefecto(kvp.Key) : kvp.Value.ModuloIcono)" aria-hidden="true"></i>
+                    <span class="mat-nav-section-label">@kvp.Key</span>
                 </div>
                 @foreach (var m in kvp.Value.Items.OrderBy(i => i.Orden ?? int.MaxValue).ThenBy(i => i.Id))
                 {
-                    <div class="nav-item px-3">
-                        <NavLink class="nav-link" href="@m.Ruta">
-                            <i class="@m.Icono"></i> @m.Titulo
+                    <div class="mat-nav-item">
+                        <NavLink class="mat-nav-link" href="@m.Ruta" ActiveClass="active">
+                            <i class="@m.Icono" aria-hidden="true"></i>
+                            <span>@m.Titulo</span>
                         </NavLink>
                     </div>
                 }
             }
         }
+        else if (mostrandoCargandoMenu)
+        {
+            <div class="mat-nav-item text-white-50 small px-3 py-2">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Cargando menú...
+            </div>
+        }
     </nav>
 </div>
 @code {
-    //private List<MenuDto> menus = new();
+    [Parameter]
+    public bool Collapsed { get; set; }
+
     private string perfilUsuario = "";
     private record GrupoMenu(string? ModuloIcono, List<Menu> Items, int MinId);
     private Dictionary<string, GrupoMenu> menusAgrupados = new();
     private DotNetObjectReference<NavMenu>? _dotNetRef;
+    private bool mostrandoCargandoMenu = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -64,12 +78,42 @@
             if (user.Identity?.IsAuthenticated ?? false)
             {
                 perfilUsuario = user.FindFirst("PerfilId")?.Value ?? "1";
-                Console.WriteLine($"Perfil de usuario cargado: {perfilUsuario}");
+                var perfilId = int.TryParse(perfilUsuario, out var pid) ? pid : 0;
+                if (perfilId > 0)
+                {
+                    var cached = MenuCache.GetCached(perfilId);
+                    if (cached != null && cached.Count > 0)
+                    {
+                        menusAgrupados = ConstruirMenusAgrupados(cached);
+                        StateHasChanged();
+                    }
+                    else
+                    {
+                        try
+                        {
+                            var json = await JS.InvokeAsync<string>("cmpGetMenuStorage", perfilId);
+                            if (!string.IsNullOrWhiteSpace(json))
+                            {
+                                var list = JsonSerializer.Deserialize<List<Menu>>(json);
+                                if (list?.Count > 0)
+                                {
+                                    MenuCache.SetCached(perfilId, list);
+                                    menusAgrupados = ConstruirMenusAgrupados(list);
+                                    StateHasChanged();
+                                }
+                            }
+                        }
+                        catch { /* en servidor/SSR no hay localStorage */ }
+                        if (menusAgrupados.Count == 0)
+                            mostrandoCargandoMenu = true;
+                    }
+                }
                 await CargarMenus();
+                mostrandoCargandoMenu = false;
+                StateHasChanged();
             }
             else
             {
-                Console.WriteLine("Usuario no autenticado");
                 perfilUsuario = "1"; // Default fallback
             }
         }
@@ -95,6 +139,20 @@
         catch {}
     }
 
+    private static Dictionary<string, GrupoMenu> ConstruirMenusAgrupados(List<Menu> menus)
+    {
+        return menus
+            .GroupBy(m => string.IsNullOrWhiteSpace(m.Modulo) ? "General" : m.Modulo)
+            .ToDictionary(
+                g => g.Key,
+                g => new GrupoMenu(
+                    g.FirstOrDefault(m => !string.IsNullOrWhiteSpace(m.ModuloIcono))?.ModuloIcono,
+                    g.OrderBy(x => x.Titulo).ToList(),
+                    g.Min(x => x.Id)
+                )
+            );
+    }
+
     private async Task CargarMenus()
     {
         try
@@ -118,16 +176,13 @@
                 !m.Ruta.Trim().Equals("/consejoregional/lista", StringComparison.OrdinalIgnoreCase)
             ).ToList();
             
-            menusAgrupados = menus
-                .GroupBy(m => string.IsNullOrWhiteSpace(m.Modulo) ? "General" : m.Modulo)
-                .ToDictionary(
-                    g => g.Key,
-                    g => new GrupoMenu(
-                        g.FirstOrDefault(m => !string.IsNullOrWhiteSpace(m.ModuloIcono))?.ModuloIcono,
-                        g.OrderBy(x => x.Titulo).ToList(),
-                        g.Min(x => x.Id)
-                    )
-                );
+            menusAgrupados = ConstruirMenusAgrupados(menus);
+            MenuCache.SetCached(perfilId, menus);
+            try
+            {
+                await JS.InvokeVoidAsync("cmpSetMenuStorage", perfilId, JsonSerializer.Serialize(menus));
+            }
+            catch { /* ignorar fallo de localStorage */ }
             StateHasChanged();
         }
         catch (Exception ex)
@@ -171,6 +226,27 @@
                 await JS.InvokeVoidAsync("cmpRegisterNav", _dotNetRef);
             }
             catch { }
+            // En el cliente, si el menú sigue vacío, intentar de nuevo desde localStorage (por si vino de SSR sin datos)
+            var perfilId = int.TryParse(perfilUsuario, out var pid) ? pid : 0;
+            if (perfilId > 0 && (menusAgrupados == null || menusAgrupados.Count == 0))
+            {
+                try
+                {
+                    var json = await JS.InvokeAsync<string>("cmpGetMenuStorage", perfilId);
+                    if (!string.IsNullOrWhiteSpace(json))
+                    {
+                        var list = JsonSerializer.Deserialize<List<Menu>>(json);
+                        if (list?.Count > 0)
+                        {
+                            MenuCache.SetCached(perfilId, list);
+                            menusAgrupados = ConstruirMenusAgrupados(list);
+                            mostrandoCargandoMenu = false;
+                            await InvokeAsync(StateHasChanged);
+                        }
+                    }
+                }
+                catch { }
+            }
         }
     }
 

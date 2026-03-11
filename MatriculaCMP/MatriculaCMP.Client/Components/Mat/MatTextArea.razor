@@ -1,0 +1,46 @@
+@namespace MatriculaCMP.Client.Components.Mat
+
+<div class="mat-input-container mat-textarea-container @(Invalid ? "mat-input-invalid" : "")">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="mat-input-label" for="@Id">
+            @Label
+            @if (Required) { <span class="mat-input-required">*</span> }
+        </label>
+    }
+    <textarea id="@Id"
+              class="mat-input-field mat-textarea-field"
+              value="@Value"
+              @oninput="OnInput"
+              placeholder="@Placeholder"
+              disabled="@Disabled"
+              required="@Required"
+              rows="@Rows"
+              maxlength="@MaxLength"
+              aria-invalid="@Invalid">@Value</textarea>
+    @if (Invalid && !string.IsNullOrEmpty(ErrorMessage))
+    {
+        <span class="mat-input-error">@ErrorMessage</span>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Id { get; set; } = Guid.NewGuid().ToString("N")[..8];
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public int Rows { get; set; } = 3;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public int? MaxLength { get; set; }
+    [Parameter] public bool Invalid { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

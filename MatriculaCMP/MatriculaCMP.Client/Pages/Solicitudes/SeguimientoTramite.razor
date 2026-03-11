@@ -1,4 +1,4 @@
-﻿@page "/solicitudes/seguimiento"
+@page "/solicitudes/seguimiento"
 @using MatriculaCMP.Shared
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
@@ -9,101 +9,85 @@
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
-<div class="container-fluid">
-	<!-- start page title -->
-	<div class="row">
-		<div class="col-12">
-			<div class="page-title-box d-sm-flex align-items-center justify-content-between">
-                <h4 class="mb-sm-0">Seguimiento Tramite</h4>
-
-				<div class="page-title-right">
-					<ol class="breadcrumb m-0">
-						<li class="breadcrumb-item"><a href="javascript: void(0);">Inicio</a></li>
-                        <li class="breadcrumb-item active">Seguimiento Tramite</li>
-					</ol>
-				</div>
-
-			</div>
-		</div>
+<div class="container-fluid py-4">
+	<div class="mat-seg-breadcrumb">
+		<a href="/">Inicio</a>
+		<i class="ri-arrow-right-s-line" aria-hidden="true"></i>
+		<span class="active">Seguimiento Trámite</span>
 	</div>
 
-    <div class="row">
-        <div class="col-lg-12">
-            <div class="card">
-                <div class="card-body  pt-0">
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3 px-2 px-sm-3">
-                        <span class="badge bg-primary">Total: @(solicitudes?.Count ?? 0)</span>
-                        <div class="ms-auto" style="min-width:260px;max-width:340px;">
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="ri-search-2-line"></i></span>
-                                <input class="form-control" placeholder="Buscar en la tabla..." @oninput="OnSearchInput" />
-                            </div>
-                        </div>
-                    </div>
-                    <div class="table-responsive px-2 px-sm-3">
-                        <table id="tblListadoSolicitante" class="table table-hover align-middle datatable dt-responsive nowrap dataTable no-footer dtr-inline collapsed" data-page-length="5" style="border-collapse: collapse; border-spacing: 0px; width: 100%;" role="grid">
-                                    <thead class="thead-light">
-                                        <tr role="row">
-                                            <th>#</th>
-                                            <th>Nombre</th>
-                                            <th>N° Solicitud</th>
-                                            <th class="d-none d-md-table-cell">Fecha Solicitud</th>
-                                            <th>Estado</th>
-                                            <th class="d-none d-lg-table-cell">Área</th>
-                                            <th>Observaciones</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @if (solicitudes != null && solicitudes.Count > 0)
-                                        {
-                                            int index = 1;
-                                            foreach (var s in solicitudes)
-                                            {
-                                                <tr role="row" class="odd">
-                                                    <td>@index</td>
-                                                    <td>@s.PersonaNombre</td>
-                                                    <td>@s.NumeroSolicitud.ToString("D8")</td>
-                                                    <td class="d-none d-md-table-cell">@s.FechaSolicitud.ToString("dd/MM/yyyy")</td>
-                                                    <td>
-                                                        <div class="badge badge-soft-@s.EstadoColor font-size-12">@s.Estado</div>
-                                                    </td>
-                                                    <td class="d-none d-lg-table-cell">@(s.AreaNombre ?? "")</td>
-                                                    <td>@(s.Observaciones ?? "")</td>
-                                                    <td>
-                                                        <button class="btn btn-outline-primary btn-sm" disabled="@loadingVer.Contains(s.Id)" @onclick="@(() => VerDetalle(s))">
-                                                            @if (loadingVer.Contains(s.Id)) { <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> } else { <i class="ri-eye-line"></i> }
-                                                            Ver
-                                                        </button>
-                                                        <button class="btn btn-outline-info btn-sm ms-1" disabled="@loadingHistorial.Contains(s.Id)" @onclick="@(() => VerHistorialAsync(s.Id))">
-                                                            @if (loadingHistorial.Contains(s.Id)) { <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> } else { <i class="ri-history-line"></i> }
-                                                            Historial
-                                                        </button>
-                                                        @if (s.EstadoId==3 || s.EstadoId==5 ||s.EstadoId==7 )
-                                                        {
-                                                            <button class="btn btn-outline-warning btn-sm ms-1" disabled="@loadingEditar.Contains(s.Id)" @onclick="@(() => EditarSolicitudAsync(s.Id))">
-                                                                @if (loadingEditar.Contains(s.Id)) { <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> } else { <i class="ri-edit-line"></i> }
-                                                                Editar
-                                                            </button>
-                                                            <button class="btn btn-outline-success btn-sm ms-1" disabled="@loadingReenviar.Contains(s.Id)" @onclick="@(() => ReenviarSolicitud(s.Id))">
-                                                                @if (loadingReenviar.Contains(s.Id)) { <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> } else { <i class="ri-send-plane-line"></i> }
-                                                                Reenviar
-                                                            </button>
-                                                        }
-                                                    </td>
-                                                </tr>
-                                                index++;
-                                            }
-                                        }
-                                        else
-                                        {
-                                            <tr>
-                                                <td colspan="8" class="text-center">No se encontraron solicitudes</td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                    </div>
+	<div class="mb-4">
+		<h1 class="mat-seg-title">Seguimiento Trámite</h1>
+		<p class="mat-seg-subtitle">Revisa el estado actual de tu proceso de matrícula</p>
+	</div>
+
+	<div class="card border-0 shadow-sm rounded-lg">
+		<div class="card-body p-4 p-md-6">
+			<div class="mat-seg-search-wrap">
+				<i class="ri-search-line" aria-hidden="true"></i>
+				<input type="text" placeholder="Buscar por nombre, número de solicitud..." @oninput="OnSearchInput" />
+			</div>
+
+			<div class="mat-seg-table-wrap">
+				<table id="tblListadoSolicitante" class="mat-seg-table table align-middle" data-page-length="5" role="grid">
+					<thead>
+						<tr>
+							<th>Nombre</th>
+							<th>N° Solicitud</th>
+							<th class="d-none d-md-table-cell">Fecha Solicitud</th>
+							<th>Estado</th>
+							<th class="d-none d-lg-table-cell">Área</th>
+							<th>Observaciones</th>
+							<th class="text-center">Acciones</th>
+						</tr>
+					</thead>
+					<tbody>
+						@if (solicitudes != null && solicitudes.Count > 0)
+						{
+							foreach (var s in solicitudes)
+							{
+								<tr role="row">
+									<td class="fw-medium">@s.PersonaNombre</td>
+									<td>@s.NumeroSolicitud.ToString("D8")</td>
+									<td class="d-none d-md-table-cell">@s.FechaSolicitud.ToString("dd/MM/yyyy")</td>
+									<td>
+										<span class="mat-seg-badge-estado">@s.Estado</span>
+									</td>
+									<td class="d-none d-lg-table-cell">@(s.AreaNombre ?? "-")</td>
+									<td>@(s.Observaciones ?? "-")</td>
+									<td>
+										<button type="button" class="mat-seg-btn-action" disabled="@loadingVer.Contains(s.Id)" @onclick="@(() => VerDetalle(s))">
+											@if (loadingVer.Contains(s.Id)) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> } else { <i class="ri-eye-line"></i> }
+											Ver
+										</button>
+										<button type="button" class="mat-seg-btn-action" disabled="@loadingHistorial.Contains(s.Id)" @onclick="@(() => VerHistorialAsync(s))">
+											@if (loadingHistorial.Contains(s.Id)) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> } else { <i class="ri-history-line"></i> }
+											Historial
+										</button>
+										@if (s.EstadoId == 3 || s.EstadoId == 5 || s.EstadoId == 7)
+										{
+											<button type="button" class="mat-seg-btn-action" disabled="@loadingEditar.Contains(s.Id)" @onclick="@(() => EditarSolicitudAsync(s.Id))">
+												@if (loadingEditar.Contains(s.Id)) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> } else { <i class="ri-edit-line"></i> }
+												Editar
+											</button>
+											<button type="button" class="mat-seg-btn-action" disabled="@loadingReenviar.Contains(s.Id)" @onclick="@(() => ReenviarSolicitud(s.Id))">
+												@if (loadingReenviar.Contains(s.Id)) { <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> } else { <i class="ri-send-plane-line"></i> }
+												Reenviar
+											</button>
+										}
+									</td>
+								</tr>
+							}
+						}
+						else
+						{
+							<tr>
+								<td colspan="7" class="text-center py-4 text-muted">No se encontraron solicitudes</td>
+							</tr>
+						}
+					</tbody>
+				</table>
+			</div>
                    
                     <!-- Modal Loading -->
                     <div class="modal fade" id="loadingModal" tabindex="-1" aria-hidden="true">
@@ -119,181 +103,241 @@
 
                 </div>
             </div>
-        </div>
     </div>
 
-@if (solicitudSeleccionada != null)
+@* Modal Detalle (estilo TrackingView: avatar, estado azul, secciones morado) *@
+@if (solicitudSeleccionada != null && !mostrarHistorialModal)
 {
-    <div class="modal fade show" style="display: block; background-color: rgba(0,0,0,0.5)" id="detalleModal">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title text-white ">Detalle de Solicitud #@solicitudSeleccionada.NumeroSolicitud.ToString("D8")</h5>
-                    <button type="button" class="btn-close" @onclick="() => solicitudSeleccionada = null"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="row mt-1">
-                        <div class="row  mt-2 p-2">
-                            <div class="col-md-3">
-                                <p class="card-title-desc"><strong>Consejo Regional:</strong></p>
-                            </div>
-                            <div class="col-md-9">
-                                <select class="form-control" id="cbxConsejoRegional" disabled >
-                                    <option value="">Seleccione...</option>
-                                    @foreach (var consejo in consejos)
-                                    {
-                                        <option value="@consejo.ConsejoRegional_Key" selected="@(consejo.ConsejoRegional_Key.ToString() == solicitudSeleccionada.Persona.ConsejoRegionalId)">
-                                            @consejo.Nombre
-                                        </option>
-                                    }
-                                </select>
-                            </div>
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5); z-index: 1050;" id="detalleModal">
+        <div class="modal-dialog modal-dialog-scrollable mx-auto mat-seg-modal-content">
+            <div class="modal-content border-0">
+                <div class="modal-header border-0 pb-0 mat-seg-modal-header">
+                    <div class="mat-seg-modal-header-block w-100">
+                        <div class="mat-seg-modal-avatar-wrap">
+                            @if (!string.IsNullOrEmpty(solicitudSeleccionada.Persona?.FotoPath))
+                            {
+                                <img src="/api/personaseducacion/fotos-medicos/@solicitudSeleccionada.Persona.FotoPath" alt="@solicitudSeleccionada.Persona?.NombresCompletos" class="mat-seg-modal-avatar" />
+                            }
+                            else
+                            {
+                                <div class="mat-seg-modal-avatar bg-light d-flex align-items-center justify-content-center"><i class="ri-user-line text-muted" style="font-size: 2rem;"></i></div>
+                            }
+                            <span class="mat-seg-modal-avatar-dot" aria-hidden="true"></span>
                         </div>
-                        <div class="accordion" id="accordionExample">
-                          <div class="accordion-item">
-                            <h2 class="accordion-header" id="headingOne">
-                              <button class="accordion-button bg-morado text-white" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-                                Datos Personales
-                              </button>
-                            </h2>
-                            <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#accordionExample">
-                              <div class="accordion-body">
-                                <div class="row mt-2 p-2">
-                                    <div class="col-md-6">
-                                        <p><strong>Nombres:</strong> @solicitudSeleccionada.Persona.NombresCompletos</p>
-                                        <p><strong>Documento:</strong> @solicitudSeleccionada.Persona.NumeroDocumento</p>
-                                        <p><strong>Fecha Nacimiento:</strong> @solicitudSeleccionada.Persona.FechaNacimiento?.ToString("dd/MM/yyyy")</p>
-                                        <p><strong>Grupo Sanguíneo:</strong> @(solicitudSeleccionada.Persona.GrupoSanguineo?.Nombre ?? "No especificado")</p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <h6>Foto</h6>
-                                        @if (!string.IsNullOrEmpty(solicitudSeleccionada.Persona.FotoPath))
-                                        {
-                                            <img src="/api/personaseducacion/fotos-medicos/@solicitudSeleccionada.Persona.FotoPath" class="img-thumbnail" style="max-width: 200px;" alt="Foto del médico" />
-                                        }
-                                        else
-                                        {
-                                            <p>Sin foto disponible</p>
-                                        }
-                                    </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div class="accordion-item">
-                            <h2 class="accordion-header" id="headingTwo">
-                              <button class="accordion-button bg-morado text-white collapsed " type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-                                 Educación y Contacto
-                              </button>
-                            </h2>
-                            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#accordionExample">
-                              <div class="accordion-body">
-                                <div class="row mt-2 p-2">
-                                    <div class="col-md-6">
-                                        <h6>Educación</h6>
-                                        <p><strong>Universidad:</strong> @(solicitudSeleccionada.Persona.Educaciones?.FirstOrDefault()?.Universidad?.Nombre ?? "No especificada") </p>
-                                        <p><strong>Fecha Título:</strong>  @(solicitudSeleccionada.Persona.Educaciones?.FirstOrDefault()?.FechaEmisionTitulo.ToString("dd/MM/yyyy") ?? "No especificada") </p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <h6>Contacto</h6>
-                                        <p><strong>Email:</strong> @solicitudSeleccionada.Persona.Email</p>
-                                        <p><strong>Celular:</strong> @solicitudSeleccionada.Persona.Celular</p>
-                                        <p><strong>Dirección:</strong> @solicitudSeleccionada.Persona.DescripcionZona</p>
-                                    </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          @*<div class="accordion-item">
-                            <h2 class="accordion-header" id="headingThree">
-                              <button class="accordion-button bg-morado text-white collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-                                Historial de Estados
-                              </button>
-                            </h2>
-                            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#accordionExample">
-                              <div class="accordion-body">
-                                @if (solicitudSeleccionada?.HistorialEstados != null && solicitudSeleccionada.HistorialEstados.Any())
-                                {
-                                    <ul class="list-group">
-                                        @foreach (var historial in solicitudSeleccionada.HistorialEstados.OrderByDescending(h => h.FechaCambio))
-                                        {
-                                            <li class="list-group-item">
-                                                <!-- Primera fila: nombre y fecha -->
-                                                <div class="d-flex justify-content-between">
-                                                    <button type="button" class="btn btn-@(historial.EstadoNuevo?.Color ?? "secondary") waves-effect waves-light">@(historial.EstadoNuevo?.Nombre ?? "Sin estado")</button>
-                                                    <small class="text-muted">El @historial.FechaCambio.ToString("dd/MM/yyyy HH:mm")</small>
-                                                </div>
-                                                <!-- Segunda fila: observación -->
-                                                <div class="mt-2">
-                                                    <strong>@(historial.Observacion ?? "Sin observaciones")</strong>
-                                                </div>
-                                            </li>
-                                        }
-                                    </ul>
+                        <div class="flex-grow-1">
+                            <h2 class="mat-seg-modal-title">Detalles de Solicitud</h2>
+                            <p class="mat-seg-modal-desc">N° @solicitudSeleccionada.NumeroSolicitud.ToString("D8") - @solicitudSeleccionada.FechaSolicitud.ToString("dd/MM/yyyy")</p>
+                            <p class="mat-seg-modal-name">@(solicitudSeleccionada.Persona?.NombresCompletos?.ToUpperInvariant() ?? "")</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close position-absolute" style="top: 1rem; right: 1rem;" @onclick="CerrarModales" aria-label="Cerrar"></button>
+                </div>
 
-                                }
-                                else
-                                {
-                                    <p class="text-muted">No hay historial disponible.</p>
-                                }
-                              </div>
-                            </div>
-                          </div>*@
-                        <div class="accordion-item">
-                            <h2 class="accordion-header" id="headingFour">
-                            <button class="accordion-button bg-morado text-white collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
-                                Documentos Adjuntos
-                            </button>
-                            </h2>
-                                <div id="collapseFour" class="accordion-collapse collapse show" aria-labelledby="headingFour" data-bs-parent="#accordionExample">
-                                <div class="accordion-body">
-                                    <h6>Documentos Adjuntos:</h6>
-                                    @if (solicitudSeleccionada?.Persona?.Educaciones?.Any() == true)
+                <div class="mat-seg-modal-scroll">
+                <div class="mat-seg-estado-actual">
+                    <i class="ri-shield-check-line" aria-hidden="true"></i>
+                    <div>
+                        <p class="titulo">Estado Actual</p>
+                        <p class="valor">@(solicitudSeleccionada.EstadoSolicitud?.Nombre ?? solicitudSeleccionada.Observaciones ?? "—")</p>
+                    </div>
+                </div>
+
+                <div class="mat-seg-modal-body">
+                    <div class="mat-seg-modal-section card border-0 overflow-hidden">
+                        <div class="mat-ficha-step-header">
+                            <div class="mat-ficha-step-header-icon"><i class="ri-user-line" aria-hidden="true"></i></div>
+                            <h3 class="mat-ficha-step-header-title mb-0">Datos Personales</h3>
+                        </div>
+                        <div class="mat-seg-section-body">
+                            <div class="row">
+                                <div class="col-md-4 mb-3 text-center text-md-start">
+                                    @if (!string.IsNullOrEmpty(solicitudSeleccionada.Persona?.FotoPath))
                                     {
-                                        var edu = solicitudSeleccionada.Persona.Educaciones
-                                        .FirstOrDefault(e => e.Documento != null);
-
-                                        if (edu?.Documento != null)
-                                        {
-                                            var documentos = new Dictionary<string, string?>
-                                        {
-                                        { "Título Médico Cirujano", edu.Documento.TituloMedicoCirujanoPath },
-                                        { "Constancia SUNEDU", edu.Documento.ConstanciaInscripcionSuneduPath },
-                                        { "Antecedentes Penales", edu.Documento.CertificadoAntecedentesPenalesPath },
-                                        { "Carnet de Extranjería", edu.Documento.CarnetExtranjeriaPath },
-                                        { "Inscripción Reconocimiento SUNEDU", edu.Documento.ConstanciaInscripcionReconocimientoSuneduPath },
-                                        { "Inscripción Revalidación Universidad Nacional", edu.Documento.ConstanciaInscripcionRevalidacionUniversidadNacionalPath },
-                                        { "Reconocimiento SUNEDU", edu.Documento.ReconocimientoSuneduPath },
-                                        { "Revalidación Universidad Nacional", edu.Documento.RevalidacionUniversidadNacionalPath }
-                                        };
-                                            @foreach (var doc in documentos.Where(d => !string.IsNullOrEmpty(d.Value)))
-                                            {
-                                                var keyId = doc.Key.Replace(" ", "_");
-
-                                                <button type="button" class="btn btn-sm btn-primary mb-2"
-                                                        @onclick="() => VerPdf(doc.Value,doc.Key)">
-                                                    Ver @doc.Key
-                                                </button> <br />
-
-                                            }
-                                        }
-                                        else
-                                        {
-                                            <p>No hay documentos registrados.</p>
-                                        }
+                                        <img src="/api/personaseducacion/fotos-medicos/@solicitudSeleccionada.Persona.FotoPath" alt="Foto" class="mat-seg-foto-pasaporte" />
                                     }
                                     else
                                     {
-                                        <p>Sin información de educación registrada.</p>
+                                        <div class="mat-seg-foto-pasaporte bg-light d-flex align-items-center justify-content-center mx-auto"><i class="ri-user-line text-muted" style="font-size: 2.5rem;"></i></div>
                                     }
+                                    <p class="small text-muted mt-1 mb-0">Foto tamaño pasaporte</p>
+                                </div>
+                                <div class="col-md-8">
+                                    <div class="row g-3">
+                                        <div class="col-sm-6"><p class="mat-seg-label mb-0">Nombre Completo</p><p class="mat-seg-value mb-0">@(solicitudSeleccionada.Persona?.NombresCompletos?.ToUpperInvariant() ?? "-")</p></div>
+                                        <div class="col-sm-6"><p class="mat-seg-label mb-0">DNI / Documento</p><p class="mat-seg-value mb-0">@(solicitudSeleccionada.Persona?.NumeroDocumento ?? "-")</p></div>
+                                        <div class="col-sm-6"><p class="mat-seg-label mb-0">Correo Electrónico</p><p class="mat-seg-value mb-0">@(solicitudSeleccionada.Persona?.Email ?? "-")</p></div>
+                                        <div class="col-sm-6"><p class="mat-seg-label mb-0">Teléfono</p><p class="mat-seg-value mb-0">@(solicitudSeleccionada.Persona?.Celular ?? "-")</p></div>
+                                        <div class="col-sm-6"><p class="mat-seg-label mb-0">Fecha de Nacimiento</p><p class="mat-seg-value mb-0">@(solicitudSeleccionada.Persona?.FechaNacimiento?.ToString("dd/MM/yyyy") ?? "-")</p></div>
+                                        <div class="col-sm-6"><p class="mat-seg-label mb-0">Grupo Sanguíneo</p><p class="mat-seg-value mb-0">@(solicitudSeleccionada.Persona?.GrupoSanguineo?.Nombre ?? "-")</p></div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="mat-seg-modal-section card border-0 overflow-hidden">
+                        <div class="mat-ficha-step-header">
+                            <div class="mat-ficha-step-header-icon"><i class="ri-graduation-cap-line" aria-hidden="true"></i></div>
+                            <h3 class="mat-ficha-step-header-title mb-0">Información Académica</h3>
+                        </div>
+                        <div class="mat-seg-section-body">
+                            <div class="row g-3">
+                                <div class="col-sm-6"><p class="mat-seg-label mb-0">Universidad de Origen</p><p class="mat-seg-value mb-0">@(solicitudSeleccionada.Persona?.Educaciones?.FirstOrDefault()?.Universidad?.Nombre ?? "-")</p></div>
+                                <div class="col-sm-6"><p class="mat-seg-label mb-0">Fecha de Emisión del Título</p><p class="mat-seg-value mb-0">@(solicitudSeleccionada.Persona?.Educaciones?.FirstOrDefault()?.FechaEmisionTitulo.ToString("dd/MM/yyyy") ?? "-")</p></div>
+                                <div class="col-sm-6"><p class="mat-seg-label mb-0">Consejo Regional</p><p class="mat-seg-value mb-0">@(consejos.FirstOrDefault(c => c.ConsejoRegional_Key.ToString() == solicitudSeleccionada.Persona?.ConsejoRegionalId)?.Nombre ?? "-")</p></div>
+                            </div>
                         </div>
                     </div>
+
+                    <div class="mat-seg-modal-section card border-0 overflow-hidden">
+                        <div class="mat-ficha-step-header">
+                            <div class="mat-ficha-step-header-icon"><i class="ri-file-text-line" aria-hidden="true"></i></div>
+                            <h3 class="mat-ficha-step-header-title mb-0">Documentos Adjuntos</h3>
+                        </div>
+                        <div class="mat-seg-section-body">
+                            @if (solicitudSeleccionada?.Persona?.Educaciones?.Any() == true)
+                            {
+                                var eduDet = solicitudSeleccionada.Persona.Educaciones.FirstOrDefault(e => e.Documento != null);
+                                if (eduDet?.Documento != null)
+                                {
+                                    var docs = new Dictionary<string, string?> {
+                                        { "Título Médico Cirujano", eduDet.Documento.TituloMedicoCirujanoPath },
+                                        { "Constancia SUNEDU", eduDet.Documento.ConstanciaInscripcionSuneduPath },
+                                        { "Antecedentes Penales", eduDet.Documento.CertificadoAntecedentesPenalesPath },
+                                        { "Carnet de Extranjería", eduDet.Documento.CarnetExtranjeriaPath },
+                                        { "Inscripción Reconocimiento SUNEDU", eduDet.Documento.ConstanciaInscripcionReconocimientoSuneduPath },
+                                        { "Inscripción Revalidación Universidad Nacional", eduDet.Documento.ConstanciaInscripcionRevalidacionUniversidadNacionalPath },
+                                        { "Reconocimiento SUNEDU", eduDet.Documento.ReconocimientoSuneduPath },
+                                        { "Revalidación Universidad Nacional", eduDet.Documento.RevalidacionUniversidadNacionalPath }
+                                    };
+                                    @foreach (var doc in docs.Where(d => !string.IsNullOrEmpty(d.Value)))
+                                    {
+                                        <button type="button" class="btn btn-sm btn-outline-primary me-2 mb-2" @onclick="() => VerPdf(doc.Value!, doc.Key)"><i class="ri-file-pdf-line me-1"></i> Ver @doc.Key</button>
+                                    }
+                                }
+                                else
+                                {
+                                    <p class="text-muted mb-0">No hay documentos registrados.</p>
+                                }
+                            }
+                            else
+                            {
+                                <p class="text-muted mb-0">Sin información de educación registrada.</p>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mat-seg-modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CerrarModales"><i class="ri-close-line me-1"></i> Cerrar</button>
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" @onclick="() => solicitudSeleccionada = null"> <i class="ri-close-circle-line align-middle ml-2"></i> Salir</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* Modal Historial (timeline con HistorialEstados) *@
+@if (solicitudSeleccionada != null && mostrarHistorialModal)
+{
+    <div class="modal fade show d-block" style="background-color: rgba(0,0,0,0.5); z-index: 1050;">
+        <div class="modal-dialog modal-dialog-scrollable mx-auto mat-seg-modal-content">
+            <div class="modal-content border-0">
+                <div class="modal-header border-0 pb-0 mat-seg-modal-header">
+                    <div class="mat-seg-modal-header-block w-100">
+                        <div class="mat-seg-modal-avatar-wrap">
+                            @if (!string.IsNullOrEmpty(solicitudSeleccionada.Persona?.FotoPath))
+                            {
+                                <img src="/api/personaseducacion/fotos-medicos/@solicitudSeleccionada.Persona.FotoPath" alt="@solicitudSeleccionada.Persona?.NombresCompletos" class="mat-seg-modal-avatar" />
+                            }
+                            else
+                            {
+                                <div class="mat-seg-modal-avatar bg-light d-flex align-items-center justify-content-center"><i class="ri-user-line text-muted" style="font-size: 2rem;"></i></div>
+                            }
+                            <span class="mat-seg-modal-avatar-dot" aria-hidden="true"></span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h2 class="mat-seg-modal-title">Historial de Solicitud</h2>
+                            <p class="mat-seg-modal-desc">N° @solicitudSeleccionada.NumeroSolicitud.ToString("D8") - @solicitudSeleccionada.FechaSolicitud.ToString("dd/MM/yyyy")</p>
+                            <p class="mat-seg-modal-name">@(solicitudSeleccionada.Persona?.NombresCompletos?.ToUpperInvariant() ?? "")</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close position-absolute" style="top: 1rem; right: 1rem;" @onclick="CerrarModales" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="mat-seg-modal-scroll">
+                <div class="mat-seg-estado-actual">
+                    <i class="ri-shield-check-line" aria-hidden="true"></i>
+                    <div>
+                        <p class="titulo">Estado Actual</p>
+                        <p class="valor">@(solicitudSeleccionada.EstadoSolicitud?.Nombre ?? "—")</p>
+                    </div>
+                </div>
+
+                <div class="mat-seg-modal-body">
+                    <div class="mat-seg-modal-section card border-0 overflow-hidden">
+                        <div class="mat-ficha-step-header">
+                            <div class="mat-ficha-step-header-icon"><i class="ri-history-line" aria-hidden="true"></i></div>
+                            <h3 class="mat-ficha-step-header-title mb-0">Historial de Eventos</h3>
+                        </div>
+                        <div class="mat-seg-section-body p-4">
+                            @if (solicitudSeleccionada.HistorialEstados?.Any() == true)
+                            {
+                                var eventos = solicitudSeleccionada.HistorialEstados.OrderBy(h => h.FechaCambio).ToList();
+                                <div class="mat-seg-timeline">
+                                    <div class="mat-seg-timeline-line" aria-hidden="true"></div>
+                                    @for (var i = 0; i < eventos.Count; i++)
+                                    {
+                                        var ev = eventos[i];
+                                        var esUltimo = i == eventos.Count - 1;
+                                        <div class="mat-seg-timeline-item">
+                                            <div class="mat-seg-timeline-icon @(esUltimo ? "pendiente" : "completado")">
+                                                @if (esUltimo)
+                                                {
+                                                    <i class="ri-time-line" aria-hidden="true"></i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="ri-check-line" aria-hidden="true"></i>
+                                                }
+                                            </div>
+                                            <div class="mat-seg-timeline-card @(esUltimo ? "pendiente" : "completado")">
+                                                <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+                                                    <h4 class="mb-0">@(ev.EstadoNuevo?.Nombre ?? "Sin estado")</h4>
+                                                    <span class="mat-seg-timeline-badge @(esUltimo ? "pendiente" : "completado")">@(esUltimo ? "En Proceso" : "Completado")</span>
+                                                </div>
+                                                <div class="mat-seg-timeline-meta mt-2">
+                                                    <span><i class="ri-calendar-line"></i> @ev.FechaCambio.ToString("dd/MM/yyyy")</span>
+                                                    <span><i class="ri-time-line"></i> @ev.FechaCambio.ToString("hh:mm tt")</span>
+                                                    @if (!string.IsNullOrEmpty(ev.UsuarioCambio))
+                                                    {
+                                                        <span><i class="ri-user-line"></i> @ev.UsuarioCambio</span>
+                                                    }
+                                                    @if (solicitudSeleccionada.Area != null)
+                                                    {
+                                                        <span><i class="ri-map-pin-line"></i> @(solicitudSeleccionada.Area.Nombre ?? "")</span>
+                                                    }
+                                                </div>
+                                                @if (!string.IsNullOrEmpty(ev.Observacion))
+                                                {
+                                                    <p class="small mb-0 mt-2 text-muted">@ev.Observacion</p>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="text-muted mb-0">No hay historial disponible.</p>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="mat-seg-modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CerrarModales"><i class="ri-close-line me-1"></i> Cerrar</button>
+                    </div>
+                </div>
                 </div>
             </div>
         </div>
@@ -315,14 +359,13 @@
         </div>
     </div>
 }
-</div>
-
 
 @code {
     private bool seleccionarTodos = false;
     private List<PersonaConEducacionDto> personas = new();
     private List<SolicitudSeguimientoDto> solicitudes = new();
     private Solicitud? solicitudSeleccionada = null;
+    private bool mostrarHistorialModal = false;
     private string personaId = "";
     private string? pdfUrl;
     private bool mostrarVisorPdf = false;
@@ -332,6 +375,12 @@
     private HashSet<int> loadingHistorial = new();
     private HashSet<int> loadingEditar = new();
     private HashSet<int> loadingReenviar = new();
+
+    private void CerrarModales()
+    {
+        solicitudSeleccionada = null;
+        mostrarHistorialModal = false;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -370,10 +419,11 @@
             // Aquí puedes manejar el error o mostrar mensaje en pantalla
         }
     }
-    private async Task  VerDetalle(SolicitudSeguimientoDto solicitud)
+    private async Task VerDetalle(SolicitudSeguimientoDto solicitud)
     {
         try
         {
+            mostrarHistorialModal = false;
             loadingVer.Add(solicitud.Id);
             StateHasChanged();
             solicitudSeleccionada = await Http.GetFromJsonAsync<Solicitud>($"api/personaseducacion/solicituddet/{solicitud.Id}");
@@ -399,18 +449,19 @@
         }
     }
 
-    private async Task VerHistorialAsync(int solicitudId)
+    private async Task VerHistorialAsync(SolicitudSeguimientoDto solicitud)
     {
         try
         {
-            loadingHistorial.Add(solicitudId);
+            loadingHistorial.Add(solicitud.Id);
             StateHasChanged();
-            await Task.Delay(10);
-            Nav.NavigateTo($"/solicitudes/historial-correcciones/{solicitudId}");
+            solicitudSeleccionada = await Http.GetFromJsonAsync<Solicitud>($"api/personaseducacion/solicituddet/{solicitud.Id}");
+            mostrarHistorialModal = true;
         }
         finally
         {
-            loadingHistorial.Remove(solicitudId);
+            loadingHistorial.Remove(solicitud.Id);
+            StateHasChanged();
         }
     }
 
@@ -475,7 +526,7 @@
     {
         if (firstRender && solicitudes?.Count > 0) // Verificar que los datos están cargados
         {
-            await JS.InvokeVoidAsync("inicializarDataTable", "#tblListadoSolicitante");
+            await JS.InvokeVoidAsync("inicializarDataTableSeguimiento", "#tblListadoSolicitante");
         }
     }
 

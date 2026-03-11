@@ -7,6 +7,7 @@ using static System.Formats.Asn1.AsnWriter;
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });//AGREGADO
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();//Agregado
+builder.Services.AddSingleton<MatriculaCMP.Client.Services.MenuCacheService>();
 //builder.Services.AddScoped<IMatriculaService, MatriculaHttpService>();
 //builder.Services.AddScoped<MenuHttpService>();
 builder.Services.AddAuthorizationCore();//Agregado

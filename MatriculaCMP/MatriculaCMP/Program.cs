@@ -43,6 +43,7 @@ builder.Services.AddScoped(sp => new HttpClient
 
 builder.Services.AddCascadingAuthenticationState();//Agregado
 builder.Services.AddScoped<MenuService>();
+builder.Services.AddSingleton<MatriculaCMP.Client.Services.MenuCacheService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddHttpContextAccessor();

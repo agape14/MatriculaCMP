@@ -1,0 +1,44 @@
+@namespace MatriculaCMP.Client.Components.Mat
+
+<div class="mat-table-wrap">
+    <table class="mat-table">
+        @if (Columns?.Any() == true)
+        {
+            <thead class="mat-table-thead">
+                <tr>
+                    @foreach (var col in Columns)
+                    {
+                        <th class="mat-table-th" style="@(col.Width != null ? $"width: {col.Width};" : "")">@col.Title</th>
+                    }
+                </tr>
+            </thead>
+        }
+        <tbody>
+            @if (Items != null)
+            {
+                @foreach (var item in Items)
+                {
+                    <tr>
+                        @if (RowTemplate != null)
+                        {
+                            @RowTemplate(item);
+                        }
+                        else if (Columns != null)
+                        {
+                            @foreach (var col in Columns)
+                            {
+                                <td class="mat-table-td">@col.GetValue?.Invoke(item)</td>
+                            }
+                        }
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter] public IEnumerable<object>? Items { get; set; }
+    [Parameter] public List<MatTableColumn>? Columns { get; set; }
+    [Parameter] public RenderFragment<object>? RowTemplate { get; set; }
+}

@@ -1,3 +1,15 @@
+/** Menú por perfil en localStorage para que el sidebar se muestre al instante (evita "cargando" al abrir prematricula, etc.). */
+window.cmpGetMenuStorage = function (perfilId) {
+    try {
+        return localStorage.getItem('matriculaCMP_menu_' + perfilId) || null;
+    } catch (e) { return null; }
+};
+window.cmpSetMenuStorage = function (perfilId, json) {
+    try {
+        if (perfilId && json) localStorage.setItem('matriculaCMP_menu_' + perfilId, json);
+    } catch (e) {}
+};
+
 window.confirmarSweet = async function (titulo, texto) {
     const result = await Swal.fire({
         title: titulo,
@@ -35,6 +47,25 @@ window.inicializarDataTable = (tableId) => {
             responsive: true,
             destroy: true,
             autoWidth: false,
+            language: {
+                url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+            }
+        });
+    }, 100);
+};
+
+/** DataTable para Seguimiento Trámite: sin "Show X entries" ni caja "Search", solo tabla + info + paginación (búsqueda desde cabecera). */
+window.inicializarDataTableSeguimiento = (tableId) => {
+    const selector = tableId;
+    if ($.fn.DataTable.isDataTable(selector)) {
+        $(selector).DataTable().clear().destroy();
+    }
+    setTimeout(() => {
+        $(selector).DataTable({
+            responsive: true,
+            destroy: true,
+            autoWidth: false,
+            dom: 'rtip',
             language: {
                 url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
             }

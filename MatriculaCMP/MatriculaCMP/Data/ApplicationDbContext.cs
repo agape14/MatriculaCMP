@@ -1,4 +1,4 @@
-﻿using MatriculaCMP.Shared;
+using MatriculaCMP.Shared;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -96,7 +96,6 @@ namespace MatriculaCMP.Server.Data
                 .HasOne(e => e.Documento)
                 .WithOne(d => d.Educacion)
                 .HasForeignKey<EducacionDocumento>(d => d.EducacionId);
-
         }
     }
 }
